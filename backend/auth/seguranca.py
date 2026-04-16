@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 # Configurações de Segurança
 SECRET_KEY = "chave_secreta_provisoria_mudar_depois"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480 
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 # MUDANÇA AQUI: Trocamos 'bcrypt' por 'pbkdf2_sha256'
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")

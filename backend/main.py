@@ -3,9 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
-from typing import List
-from typing import Optional
-from typing import Optional
+from typing import List, Optional
+import os
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.gzip import GZipMiddleware
 
 # Nossas importações internas
 from database import executar_query
@@ -14,6 +16,7 @@ from models.schemas import LoginData, Token
 from auth.seguranca import verificar_senha, criar_token_acesso, SECRET_KEY, ALGORITHM
 
 app = FastAPI(title="API de Retaguarda ERP", version="1.0.0")
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Configuração do CORS
 app.add_middleware(
@@ -75,7 +78,7 @@ def exigir_admin(token: str = Depends(oauth2_scheme)):
 async def listar_usuarios(admin_slug: str = Depends(exigir_admin)):
     # Busca todos os usuários da sua tabela API_USUARIOS
     query = "SELECT login, nome, nivel_acesso, ativo FROM API_USUARIOS ORDER BY nome"
-    return executar_query(banco="Bdenter", query=query, params=(), usuario=admin_slug, endpoint="/api/usuarios")
+    return await executar_query(banco="Bdenter", query=query, params=(), usuario=admin_slug, endpoint="/api/usuarios")
 
 @app.post("/api/usuarios", tags=["Administração"])
 async def cadastrar_usuario(dados: UsuarioNovo, admin_slug: str = Depends(exigir_admin)):
@@ -88,7 +91,7 @@ async def cadastrar_usuario(dados: UsuarioNovo, admin_slug: str = Depends(exigir
     """
     params = (dados.login.lower().strip(), hash_senha, dados.nome.upper(), dados.nivel_acesso.upper())
     
-    sucesso = executar_query(
+    sucesso = await executar_query(
         banco="Bdenter", 
         query=query, 
         params=params, 
@@ -104,7 +107,7 @@ async def cadastrar_usuario(dados: UsuarioNovo, admin_slug: str = Depends(exigir
 @app.put("/api/usuarios/{login_user}/status", tags=["Administração"])
 async def alternar_status_usuario(login_user: str, ativo: int, admin_slug: str = Depends(exigir_admin)):
     query = "UPDATE API_USUARIOS SET ativo = ? WHERE login = ?"
-    sucesso = executar_query(banco="Bdenter", query=query, params=(ativo, login_user), is_select=False, usuario=admin_slug, endpoint="/api/usuarios/status")
+    sucesso = await executar_query(banco="Bdenter", query=query, params=(ativo, login_user), is_select=False, usuario=admin_slug, endpoint="/api/usuarios/status")
     return {"status": "sucesso"} if sucesso is True else {"status": "erro"}
 
 # --- ROTAS DE AUTENTICAÇÃO ---
@@ -112,7 +115,7 @@ async def alternar_status_usuario(login_user: str, ativo: int, admin_slug: str =
 @app.post("/login", response_model=Token, tags=["Autenticação"])
 async def login(dados: LoginData):
     query = "SELECT login, senha_hash, nivel_acesso FROM API_USUARIOS WHERE login = ? AND ativo = 1"
-    resultado = executar_query(banco="Bdenter", query=query, params=(dados.login,), usuario="SISTEMA", endpoint="/login")
+    resultado = await executar_query(banco="Bdenter", query=query, params=(dados.login,), usuario="SISTEMA", endpoint="/login")
     
     if not resultado or not isinstance(resultado, list):
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
@@ -146,7 +149,7 @@ async def buscar_registro_inteligente(
     # 1. Se o React avisou que é um NumOrd direto (usuário clicou na janelinha)
     if is_numord:
         query = Scripts.query['consulta_nota']
-        dados = executar_query(banco=db_name, query=query, params=(registro,), usuario=usuario, endpoint=f"/api/produto/nf/{registro}")
+        dados = await executar_query(banco=db_name, query=query, params=(registro,), usuario=usuario, endpoint=f"/api/produto/nf/{registro}")
         return dados
 
     # 2. Múltiplos códigos
@@ -160,12 +163,12 @@ async def buscar_registro_inteligente(
         else:
             query = query_base.replace("= ?", f"IN ({codigos_formatados})")
             
-        dados = executar_query(banco=db_name, query=query, params=(), usuario=usuario, endpoint="/api/produto/multiplos")
+        dados = await executar_query(banco=db_name, query=query, params=(), usuario=usuario, endpoint="/api/produto/multiplos")
         
     # 3. Nota Fiscal (Digitou o número de documento)
     elif len(registro) >= 6 and registro.isdigit():
         query_notas = Scripts.query['buscar_notas_por_numero']
-        notas_encontradas = executar_query(banco=db_name, query=query_notas, params=(registro,), usuario=usuario, endpoint="/api/notas")
+        notas_encontradas = await executar_query(banco=db_name, query=query_notas, params=(registro,), usuario=usuario, endpoint="/api/notas")
         
         if not notas_encontradas:
             raise HTTPException(status_code=404, detail="Nenhuma nota encontrada.")
@@ -178,13 +181,13 @@ async def buscar_registro_inteligente(
         else:
             numord_unico = notas_encontradas[0]['numord']
             query_itens = Scripts.query['consulta_nota']
-            dados = executar_query(banco=db_name, query=query_itens, params=(numord_unico,), usuario=usuario, endpoint=f"/api/produto/nf/{numord_unico}")
+            dados = await executar_query(banco=db_name, query=query_itens, params=(numord_unico,), usuario=usuario, endpoint=f"/api/produto/nf/{numord_unico}")
             
     # 4. Código Individual
     else:
         registro_formatado = str(registro).zfill(5)
         query = Scripts.query['consulta_codigo']
-        dados = executar_query(banco=db_name, query=query, params=(registro_formatado,), usuario=usuario, endpoint=f"/api/produto/{registro}")
+        dados = await executar_query(banco=db_name, query=query, params=(registro_formatado,), usuario=usuario, endpoint=f"/api/produto/{registro}")
 
     if not dados:
         raise HTTPException(status_code=404, detail="Nenhum registro encontrado para esta busca.")
@@ -200,7 +203,7 @@ async def listar_classificacoes(
     db_name = AMBIENTES[ambiente]
     # Usa a lógica do seu SQL para trazer a árvore (traz todos ordenados pelo código)
     query = "SELECT clasprod as codigo, descr FROM CLASSIFCAD ORDER BY clasprod"
-    dados = executar_query(banco=db_name, query=query, params=(), usuario=usuario, endpoint="/api/classificacoes")
+    dados = await executar_query(banco=db_name, query=query, params=(), usuario=usuario, endpoint="/api/classificacoes")
     return dados if dados else []
 
 
@@ -213,7 +216,7 @@ async def listar_fornecedores(
     db_name = AMBIENTES[ambiente]
     # AGORA TRAZ O 'OID' JUNTO COM O NOME
     query = "SELECT OID, NOME FROM FORNECECAD WHERE NOME LIKE ? ORDER BY NOME"
-    dados = executar_query(banco=db_name, query=query, params=(f"%{termo}%",), usuario=usuario, endpoint="/api/fornecedores")
+    dados = await executar_query(banco=db_name, query=query, params=(f"%{termo}%",), usuario=usuario, endpoint="/api/fornecedores")
     return dados if dados else []
 
 
@@ -266,7 +269,7 @@ async def consultar_logs(
 
     query += " ORDER BY id DESC"
 
-    dados = executar_query(
+    dados = await executar_query(
         banco=db_name, 
         query=query, 
         params=tuple(params), 
@@ -293,7 +296,7 @@ async def pesquisar_produto_avancado(
     params = []
     
     if termo:
-        query += " AND p.descr LIKE ?"
+        query += " AND cp.descricaolonga LIKE ?"
         params.append(f"%{termo}%")
         
     if codigo:
@@ -327,7 +330,7 @@ async def pesquisar_produto_avancado(
         query += f" AND i.NOME IN ({placeholders})"
         params.extend(status_list)
 
-    dados = executar_query(
+    dados = await executar_query(
         banco=db_name, 
         query=query, 
         params=tuple(params), 
@@ -335,6 +338,7 @@ async def pesquisar_produto_avancado(
         endpoint="/api/pesquisar"
     )
     return dados if dados else []
+
 # --- ROTAS DE OPERAÇÃO (UPDATE) ---
 
 @app.put("/api/remarcar", tags=["Operações"])
@@ -345,7 +349,7 @@ async def remarcar_preco(
     usuario: str = Depends(obter_usuario_atual)
 ):
     db_name = AMBIENTES[ambiente]
-    sucesso = executar_query(
+    sucesso = await executar_query(
         banco=db_name, 
         query=Scripts.query['remarcação'], 
         params=(novo_preco, codigo), 
@@ -369,7 +373,7 @@ async def atualizar_custo(
     db_name = AMBIENTES[ambiente]
     
     # Executa o script que você já deixou pronto no sql_repo.py
-    sucesso = executar_query(
+    sucesso = await executar_query(
         banco=db_name, 
         query=Scripts.query['atualiza_custo'], 
         params=(novo_custo, codigo), # Passa o valor do custo novo e o código do produto
@@ -393,7 +397,7 @@ async def atualizar_markup(
 ):
     db_name = AMBIENTES[ambiente]
     # A query exige o novo_mkp duas vezes para o cálculo e depois o código
-    sucesso = executar_query(
+    sucesso = await executar_query(
         banco=db_name, 
         query=Scripts.query['atualiza_mkp'], 
         params=(novo_mkp, novo_mkp, codigo), 
@@ -433,7 +437,7 @@ async def buscar_produtos_em_lote(
     else:
         query = query_base.replace("= ?", f"IN ({codigos_formatados})")
         
-    dados = executar_query(
+    dados = await executar_query(
         banco=db_name, 
         query=query, 
         params=(), 
@@ -453,7 +457,7 @@ class PreferenciasUpdate(BaseModel):
 async def obter_preferencias(usuario_logado: str = Depends(obter_usuario_atual)):
     # Preferências sempre ficam salvas no banco principal (Bdenter)
     query = "SELECT preferencias_json FROM API_USUARIOS WHERE login = ?"
-    res = executar_query(banco="Bdenter", query=query, params=(usuario_logado,), usuario=usuario_logado, endpoint="/api/usuario/preferencias")
+    res = await executar_query(banco="Bdenter", query=query, params=(usuario_logado,), usuario=usuario_logado, endpoint="/api/usuario/preferencias")
     
     import json
     if res and res[0].get("preferencias_json"):
@@ -465,8 +469,40 @@ async def salvar_preferencias(dados: PreferenciasUpdate, usuario_logado: str = D
     import json
     json_str = json.dumps(dados.preferencias)
     query = "UPDATE API_USUARIOS SET preferencias_json = ? WHERE login = ?"
-    sucesso = executar_query(banco="Bdenter", query=query, params=(json_str, usuario_logado), is_select=False, usuario=usuario_logado, endpoint="/api/usuario/preferencias")
+    sucesso = await executar_query(banco="Bdenter", query=query, params=(json_str, usuario_logado), is_select=False, usuario=usuario_logado, endpoint="/api/usuario/preferencias")
     
     if sucesso is True:
         return {"status": "sucesso"}
     raise HTTPException(status_code=500, detail="Erro ao salvar preferências.")
+
+
+# ==========================================
+# HOSPEDAGEM DO FRONTEND REACT (Pasta Dist)
+# ==========================================
+caminho_assets = os.path.join("dist", "assets")
+
+# 1. Só tenta montar a pasta de assets se ela realmente existir
+if os.path.isdir(caminho_assets):
+    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+else:
+    print("⚠️ AVISO: Pasta 'dist/assets' não encontrada. Rodando apenas como API.")
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def renderizar_react(full_path: str):
+    caminho_dist = "dist"
+    caminho_arquivo = os.path.join(caminho_dist, full_path)
+    
+    # 2. Se a pasta dist inteira não existir, avisa em vez de dar erro 500
+    if not os.path.exists(caminho_dist):
+        return {"mensagem": "Modo API ativo. Frontend React ainda não foi compilado na pasta dist."}
+
+    # Se pedir um arquivo válido (logo.png, favicon.svg, etc), devolve o arquivo
+    if full_path and os.path.isfile(caminho_arquivo):
+        return FileResponse(caminho_arquivo)
+
+    # Qualquer outra rota do navegador, devolve a tela principal do React (se existir)
+    index_path = os.path.join(caminho_dist, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+    
+    return {"erro": "index.html não encontrado na pasta dist."}

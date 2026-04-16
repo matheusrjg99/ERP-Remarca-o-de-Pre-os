@@ -8,6 +8,32 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    port: 3000 // Para garantir que rode na porta que o seu backend espera
+    port: 3000, // Mantive a porta que você já tinha configurado
+    proxy: {
+      // Túnel para o backend local (Python)
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/login': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      }
+    }
+  },
+  build: {
+    // 1. A MÁGICA: Joga o build direto para dentro da pasta do backend
+    outDir: '../backend/dist',
+    
+    // 2. SEGURANÇA: Apaga os arquivos velhos antes de jogar os novos
+    emptyOutDir: true, 
+    
+    // Opcional: Otimização para o sistema carregar mais rápido
+    chunkSizeWarningLimit: 800,
+    
+    // Deixamos a configuração limpa para o Vite cuidar do empacotamento automaticamente
+    rollupOptions: {
+      output: {}
+    }
   }
 })

@@ -251,7 +251,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
               <div className="flex-1 relative" ref={dropdownFornRef}>
                 <input 
                   className="w-full bg-[#202024] border border-zinc-700 p-2 rounded text-sm text-zinc-200 outline-none focus:border-blue-500" 
-                  placeholder="Fornecedor (Tab)" 
+                  placeholder="Fornecedor" 
                   value={filtros.fornecedor} 
                   onChange={e => setFiltros({...filtros, fornecedor: e.target.value})} 
                   onKeyDown={handleFornecedorAction}
@@ -277,7 +277,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
               <div className="flex-1 relative" ref={dropdownClassRef}>
                 <input 
                   className="w-full bg-[#202024] border border-zinc-700 p-2 rounded text-sm text-zinc-200 outline-none focus:border-blue-500" 
-                  placeholder="Classificação (Tab)" 
+                  placeholder="Classificação" 
                   value={filtros.classificacao} 
                   onChange={e => {
                     setFiltros({...filtros, classificacao: e.target.value});

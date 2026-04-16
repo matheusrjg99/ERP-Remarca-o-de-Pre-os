@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import api from '../../api/axios';
+import LogoSophon from '../../components/LogoSophon';
 import ToggleSwitch from './components/ToggleSwitch';
 import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
-import CustomizeModal from './components/CustomizeModal';
-import ModalPesquisa from '../../components/ModalPesquisa'; 
-import ModalSelecaoNota from './components/ModalSelecaoNota';
-import ModalUsuarios from '../../components/ModalUsuarios';
-// 1. IMPORTANDO O MODAL DE LOGS
-import ModalLogs from '../../components/ModalLogs';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
 import { recalcularProduto } from './utils/calculations';
 
-export default function Dashboard({ onLogout }) {
+// CARGA PREGUIÇOSA (Lazy Loading) DOS MODAIS
+const CustomizeModal = lazy(() => import('./components/CustomizeModal'));
+const ModalPesquisa = lazy(() => import('../../components/ModalPesquisa'));
+const ModalSelecaoNota = lazy(() => import('./components/ModalSelecaoNota'));
+const ModalUsuarios = lazy(() => import('../../components/ModalUsuarios'));
+const ModalLogs = lazy(() => import('../../components/ModalLogs'));
+
+export default function Dashboard({ onLogout, onVoltarMenu }) {
   const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
 
   const [registro, setRegistro] = useState('');
@@ -26,23 +28,24 @@ export default function Dashboard({ onLogout }) {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const [preferencias, setPreferencias] = useState({});
+  const estiloHeader = useMemo(() => preferencias['__header__'] || {}, [preferencias]);
+  
   const [modalConfigOpen, setModalConfigOpen] = useState(false);
   const [modalPesquisaOpen, setModalPesquisaOpen] = useState(false); 
   
   const [modalNotaOpen, setModalNotaOpen] = useState(false);
   const [notasDisponiveis, setNotasDisponiveis] = useState([]);
 
-  // 2. ESTADOS DE ADMINISTRAÇÃO
+  // ESTADOS DE ADMINISTRAÇÃO
   const [modalUserOpen, setModalUserOpen] = useState(false);
   const [modalLogsOpen, setModalLogsOpen] = useState(false);
   
-  const nivelAcesso = localStorage.getItem('nivel_acesso'); // Lê o nível salvo no Login
+  const nivelAcesso = localStorage.getItem('nivel_acesso');
 
   // ==========================================
   // LÓGICA DE PREFERÊNCIAS SALVAS NO BANCO
   // ==========================================
   
-  // 1. Ao carregar a tela, tenta puxar do banco. Se falhar, puxa do localStorage.
   useEffect(() => {
     const carregarPrefsDoBanco = async () => {
       try {
@@ -51,7 +54,6 @@ export default function Dashboard({ onLogout }) {
           setPreferencias(res.data);
           localStorage.setItem(`prefs_${usuarioLogadoId}`, JSON.stringify(res.data));
         } else {
-          // Se não tem nada no banco, usa o cache local
           const cache = localStorage.getItem(`prefs_${usuarioLogadoId}`);
           if (cache) setPreferencias(JSON.parse(cache));
         }
@@ -65,13 +67,10 @@ export default function Dashboard({ onLogout }) {
     carregarPrefsDoBanco();
   }, [usuarioLogadoId]);
 
-  // 2. Quando o usuário altera uma cor/regra no CustomizeModal, salva no banco.
   const handleAtualizarPreferencias = useCallback(async (novasPreferencias) => {
-    // Atualiza a tela (Optimistic UI) e o cache
     setPreferencias(novasPreferencias);
     localStorage.setItem(`prefs_${usuarioLogadoId}`, JSON.stringify(novasPreferencias));
     
-    // Manda para o Backend de forma assíncrona
     try {
       await api.put('/api/usuario/preferencias', { preferencias: novasPreferencias });
     } catch (error) {
@@ -208,7 +207,10 @@ export default function Dashboard({ onLogout }) {
         erros++; 
       }
     }
-    
+      
+    setOpcoes({...opcoes, mkp: false});
+    setOpcoes({...opcoes, custo: false});
+
     if (erros === 0 || produtosMarcados.length > erros) {
       try {
         const codigosAtualizados = produtosMarcados.map(p => p.id);
@@ -260,87 +262,107 @@ export default function Dashboard({ onLogout }) {
   return (
     <div className="bg-[#09090b] min-h-screen text-zinc-300 font-sans selection:bg-blue-500/30 pb-10">
 
-      <CustomizeModal 
-        isOpen={modalConfigOpen}
-        onClose={() => setModalConfigOpen(false)}
-        colunas={COLUNAS}
-        preferencias={preferencias}
-        onAtualizarPreferencias={handleAtualizarPreferencias} 
-      />
+      <Suspense fallback={<div className="hidden">Loading...</div>}>
+        {modalConfigOpen && (
+          <CustomizeModal 
+            isOpen={modalConfigOpen}
+            onClose={() => setModalConfigOpen(false)}
+            colunas={COLUNAS}
+            preferencias={preferencias}
+            onAtualizarPreferencias={handleAtualizarPreferencias} 
+          />
+        )}
 
-      <ModalPesquisa 
-        isOpen={modalPesquisaOpen}
-        onClose={() => setModalPesquisaOpen(false)}
-        onSelect={handleProdutosSelecionadosDoModal}
-        ambiente={ambiente}
-      />
+        {modalPesquisaOpen && (
+          <ModalPesquisa 
+            isOpen={modalPesquisaOpen}
+            onClose={() => setModalPesquisaOpen(false)}
+            onSelect={handleProdutosSelecionadosDoModal}
+            ambiente={ambiente}
+          />
+        )}
 
-      <ModalSelecaoNota 
-        isOpen={modalNotaOpen}
-        onClose={() => setModalNotaOpen(false)}
-        notas={notasDisponiveis}
-        onSelect={handleSelectNota}
-      />
+        {modalNotaOpen && (
+          <ModalSelecaoNota 
+            isOpen={modalNotaOpen}
+            onClose={() => setModalNotaOpen(false)}
+            notas={notasDisponiveis}
+            onSelect={handleSelectNota}
+          />
+        )}
 
-      <ModalUsuarios 
-        isOpen={modalUserOpen}
-        onClose={() => setModalUserOpen(false)}
-      />
+        {modalUserOpen && (
+          <ModalUsuarios 
+            isOpen={modalUserOpen}
+            onClose={() => setModalUserOpen(false)}
+          />
+        )}
 
-      {/* 3. COLOCANDO O COMPONENTE MODAL_LOGS NA TELA */}
-      <ModalLogs 
-        isOpen={modalLogsOpen}
-        onClose={() => setModalLogsOpen(false)}
-        ambiente={ambiente}
-      />
+        {modalLogsOpen && (
+          <ModalLogs 
+            isOpen={modalLogsOpen}
+            onClose={() => setModalLogsOpen(false)}
+            ambiente={ambiente}
+          />
+        )}
+      </Suspense>
 
       <nav className="bg-[#09090b] border-b border-zinc-800/80 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center"><span className="text-white font-bold text-xs">ERP</span></div>
-          <span className="font-semibold text-zinc-100 tracking-tight">CF</span>
+        
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onVoltarMenu} 
+            className="flex items-center justify-center hover:opacity-80 transition-opacity focus:outline-none group"
+            title="Voltar ao Portal"
+          >
+            <LogoSophon className="h-6 w-auto text-zinc-100 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all" />
+          </button>
+          <div className="h-4 w-[1px] bg-zinc-800"></div>
+          <span className="text-xs font-semibold text-zinc-500 tracking-widest uppercase">Remarcação</span>
         </div>
 
         <div className="flex items-center gap-4">
-          {/* 4. BOTÕES DE ADMINISTRAÇÃO LADO A LADO */}
+          
+          {/* MENU ADMIN (Dropdown Limpo) */}
           {nivelAcesso === 'ADMIN' && (
-            <div className="flex gap-2 mr-2">
-              <button 
-                onClick={() => setModalUserOpen(true)}
-                className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-700 py-1.5 px-3 rounded-md text-sm text-zinc-300 transition-all shadow-sm"
-              >
-                Usuários
+            <div className="relative group mr-2">
+              {/* Botão Gatilho Limpo */}
+              <button className="bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 py-1.5 px-4 rounded-md text-sm font-medium text-zinc-300 transition-all shadow-sm">
+                Admin
               </button>
-              <button 
-                onClick={() => setModalLogsOpen(true)}
-                className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-700 py-1.5 px-3 rounded-md text-sm text-zinc-300 transition-all shadow-sm"
-              >
-                Ver Logs
-              </button>
+
+              {/* Corpo do Dropdown com "Ponte Invisível" (pt-2) */}
+              <div className="absolute right-0 pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right group-hover:translate-y-0 translate-y-1">
+                <div className="bg-[#121215] border border-zinc-800/80 rounded-lg shadow-2xl p-1.5 flex flex-col gap-1">
+                  
+                  <button 
+                    onClick={() => setModalUserOpen(true)}
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all text-left"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Usuários
+                  </button>
+                  
+                  <button 
+                    onClick={() => setModalLogsOpen(true)}
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 rounded-md transition-all text-left"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Logs
+                  </button>
+                  
+                </div>
+              </div>
             </div>
           )}
 
-          {/* BOTÃO NOVO: VENDAS */}
-          <a href="https://casafonseca.saga-apps.com:8443/app/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 py-1.5 px-3 rounded-md shadow-sm transition-all group" title="APP Vendas">
-            {/* Ícone de Sacola de Compras / Vendas */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover:text-emerald-400 transition-colors">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-              <path d="M3 6h18" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
-            <span className="text-xs text-zinc-400 group-hover:text-zinc-200 font-medium uppercase tracking-wider transition-colors">Vendas</span>
-          </a>
-          
-          <a href="http://192.168.0.250:8000/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 py-1.5 px-3 rounded-md shadow-sm transition-all group" title="Acessar Outro Sistema">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 group-hover:text-blue-400 transition-colors"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            <span className="text-xs text-zinc-400 group-hover:text-zinc-200 font-medium uppercase tracking-wider transition-colors">Não Conformidades</span>
-          </a>
           <div className="h-5 w-[1px] bg-zinc-800"></div>
           
           <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 py-1 px-3 rounded-md shadow-sm">
-            <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">DATABASE:</span>
+            <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">BD:</span>
             <span className={`w-1.5 h-1.5 rounded-full ${ambiente === 'producao' ? 'bg-emerald-500' : ambiente === 'demo' ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
             <select className="bg-transparent text-sm font-medium text-zinc-300 outline-none cursor-pointer pr-4" value={ambiente} onChange={e => setAmbiente(e.target.value)}>
-              <option value="producao" className="bg-zinc-900">BDENTER</option><option value="demo" className="bg-zinc-900">BDDEMO</option><option value="treina" className="bg-zinc-900">BDTREINA</option>
+              <option value="producao" className="bg-zinc-900">ENTER</option><option value="demo" className="bg-zinc-900">DEMO</option><option value="treina" className="bg-zinc-900">TREINA</option>
             </select>
           </div>
           
@@ -368,31 +390,53 @@ export default function Dashboard({ onLogout }) {
 
           <button 
             onClick={() => setModalConfigOpen(true)} 
-            className="flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 w-8 h-8 rounded-md text-sm text-zinc-300 transition-all shadow-sm"
+            className={`flex items-center justify-center border w-8 h-8 rounded-md text-sm transition-all shadow-sm ${
+              modalConfigOpen 
+                ? 'bg-blue-600 border-blue-500 text-white rotate-90' 
+                : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300'
+            }`}
           >
             ⚙️
           </button>
-          <div className="h-5 w-[1px] bg-zinc-800 mx-1"></div>
 
             <div className="flex gap-5 pr-4 border-r border-zinc-800">
               <ToggleSwitch label="Atualizar MKP" checked={opcoes.mkp} onChange={() => setOpcoes({...opcoes, mkp: !opcoes.mkp})} />
               <ToggleSwitch label="Atualizar Custo" checked={opcoes.custo} onChange={() => setOpcoes({...opcoes, custo: !opcoes.custo})} />
             </div>
             <button onClick={toggleSelecionarTudo} className="text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors">{selecionados.length === produtos.length && produtos.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}</button>
-            <button onClick={handleRemarcarSelecionados} disabled={selecionados.length === 0 || loadingAcao} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors">{loadingAcao ? 'Processando...' : `Remarcar Selecionados (${selecionados.length})`}</button>
+            <button onClick={handleRemarcarSelecionados} disabled={selecionados.length === 0 || loadingAcao} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors">{loadingAcao ? 'Processando...' : `Remarcar (${selecionados.length})`}</button>
           </div>
         </div>
 
         <div className="bg-[#18181b] border border-zinc-800/80 rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-230px)] relative custom-scrollbar">
             <table className="w-full text-[12px] text-left table-fixed">
-              <thead>
-                <tr>
+              <thead className="sticky top-0 z-20 shadow-md">
+                <tr 
+                  style={{ 
+                    backgroundColor: estiloHeader.bg || 'transparent',
+                    transition: 'background-color 0.2s' 
+                  }}
+                >
                   {COLUNAS.map((col) => (
                     <ResizableHeader
                       key={col.key}
-                      label={col.key === 'check' ? <input type="checkbox" onChange={toggleSelecionarTudo} checked={produtos.length > 0 && selecionados.length === produtos.length} className="accent-blue-600 cursor-pointer" /> : col.label}
-                      sortKey={col.key} sortable={col.sortable} currentSort={sortConfig} requestSort={requestSort} initialWidth={col.width} align={col.align} userId={usuarioLogadoId}
+                      label={col.key === 'check' ? (
+                        <input 
+                          type="checkbox" 
+                          onChange={toggleSelecionarTudo} 
+                          checked={produtos.length > 0 && selecionados.length === produtos.length} 
+                          className="accent-blue-600 cursor-pointer" 
+                        />
+                      ) : col.label}
+                      sortKey={col.key} 
+                      sortable={col.sortable} 
+                      currentSort={sortConfig} 
+                      requestSort={requestSort} 
+                      initialWidth={col.width} 
+                      align={col.align} 
+                      userId={usuarioLogadoId}
+                      estiloHeader={estiloHeader} 
                     />
                   ))}
                 </tr>

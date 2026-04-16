@@ -1,22 +1,42 @@
 import React, { useState } from 'react';
 import Login from './pages/Login';
+import AppSelector from './pages/AppSelector';
 import Dashboard from './pages/Dashboard';
 
 export default function App() {
-  const [isLogged, setIsLogged] = useState(!!localStorage.getItem('access_token'));
+  // Agora o estado não é mais true/false, ele diz exatamente em qual tela o usuário está.
+  // Se já tiver o token, joga direto pro Portal (selector).
+  const [telaAtual, setTelaAtual] = useState(
+    localStorage.getItem('access_token') ? 'selector' : 'login'
+  );
 
-  // Criamos a função de logout para passar para o Dashboard
   const handleLogout = () => {
     localStorage.clear();
-    setIsLogged(false);
+    setTelaAtual('login');
   };
 
-  if (!isLogged) {
-    return <Login onLoginSuccess={() => setIsLogged(true)} />;
+  // Roteamento simples e limpo
+  if (telaAtual === 'login') {
+    return <Login onLoginSuccess={() => setTelaAtual('selector')} />;
   }
 
-  // O Dashboard já tem fundo escuro e tela cheia, então não precisamos mais de divs aqui!
-  return (
-    <Dashboard onLogout={handleLogout} />
-  );
+  if (telaAtual === 'selector') {
+    return (
+      <AppSelector 
+        onSelectRemarcacao={() => setTelaAtual('remarcacao')} 
+        onLogout={handleLogout} 
+      />
+    );
+  }
+
+  if (telaAtual === 'remarcacao') {
+    return (
+      <Dashboard 
+        onLogout={handleLogout} 
+        onVoltarMenu={() => setTelaAtual('selector')} 
+      />
+    );
+  }
+
+  return null; // Fallback de segurança
 }

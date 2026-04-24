@@ -8,6 +8,7 @@ import os
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
+from routes.nc_routes import router as nc_router
 
 # Nossas importações internas
 from database import executar_query
@@ -477,6 +478,12 @@ async def salvar_preferencias(dados: PreferenciasUpdate, usuario_logado: str = D
 
 
 # ==========================================
+# 🔌 ROTAS DO MÓDULO: NÃO CONFORMIDADES
+# ==========================================
+# IMPORTANTE: Tem que ficar ANTES do catch-all do React!
+app.include_router(nc_router, prefix="/api/nc", tags=["Não Conformidades"])
+
+# ==========================================
 # HOSPEDAGEM DO FRONTEND REACT (Pasta Dist)
 # ==========================================
 caminho_assets = os.path.join("dist", "assets")
@@ -506,3 +513,4 @@ async def renderizar_react(full_path: str):
         return FileResponse(index_path)
     
     return {"erro": "index.html não encontrado na pasta dist."}
+

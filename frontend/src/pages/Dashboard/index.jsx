@@ -4,6 +4,7 @@ import LogoSophon from '../../components/LogoSophon';
 import ToggleSwitch from './components/ToggleSwitch';
 import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
+import UserAvatar from '../../components/UserAvatar';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -16,14 +17,23 @@ const ModalSelecaoNota = lazy(() => import('./components/ModalSelecaoNota'));
 const ModalUsuarios = lazy(() => import('../../components/ModalUsuarios'));
 const ModalLogs = lazy(() => import('../../components/ModalLogs'));
 
+
 export default function Dashboard({ onLogout, onVoltarMenu }) {
   const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
+  const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
 
   const [registro, setRegistro] = useState('');
   const [produtos, setProdutos] = useState([]);
   const [selecionados, setSelecionados] = useState([]); 
   const [ambiente, setAmbiente] = useState('demo');
   const [opcoes, setOpcoes] = useState({ mkp: false, custo: false });
+
+    // 👇 ADICIONE ESTE useEffect AQUI PARA DEBUG
+  useEffect(() => {
+    console.log('📊 Estado opcoes atualizado:', opcoes);
+  }, [opcoes]);
+
+  
   const [loadingAcao, setLoadingAcao] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
@@ -178,6 +188,13 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     setSelecionados((prev) => prev.length === produtos.length ? [] : produtos.map(p => p.id));
   }, [produtos]);
 
+  const toggleInverterSelecao = useCallback(() => {
+  setSelecionados((prev) => {
+    const idsProdutos = produtos.map(p => p.id);
+    return idsProdutos.filter(id => !prev.includes(id));
+  });
+  }, [produtos]);
+
   const toggleCheck = useCallback((id) => {
     setSelecionados((prev) => prev.includes(id) ? prev.filter(cod => cod !== id) : [...prev, id]);
   }, []);
@@ -208,8 +225,8 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
       }
     }
       
-    setOpcoes({...opcoes, mkp: false});
-    setOpcoes({...opcoes, custo: false});
+    setOpcoes({ mkp: false, custo: false });
+
 
     if (erros === 0 || produtosMarcados.length > erros) {
       try {
@@ -309,29 +326,29 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
 
       <nav className="bg-[#09090b] border-b border-zinc-800/80 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         
+        {/* LADO ESQUERDO - Logo e Título */}
         <div className="flex items-center gap-4">
           <button 
             onClick={onVoltarMenu} 
-            className="flex items-center justify-center hover:opacity-80 transition-opacity focus:outline-none group"
+            className="flex items-center justify-center h-6 hover:opacity-80 transition-opacity focus:outline-none group"
             title="Voltar ao Portal"
           >
-            <LogoSophon className="h-6 w-auto text-zinc-100 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all" />
+            <LogoSophon className="h-12 w-auto text-zinc-100 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all" />
           </button>
-          <div className="h-4 w-[1px] bg-zinc-800"></div>
-          <span className="text-xs font-semibold text-zinc-500 tracking-widest uppercase">Remarcação</span>
+          <div className="h-5 w-[1px] bg-zinc-700"></div>
+          <span className="text-sm font-medium text-zinc-400 tracking-wider leading-5">Remarcação</span>
         </div>
 
+        {/* LADO DIREITO - Admin Dropdown, Seletor BD e Avatar */}
         <div className="flex items-center gap-4">
           
-          {/* MENU ADMIN (Dropdown Limpo) */}
+          {/* MENU ADMIN (Dropdown) */}
           {nivelAcesso === 'ADMIN' && (
             <div className="relative group mr-2">
-              {/* Botão Gatilho Limpo */}
-              <button className="bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 py-1.5 px-4 rounded-md text-sm font-medium text-zinc-300 transition-all shadow-sm">
-                Admin
+              <button className="bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 py-1.5 px-3 rounded-md text-sm font-medium text-zinc-300 transition-all shadow-sm">
+                ⚙️ Admin
               </button>
 
-              {/* Corpo do Dropdown com "Ponte Invisível" (pt-2) */}
               <div className="absolute right-0 pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right group-hover:translate-y-0 translate-y-1">
                 <div className="bg-[#121215] border border-zinc-800/80 rounded-lg shadow-2xl p-1.5 flex flex-col gap-1">
                   
@@ -358,15 +375,20 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
 
           <div className="h-5 w-[1px] bg-zinc-800"></div>
           
+          {/* SELETOR DE BANCO DE DADOS */}
           <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 py-1 px-3 rounded-md shadow-sm">
             <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">BD:</span>
             <span className={`w-1.5 h-1.5 rounded-full ${ambiente === 'producao' ? 'bg-emerald-500' : ambiente === 'demo' ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
             <select className="bg-transparent text-sm font-medium text-zinc-300 outline-none cursor-pointer pr-4" value={ambiente} onChange={e => setAmbiente(e.target.value)}>
-              <option value="producao" className="bg-zinc-900">ENTER</option><option value="demo" className="bg-zinc-900">DEMO</option><option value="treina" className="bg-zinc-900">TREINA</option>
+              <option value="producao" className="bg-zinc-900">ENTER</option>
+              <option value="demo" className="bg-zinc-900">DEMO</option>
+              <option value="treina" className="bg-zinc-900">TREINA</option>
             </select>
           </div>
           
-          <button onClick={onLogout} className="text-sm font-medium text-rose-500 hover:text-rose-400 transition-colors px-2">Sair</button>
+          {/* AVATAR DO USUÁRIO - Substitui o botão Sair */}
+          <UserAvatar usuarioLogado={usuarioLogado} onLogout={onLogout} showName = {false} />
+          
         </div>
       </nav>
 
@@ -381,29 +403,57 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
               onChange={e => setRegistro(e.target.value)} 
               onKeyDown={e => e.key === 'Enter' && buscar()} 
             />
-            <button onClick={() => buscar()} className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded text-white font-medium shadow-sm transition-colors">Buscar</button>
-            <button onClick={() => setModalPesquisaOpen(true)} className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" title="Pesquisa Avançada (F3)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            {/* Botão Buscar - Agora com ícone de Lupa e estilo igual ao do modal */}
+            <button 
+              onClick={() => buscar()} 
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
+              title="Buscar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+
+            {/* Botão Pesquisa Avançada - Agora com ícone de Funil */}
+            <button 
+              onClick={() => setModalPesquisaOpen(true)} 
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
+              title="Pesquisa Avançada (F3)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 13 10 21 14 18 14 13 22 3"></polygon>
+              </svg>
             </button>
           </div>
           <div className="flex items-center gap-4">
 
           <button 
             onClick={() => setModalConfigOpen(true)} 
-            className={`flex items-center justify-center border w-8 h-8 rounded-md text-sm transition-all shadow-sm ${
+            className={`flex items-center justify-center border w-8 h-8 rounded-md text-sm transition-all duration-200 shadow-sm ${
               modalConfigOpen 
-                ? 'bg-blue-600 border-blue-500 text-white rotate-90' 
-                : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300'
+                ? 'bg-blue-600 border-blue-500 text-white' 
+                : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-400 hover:text-zinc-200'
             }`}
+            title="Personalizar colunas"
           >
-            ⚙️
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
+            <line x1="4" y1="21" x2="4" y2="14"/>
+            <line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/>
+            <line x1="20" y1="12" x2="20" y2="3"/>
+            <circle cx="4" cy="12" r="2" fill="currentColor" fillOpacity="0.2"/>
+            <circle cx="12" cy="10" r="2" fill="currentColor" fillOpacity="0.2"/>
+            <circle cx="20" cy="14" r="2" fill="currentColor" fillOpacity="0.2"/>
+          </svg>
           </button>
 
             <div className="flex gap-5 pr-4 border-r border-zinc-800">
-              <ToggleSwitch label="Atualizar MKP" checked={opcoes.mkp} onChange={() => setOpcoes({...opcoes, mkp: !opcoes.mkp})} />
-              <ToggleSwitch label="Atualizar Custo" checked={opcoes.custo} onChange={() => setOpcoes({...opcoes, custo: !opcoes.custo})} />
-            </div>
-            <button onClick={toggleSelecionarTudo} className="text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors">{selecionados.length === produtos.length && produtos.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}</button>
+            <ToggleSwitch key={`mkp-${opcoes.mkp}`} label="Atualizar MKP" checked={opcoes.mkp} onChange={() => setOpcoes(prev => ({ ...prev, mkp: !prev.mkp }))} />
+            <ToggleSwitch key={`custo-${opcoes.custo}`} label="Atualizar Custo" checked={opcoes.custo} onChange={() => setOpcoes(prev => ({ ...prev, custo: !prev.custo }))} />            </div>
+            <button onClick={toggleInverterSelecao} disabled={selecionados.length === 0 || loadingAcao} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors">Alternar</button>
             <button onClick={handleRemarcarSelecionados} disabled={selecionados.length === 0 || loadingAcao} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors">{loadingAcao ? 'Processando...' : `Remarcar (${selecionados.length})`}</button>
           </div>
         </div>

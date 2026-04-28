@@ -15,7 +15,7 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
   const nomeUsuario = localStorage.getItem('usuario') || 'Usuário'; 
   const nivelAcesso = localStorage.getItem('nivel_acesso') || 'OPERADOR'; 
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
 
   const tratarNome = (n) => {
     if (!n) return '';

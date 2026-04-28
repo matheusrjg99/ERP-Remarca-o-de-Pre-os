@@ -10,7 +10,7 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
 
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
 
   const tratarNome = (n) => {
     if (!n) return '';

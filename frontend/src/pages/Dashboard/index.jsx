@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense,useRef } from 'react';
 import api from '../../api/axios';
 import LogoSophon from '../../components/LogoSophon';
 import ToggleSwitch from './components/ToggleSwitch';
@@ -8,20 +8,22 @@ import UserAvatar from '../../components/UserAvatar';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
-import { recalcularProduto } from './utils/calculations';
+import { recalcularProduto, round1, round2 } from './utils/calculations';
 
 // CARGA PREGUIÇOSA (Lazy Loading) DOS MODAIS
+const ModalRecalculos = lazy(() => import('./components/ModalRecalculos'));
 const CustomizeModal = lazy(() => import('./components/CustomizeModal'));
 const ModalPesquisa = lazy(() => import('../../components/ModalPesquisa'));
 const ModalSelecaoNota = lazy(() => import('./components/ModalSelecaoNota'));
 const ModalUsuarios = lazy(() => import('../../components/ModalUsuarios'));
 const ModalLogs = lazy(() => import('../../components/ModalLogs'));
 
-
 export default function Dashboard({ onLogout, onVoltarMenu }) {
   const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
-
+  const btnRecalculoRef = useRef(null);
+  
+  const [modalRecalculoOpen, setModalRecalculoOpen] = useState(false);
   const [registro, setRegistro] = useState('');
   const [produtos, setProdutos] = useState([]);
   const [selecionados, setSelecionados] = useState([]); 
@@ -149,6 +151,71 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     }
   }, [ambiente]);
 
+  const handleAplicarRecalculo = useCallback(({ campoAlvo, tipoAjuste, valorAjuste }) => {
+    console.log('🔧 [handleAplicarRecalculo] Recebido:', { campoAlvo, tipoAjuste, valorAjuste });
+    
+    setProdutos((prevProdutos) => {
+      console.log('📦 [handleAplicarRecalculo] Total de produtos antes:', prevProdutos.length);
+      
+      const novosProdutos = prevProdutos.map((produto, index) => {
+        const valorAtual = produto[campoAlvo];
+        let novoValor;
+
+        if (tipoAjuste === 'percentual') {
+          novoValor = valorAtual * (1 + valorAjuste / 100);
+        } else {
+          novoValor = valorAtual + valorAjuste;
+        }
+
+        // ✅ CORRIGIDO: Agora passamos o valor numérico, e NÃO convertemos pra string
+        novoValor = round2(Math.max(0, novoValor));
+
+        // Log dos primeiros 3 produtos
+        if (index < 3) {
+          console.log(`🔄 [handleAplicarRecalculo] Produto ${index} (${produto.descricao || produto.id}):`);
+          console.log(`   ANTES: ${campoAlvo}=${produto[campoAlvo]} | custo=${produto.custo} | sugerido=${produto.sugerido} | atual=${produto.atual}`);
+          console.log(`   NOVO VALOR calculado: ${novoValor}`);
+        }
+
+        // ✅ CORRIGIDO: Criamos o objeto atualizado diretamente, sem chamar recalcularProduto com string
+        const produtoAtualizado = { ...produto, [campoAlvo]: novoValor };
+        
+        // ✅ CORRIGIDO: Recalculamos os dependentes manualmente
+        const resultado = {
+          ...produtoAtualizado,
+          precoEditado: campoAlvo === 'atual' ? true : false
+        };
+
+        // Se alterou o custo, recalcula sugerido e markups
+        if (campoAlvo === 'custo') {
+          resultado.sugerido = round2(novoValor * (1 + (produto.markup / 100)));
+        }
+        
+        // Se alterou o sugerido, recalcula markup
+        if (campoAlvo === 'sugerido') {
+          resultado.markup = produto.custo > 0 ? round1(((novoValor - produto.custo) / produto.custo) * 100) : 0;
+        }
+
+        // Se alterou o markup (não é o caso aqui, mas por segurança)
+        if (campoAlvo === 'markup') {
+          resultado.sugerido = round2(produto.custo * (1 + (novoValor / 100)));
+        }
+
+        // Recalcula markupReal e difMarkup sempre
+        resultado.markupReal = resultado.custo > 0 ? round1(((resultado.atual - resultado.custo) / resultado.custo) * 100) : 0;
+        resultado.difMarkup = round1(resultado.markupReal - resultado.markup);
+
+        if (index < 3) {
+          console.log(`   RESULTADO FINAL: custo=${resultado.custo} | sugerido=${resultado.sugerido} | atual=${resultado.atual} | markup=${resultado.markup}`);
+        }
+        
+        return resultado;
+      });
+      
+      console.log('✅ [handleAplicarRecalculo] Recálculo concluído para', novosProdutos.length, 'produtos');
+      return novosProdutos;
+    });
+  }, []);
   const requestSort = useCallback((key) => {
     setSortConfig((prevConfig) => {
       let novaDirecao = 'asc';
@@ -322,6 +389,17 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
             ambiente={ambiente}
           />
         )}
+
+        {modalRecalculoOpen && (
+          <ModalRecalculos 
+            isOpen={modalRecalculoOpen}
+            onClose={() => setModalRecalculoOpen(false)}
+            produtos={produtos}
+            onAplicarRecalculo={handleAplicarRecalculo}
+            triggerRef={btnRecalculoRef}
+          />
+        )}
+
       </Suspense>
 
       <nav className="bg-[#09090b] border-b border-zinc-800/80 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
@@ -427,6 +505,18 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
             </button>
           </div>
           <div className="flex items-center gap-4">
+
+          {/* Botão Recálculos */}
+          <button 
+            ref={btnRecalculoRef}
+            onClick={() => setModalRecalculoOpen(true)} 
+            disabled={produtos.length === 0}
+            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
+            title="Recálculos em lote"
+          >
+            Recálculos
+          </button>
+
 
           <button 
             onClick={() => setModalConfigOpen(true)} 

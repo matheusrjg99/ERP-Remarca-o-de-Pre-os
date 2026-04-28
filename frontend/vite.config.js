@@ -12,11 +12,11 @@ export default defineConfig({
     proxy: {
       // Túnel para o backend local (Python)
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://192.168.0.250:9000',
         changeOrigin: true,
       },
       '/login': {
-        target: 'http://localhost:8000',
+        target: 'http://192.168.0.250:9000',
         changeOrigin: true,
       }
     }

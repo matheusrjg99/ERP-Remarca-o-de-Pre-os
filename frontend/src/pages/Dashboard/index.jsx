@@ -5,6 +5,7 @@ import ToggleSwitch from './components/ToggleSwitch';
 import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
+import { ArrowLeftRight, UserCog } from 'lucide-react';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -417,14 +418,27 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
           <span className="text-sm font-medium text-zinc-400 tracking-wider leading-5">Remarcação</span>
         </div>
 
-        {/* LADO DIREITO - Admin Dropdown, Seletor BD e Avatar */}
+        {/* LADO DIREITO - Seletor BD, Admin e Avatar */}
         <div className="flex items-center gap-4">
           
+          {/* SELETOR DE BANCO DE DADOS */}
+          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 py-1 px-3 rounded-md shadow-sm">
+            <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">BD:</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${ambiente === 'producao' ? 'bg-emerald-500' : ambiente === 'demo' ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
+            <select className="bg-transparent text-sm font-medium text-zinc-300 outline-none cursor-pointer pr-4" value={ambiente} onChange={e => setAmbiente(e.target.value)}>
+              <option value="producao" className="bg-zinc-900">ENTER</option>
+              <option value="demo" className="bg-zinc-900">DEMO</option>
+              <option value="treina" className="bg-zinc-900">TREINA</option>
+            </select>
+          </div>
+
+          <div className="h-5 w-[1px] bg-zinc-800"></div>
+
           {/* MENU ADMIN (Dropdown) */}
           {nivelAcesso === 'ADMIN' && (
-            <div className="relative group mr-2">
-              <button className="bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 py-1.5 px-3 rounded-md text-sm font-medium text-zinc-300 transition-all shadow-sm">
-                ⚙️ Admin
+            <div className="relative group">
+              <button className="bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 p-2 rounded-md text-zinc-300 transition-all shadow-sm flex items-center justify-center">
+                <UserCog size={18} />
               </button>
 
               <div className="absolute right-0 pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right group-hover:translate-y-0 translate-y-1">
@@ -450,22 +464,9 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
               </div>
             </div>
           )}
-
-          <div className="h-5 w-[1px] bg-zinc-800"></div>
           
-          {/* SELETOR DE BANCO DE DADOS */}
-          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 py-1 px-3 rounded-md shadow-sm">
-            <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">BD:</span>
-            <span className={`w-1.5 h-1.5 rounded-full ${ambiente === 'producao' ? 'bg-emerald-500' : ambiente === 'demo' ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
-            <select className="bg-transparent text-sm font-medium text-zinc-300 outline-none cursor-pointer pr-4" value={ambiente} onChange={e => setAmbiente(e.target.value)}>
-              <option value="producao" className="bg-zinc-900">ENTER</option>
-              <option value="demo" className="bg-zinc-900">DEMO</option>
-              <option value="treina" className="bg-zinc-900">TREINA</option>
-            </select>
-          </div>
-          
-          {/* AVATAR DO USUÁRIO - Substitui o botão Sair */}
-          <UserAvatar usuarioLogado={usuarioLogado} onLogout={onLogout} showName = {false} />
+          {/* AVATAR DO USUÁRIO */}
+          <UserAvatar usuarioLogado={usuarioLogado} onLogout={onLogout} showName={false} />
           
         </div>
       </nav>
@@ -481,7 +482,6 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
               onChange={e => setRegistro(e.target.value)} 
               onKeyDown={e => e.key === 'Enter' && buscar()} 
             />
-            {/* Botão Buscar - Agora com ícone de Lupa e estilo igual ao do modal */}
             <button 
               onClick={() => buscar()} 
               className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
@@ -493,7 +493,6 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
               </svg>
             </button>
 
-            {/* Botão Pesquisa Avançada - Agora com ícone de Funil */}
             <button 
               onClick={() => setModalPesquisaOpen(true)} 
               className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
@@ -504,48 +503,65 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
               </svg>
             </button>
           </div>
+          
           <div className="flex items-center gap-4">
 
-          {/* Botão Recálculos */}
-          <button 
-            ref={btnRecalculoRef}
-            onClick={() => setModalRecalculoOpen(true)} 
-            disabled={produtos.length === 0}
-            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
-            title="Recálculos em lote"
-          >
-            Recálculos
-          </button>
+            <button 
+              ref={btnRecalculoRef}
+              onClick={() => setModalRecalculoOpen(true)} 
+              disabled={produtos.length === 0}
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
+              title="Recálculos em lote"
+            >
+              Recálculos
+            </button>
 
-
-          <button 
-            onClick={() => setModalConfigOpen(true)} 
-            className={`flex items-center justify-center border w-8 h-8 rounded-md text-sm transition-all duration-200 shadow-sm ${
-              modalConfigOpen 
-                ? 'bg-blue-600 border-blue-500 text-white' 
-                : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Personalizar colunas"
-          >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
-            <line x1="4" y1="21" x2="4" y2="14"/>
-            <line x1="4" y1="10" x2="4" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12" y2="3"/>
-            <line x1="20" y1="21" x2="20" y2="16"/>
-            <line x1="20" y1="12" x2="20" y2="3"/>
-            <circle cx="4" cy="12" r="2" fill="currentColor" fillOpacity="0.2"/>
-            <circle cx="12" cy="10" r="2" fill="currentColor" fillOpacity="0.2"/>
-            <circle cx="20" cy="14" r="2" fill="currentColor" fillOpacity="0.2"/>
-          </svg>
-          </button>
+            <button 
+              onClick={() => setModalConfigOpen(true)} 
+              className={`flex items-center justify-center border w-8 h-8 rounded-md text-sm transition-all duration-200 shadow-sm ${
+                modalConfigOpen 
+                  ? 'bg-blue-600 border-blue-500 text-white' 
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Personalizar colunas"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
+                <line x1="4" y1="21" x2="4" y2="14"/>
+                <line x1="4" y1="10" x2="4" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12" y2="3"/>
+                <line x1="20" y1="21" x2="20" y2="16"/>
+                <line x1="20" y1="12" x2="20" y2="3"/>
+                <circle cx="4" cy="12" r="2" fill="currentColor" fillOpacity="0.2"/>
+                <circle cx="12" cy="10" r="2" fill="currentColor" fillOpacity="0.2"/>
+                <circle cx="20" cy="14" r="2" fill="currentColor" fillOpacity="0.2"/>
+              </svg>
+            </button>
 
             <div className="flex gap-5 pr-4 border-r border-zinc-800">
-            <ToggleSwitch key={`mkp-${opcoes.mkp}`} label="Atualizar MKP" checked={opcoes.mkp} onChange={() => setOpcoes(prev => ({ ...prev, mkp: !prev.mkp }))} />
-            <ToggleSwitch key={`custo-${opcoes.custo}`} label="Atualizar Custo" checked={opcoes.custo} onChange={() => setOpcoes(prev => ({ ...prev, custo: !prev.custo }))} />            </div>
-            <button onClick={toggleInverterSelecao} disabled={selecionados.length === 0 || loadingAcao} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors">Alternar</button>
-            <button onClick={handleRemarcarSelecionados} disabled={selecionados.length === 0 || loadingAcao} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors">{loadingAcao ? 'Processando...' : `Remarcar (${selecionados.length})`}</button>
+              <ToggleSwitch key="toggle-mkp" label="Atualizar MKP" checked={opcoes.mkp} onChange={() => setOpcoes(prev => ({ ...prev, mkp: !prev.mkp }))} />
+              <ToggleSwitch key="toggle-custo" label="Atualizar Custo" checked={opcoes.custo} onChange={() => setOpcoes(prev => ({ ...prev, custo: !prev.custo }))} />
+            </div>
+
+            <button 
+              onClick={handleRemarcarSelecionados} 
+              disabled={selecionados.length === 0 || loadingAcao} 
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-5 py-2 rounded font-medium shadow-sm transition-colors"
+            >
+              {loadingAcao ? 'Processando...' : `Remarcar (${selecionados.length})`}
+            </button>
+
+            <button 
+              onClick={toggleInverterSelecao} 
+              disabled={selecionados.length === 0 || loadingAcao} 
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
+              title="Inverter seleção"
+            >
+              <ArrowLeftRight size={20} />
+            </button>
+
           </div>
+          
         </div>
 
         <div className="bg-[#18181b] border border-zinc-800/80 rounded-lg shadow-sm overflow-hidden">

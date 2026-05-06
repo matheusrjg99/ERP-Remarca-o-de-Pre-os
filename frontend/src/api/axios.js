@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+const isProduction = import.meta.env.PROD;
+
 const api = axios.create({
-  baseURL: '', // Vazio, pois o backend e o frontend agora são um só
+  baseURL: isProduction ? '' : 'http://localhost:8000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // ==========================================
@@ -21,22 +26,14 @@ api.interceptors.request.use((config) => {
 // Trata erros de expiração de token
 // ==========================================
 api.interceptors.response.use(
-  (response) => {
-    // Se a resposta for sucesso (200, 201, etc), apenas retorna ela
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Se o servidor responder 401 (Não autorizado), significa que:
-    // 1. O token venceu
-    // 2. O token é inválido
     if (error.response && error.response.status === 401) {
       console.warn("Sessão expirada. Redirecionando para login...");
       
-      // Limpa o token do navegador para não tentar usar de novo
       localStorage.removeItem('access_token');
-      localStorage.removeItem('user'); // Opcional: limpa dados do user se você salvar
+      localStorage.removeItem('user');
       
-      // Força o redirecionamento para a tela inicial (Login)
       window.location.href = '/'; 
     }
     

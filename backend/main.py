@@ -138,6 +138,25 @@ async def login(dados: LoginData):
 # --- ROTAS DE CONSULTA ---
 
 
+@app.get("/api/divergencias-markup", tags=["Consultas"])
+async def buscar_divergencias_markup(
+    ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
+    usuario: str = Depends(obter_usuario_atual)
+):
+
+    db_name = AMBIENTES[ambiente]
+
+    query = Scripts.query['divergencia_markup']
+    
+    dados = await executar_query(
+        banco=db_name, 
+        query=query, 
+        params=(), 
+        usuario=usuario, 
+        endpoint="/api/divergencias-markup"
+    )
+    return dados
+
 @app.get("/api/produto/{registro}", tags=["Consultas"])
 async def buscar_registro_inteligente(
     registro: str, 

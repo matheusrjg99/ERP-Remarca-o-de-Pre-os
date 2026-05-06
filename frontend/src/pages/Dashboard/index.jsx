@@ -5,11 +5,11 @@ import ToggleSwitch from './components/ToggleSwitch';
 import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
-import { ArrowLeftRight, UserCog } from 'lucide-react';
+import { ArrowLeftRight, UserCog, Scale } from 'lucide-react';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
-import { recalcularProduto, round1, round2 } from './utils/calculations';
+import { recalcularProduto, round1, round2, roundTo05 } from './utils/calculations';
 
 // CARGA PREGUIÇOSA (Lazy Loading) DOS MODAIS
 const ModalRecalculos = lazy(() => import('./components/ModalRecalculos'));
@@ -29,7 +29,9 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
   const [produtos, setProdutos] = useState([]);
   const [selecionados, setSelecionados] = useState([]); 
   const [ambiente, setAmbiente] = useState('demo');
-  const [opcoes, setOpcoes] = useState({ mkp: false, custo: false });
+  const [opcoes, setOpcoes] = useState({ mkp: false, custo: false, arredondar: false});
+  const [loading, setLoading] = useState(false);
+  const [resultadosDivergencias, setResultadosDivergencias] = useState([]);
 
     // 👇 ADICIONE ESTE useEffect AQUI PARA DEBUG
   useEffect(() => {
@@ -152,6 +154,40 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     }
   }, [ambiente]);
 
+  const buscarDivergenciasMarkup = async () => {
+    if (loading) return;
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      const response = await api.get('/api/divergencias-markup', {
+        params: { ambiente: ambiente },
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const dados = Array.isArray(response.data) ? response.data : [];
+      
+      if (dados.length > 0) {
+        const produtosAdaptados = dados.map(adaptarProdutoDeEntrada);
+        setProdutos(produtosAdaptados);
+        setSelecionados([]);
+        setSortConfig({ key: null, direction: 'asc' });
+        // Sem alerta de sucesso
+      } else {
+        setProdutos([]);
+        // Sem alerta de "nenhum produto"
+      }
+    } catch (error) {
+      console.error('Erro ao buscar divergências:', error);
+      alert('Erro ao carregar divergências de markup');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAplicarRecalculo = useCallback(({ campoAlvo, tipoAjuste, valorAjuste }) => {
     console.log('🔧 [handleAplicarRecalculo] Recebido:', { campoAlvo, tipoAjuste, valorAjuste });
     
@@ -252,16 +288,26 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     });
   }, []);
 
+    const produtosExibidos = useMemo(() => {
+    if (!opcoes.arredondar) return produtos;
+    return produtos.map(p => ({
+      ...p,
+      custo: roundTo05(p.custo),
+      sugerido: roundTo05(p.sugerido),
+      atual: roundTo05(p.atual),
+    }));
+    }, [produtos, opcoes.arredondar]);
+
   const toggleSelecionarTudo = useCallback(() => {
-    setSelecionados((prev) => prev.length === produtos.length ? [] : produtos.map(p => p.id));
-  }, [produtos]);
+    setSelecionados((prev) => prev.length === produtosExibidos.length ? [] : produtosExibidos.map(p => p.id));
+  }, [produtosExibidos]);
 
   const toggleInverterSelecao = useCallback(() => {
   setSelecionados((prev) => {
-    const idsProdutos = produtos.map(p => p.id);
+    const idsProdutos = produtosExibidos.map(p => p.id);
     return idsProdutos.filter(id => !prev.includes(id));
   });
-  }, [produtos]);
+  }, [produtosExibidos]);
 
   const toggleCheck = useCallback((id) => {
     setSelecionados((prev) => prev.includes(id) ? prev.filter(cod => cod !== id) : [...prev, id]);
@@ -276,15 +322,25 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
 
     for (let p of produtosMarcados) {
       try {
+        // 🆕 Aplica arredondamento nos valores antes de enviar
+        let mkpFinal = p.markup;
+        let custoFinal = p.custo;
+        let precoRemarcacao = p.precoEditado ? p.atual : p.sugerido;
+
+        if (opcoes.arredondar) {
+          mkpFinal = roundTo05(mkpFinal);
+          custoFinal = roundTo05(custoFinal);
+          precoRemarcacao = roundTo05(precoRemarcacao);
+        }
+
         if (opcoes.mkp) {
-          await api.put(`/api/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: p.markup.toFixed(4), ambiente } });
+          await api.put(`/api/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
         }
         
         if (opcoes.custo) {
-          await api.put(`/api/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: p.custo.toFixed(4), ambiente } });
+          await api.put(`/api/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
         }
         
-        const precoRemarcacao = p.precoEditado ? p.atual : p.sugerido;
         await api.put(`/api/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
       } catch (error) { 
@@ -292,7 +348,6 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
         erros++; 
       }
     }
-      
     setOpcoes({ mkp: false, custo: false });
 
 
@@ -325,11 +380,12 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     }
   };
 
+
   const tabelaRenderizada = useMemo(() => {
-    if (produtos.length === 0) {
-      return <tr><td colSpan={COLUNAS.length} className="py-16 text-center text-zinc-500">Nenhum produto listado. Pressione <kbd className="bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 mx-1 text-zinc-300">F3</kbd> para pesquisa avançada.</td></tr>;
+    if (produtosExibidos.length === 0) {
+      return <tr><td colSpan={COLUNAS.length} className="py-16 text-center text-zinc-500">Nenhum produto listado.</td></tr>;
     }
-    return produtos.map((p, i) => (
+    return produtosExibidos.map((p, i) => (
       <ProductRow 
         key={p.id} 
         produto={p} 
@@ -341,7 +397,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
         preferencias={preferencias} 
       />
     ));
-  }, [produtos, selecionados, preferencias, handleCellEdit, toggleCheck]);
+  }, [produtosExibidos, selecionados, preferencias, handleCellEdit, toggleCheck]);
 
 
   return (
@@ -459,6 +515,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                     Logs
                   </button>
+
                   
                 </div>
               </div>
@@ -466,7 +523,29 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
           )}
           
           {/* AVATAR DO USUÁRIO */}
-          <UserAvatar usuarioLogado={usuarioLogado} onLogout={onLogout} showName={false} />
+          <UserAvatar 
+            usuarioLogado={usuarioLogado} 
+            onLogout={onLogout} 
+            showName={false}
+            extraAction={{
+              label: 'Personalização',
+              title: 'Personalizar colunas',
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
+                  <line x1="4" y1="21" x2="4" y2="14"/>
+                  <line x1="4" y1="10" x2="4" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12" y2="3"/>
+                  <line x1="20" y1="21" x2="20" y2="16"/>
+                  <line x1="20" y1="12" x2="20" y2="3"/>
+                  <circle cx="4" cy="12" r="2" fill="currentColor" fillOpacity="0.2"/>
+                  <circle cx="12" cy="10" r="2" fill="currentColor" fillOpacity="0.2"/>
+                  <circle cx="20" cy="14" r="2" fill="currentColor" fillOpacity="0.2"/>
+                </svg>
+              ),
+              onClick: () => setModalConfigOpen(true)
+            }}
+          />
           
         </div>
       </nav>
@@ -477,7 +556,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
           <div className="flex gap-2 w-full max-w-md">
             <input 
               className="w-full bg-[#09090b] border border-zinc-800 rounded px-4 py-2 outline-none focus:border-blue-500 font-mono text-zinc-200" 
-              placeholder="Pesquisar ou F3..." 
+              placeholder="Nº NF ou Código" 
               value={registro} 
               onChange={e => setRegistro(e.target.value)} 
               onKeyDown={e => e.key === 'Enter' && buscar()} 
@@ -502,9 +581,25 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
                 <polygon points="22 3 2 3 10 13 10 21 14 18 14 13 22 3"></polygon>
               </svg>
             </button>
+
+            <button 
+              onClick={() => buscarDivergenciasMarkup()} 
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
+              title="Divergências de Markup"
+            >
+              <Scale size={18} />
+            </button>
           </div>
           
           <div className="flex items-center gap-4">
+
+            <button 
+              onClick={() => alert('Funcionalidade em desenvolvimento. Futura implementação.')} 
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
+              title="Preço Futuro"
+            >
+              Preço Futuro
+            </button>
 
             <button 
               ref={btnRecalculoRef}
@@ -516,30 +611,9 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
               Recálculos
             </button>
 
-            <button 
-              onClick={() => setModalConfigOpen(true)} 
-              className={`flex items-center justify-center border w-8 h-8 rounded-md text-sm transition-all duration-200 shadow-sm ${
-                modalConfigOpen 
-                  ? 'bg-blue-600 border-blue-500 text-white' 
-                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="Personalizar colunas"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
-                <line x1="4" y1="21" x2="4" y2="14"/>
-                <line x1="4" y1="10" x2="4" y2="3"/>
-                <line x1="12" y1="21" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12" y2="3"/>
-                <line x1="20" y1="21" x2="20" y2="16"/>
-                <line x1="20" y1="12" x2="20" y2="3"/>
-                <circle cx="4" cy="12" r="2" fill="currentColor" fillOpacity="0.2"/>
-                <circle cx="12" cy="10" r="2" fill="currentColor" fillOpacity="0.2"/>
-                <circle cx="20" cy="14" r="2" fill="currentColor" fillOpacity="0.2"/>
-              </svg>
-            </button>
-
             <div className="flex gap-5 pr-4 border-r border-zinc-800">
-              <ToggleSwitch key="toggle-mkp" label="Atualizar MKP" checked={opcoes.mkp} onChange={() => setOpcoes(prev => ({ ...prev, mkp: !prev.mkp }))} />
+              <ToggleSwitch key="toggle-arredondar" label="Arredondar Centavos" checked={opcoes.arredondar} onChange={() => setOpcoes(prev => ({ ...prev, arredondar: !prev.arredondar }))} />
+              <ToggleSwitch key="toggle-mkp" label="Atualizar Markup" checked={opcoes.mkp} onChange={() => setOpcoes(prev => ({ ...prev, mkp: !prev.mkp }))} />
               <ToggleSwitch key="toggle-custo" label="Atualizar Custo" checked={opcoes.custo} onChange={() => setOpcoes(prev => ({ ...prev, custo: !prev.custo }))} />
             </div>
 
@@ -581,7 +655,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
                         <input 
                           type="checkbox" 
                           onChange={toggleSelecionarTudo} 
-                          checked={produtos.length > 0 && selecionados.length === produtos.length} 
+                          checked={produtosExibidos.length > 0 && selecionados.length === produtosExibidos.length} 
                           className="accent-blue-600 cursor-pointer" 
                         />
                       ) : col.label}

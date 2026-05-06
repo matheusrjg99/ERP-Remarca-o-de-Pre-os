@@ -22,6 +22,9 @@ export const formatData = (dataIso) => {
 export const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 export const round1 = (num) => Math.round((num + Number.EPSILON) * 10) / 10;
 
+// NOVA FUNÇÃO - Arredonda para múltiplos de 0,05
+export const roundTo05 = (num) => Math.round(num * 20) / 20;
+
 export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) => {
   const p = { ...produtoOriginal };
   const valorFloat = toFloat(valorDigitado);

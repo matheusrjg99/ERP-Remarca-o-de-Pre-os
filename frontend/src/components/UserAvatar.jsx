@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
-const UserAvatar = ({ usuarioLogado, onLogout, showName = true }) => {
+const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
 
-  // Fecha o dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+        buttonRef.current && !buttonRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -15,13 +20,24 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleToggle = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
   const inicial = usuarioLogado?.charAt(0).toUpperCase() || 'U';
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Avatar - Clicável */}
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={handleToggle}
         className={`flex items-center group focus:outline-none ${showName ? 'gap-3' : ''}`}
         title={!showName ? usuarioLogado : undefined}
       >
@@ -31,7 +47,6 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true }) => {
           </span>
         </div>
         
-        {/* Nome - Renderizado condicionalmente */}
         {showName && (
           <span className="text-sm font-medium text-zinc-400 group-hover:text-zinc-300 transition-colors capitalize">
             {usuarioLogado}
@@ -39,15 +54,31 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true }) => {
         )}
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-[#121215] border border-white/10 rounded-lg shadow-xl overflow-hidden z-30">
-          {/* Exibe o nome no dropdown quando showName=false */}
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          className="fixed w-48 bg-[#121215] border border-white/10 rounded-lg shadow-xl z-[9999]"
+          style={{ top: `${dropdownPosition.top}px`, right: `${dropdownPosition.right}px` }}
+        >
           {!showName && (
             <div className="px-4 py-2 border-b border-white/10">
-              <span className="text-xs text-zinc-500">Logado como</span>
+              <span className="text-xs text-zinc-500"></span>
               <p className="text-sm text-zinc-300 truncate capitalize">{usuarioLogado}</p>
             </div>
+          )}
+          
+          {extraAction && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                extraAction.onClick();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors border-b border-white/10"
+              title={extraAction.title}
+            >
+              {extraAction.icon}
+              {extraAction.label}
+            </button>
           )}
           
           <button
@@ -64,9 +95,10 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true }) => {
             </svg>
             Sair
           </button>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 

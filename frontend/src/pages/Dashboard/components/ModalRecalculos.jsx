@@ -166,7 +166,7 @@ export default function ModalRecalculos({ isOpen, onClose, produtos, onAplicarRe
           onMouseDown={handleMouseDown} 
           className="px-4 py-3 border-b border-zinc-800/50 flex justify-between items-center cursor-move select-none"
         >
-          <span className="text-sm font-medium text-zinc-300">Ajuste em lote</span>
+          <span></span>
           <button 
             onClick={onClose} 
             className="text-zinc-500 hover:text-zinc-300 transition-colors p-0.5 rounded hover:bg-zinc-800"

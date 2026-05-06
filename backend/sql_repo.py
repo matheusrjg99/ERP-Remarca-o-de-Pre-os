@@ -197,5 +197,112 @@ class Scripts:
         WHERE 1=1 
         """,
 
-        'Selecionar_Nota' : "SELECT numord, numnota, CONVERT(varchar, nf.dtcheg, 23) AS data FROM nfentracad nf WHERE 1=1"
+        'Selecionar_Nota' : "SELECT numord, numnota, CONVERT(varchar, nf.dtcheg, 23) AS data FROM nfentracad nf WHERE 1=1",
+
+        'divergencia_markup': """  
+        WITH remarcacao AS (  
+            SELECT 
+                PC.codpro COD,
+                CP.DescricaoLonga DESCRICAO,
+                PC.Unid1 UND,
+                PC.DtUltComp ENT,
+                PC.Dtultrea REM,
+                CP.CodProFabricante CodFab,
+                (SELECT SUM(IT.QUANT) FROM ITEMFILEST IT WHERE PC.codpro = IT.codpro GROUP BY IT.CODPRO) QUANT,
+                CAST(PC.PrecoComp AS decimal(18,4)) AS [P_CUSTO],
+                CASE 
+                    WHEN (PC.MargemLuc/(100 - PC.MargemLuc)) * 100 > 99999.9 THEN CAST(99999.9 AS decimal(18,4))
+                    ELSE CAST((PC.MargemLuc/(100 - PC.MargemLuc)) * 100 AS DECIMAL(18,4))
+                END AS MKP,
+                CAST(PC.PrecoVen AS decimal(18,4)) AS [P_ATUAL],
+                (SELECT TOP 1 ValorFornecedor 
+                 FROM Pesquisa PQ 
+                 WHERE PQ.CodigoExterno = PC.CodPro 
+                 ORDER BY PQ.Oid DESC) AS [P_LISTA],
+                CASE 
+                    WHEN PC.precocomp = 0 THEN 0  
+                    WHEN ((PC.PrecoVen - PC.PrecoComp) / PC.PrecoComp) * 100 > 99999.9 THEN CAST(99999.9 AS decimal(18,4))
+                    ELSE CAST(((PC.PrecoVen - CAST(PC.PrecoComp AS decimal(18,4))) / CAST(PC.PrecoComp AS decimal(18,4))) * 100 AS decimal(18,4))
+                END AS MKP_REAL,
+                PC.faconv CONV
+            FROM ComplementoProduto CP
+            JOIN ProdutoCad PC ON CP.CodPro = PC.CodPro
+            LEFT JOIN ClaFiscCad CF ON PC.CF = CF.CF
+			WHERE 
+			PC.Disponibilidade = 21073  -- Filtra apenas disponíveis
+			AND PC.PrecoComp > 0.83      -- Custo maior que R$ 0,83
+			AND PC.codpro NOT IN (30750, 23405, 28728)  -- Exclui produtos específicos
+        ),
+
+        -- OTIMIZAÇÃO: Filtra quem tem divergência ANTES de fazer os Joins com Notas e ICMS
+        produtos_com_divergencia AS (
+            SELECT * FROM remarcacao 
+            WHERE (MKP_REAL - MKP) > 1.1 OR (MKP_REAL - MKP) < -1.1
+        ),
+
+        NotaMaisRecente AS (
+            SELECT 
+                codpro,
+                i.NUMORD, 
+                nf.numnota,
+                i.valsubstri / NULLIF(i.quant, 0) AS valor_calculado,
+                ROW_NUMBER() OVER (PARTITION BY codpro ORDER BY I.dtcheg DESC) AS rn,
+                nf.despincl DESPESAS
+            FROM ITNFENTCAD i 
+            INNER JOIN produtos_com_divergencia r ON r.COD = i.codpro
+            INNER JOIN NFENTRACAD NF ON i.numord = nf.numord
+            WHERE i.serie NOT LIKE '%dv%'
+        ),
+
+        ICMSMaisRecente AS (
+            SELECT 
+                PC.COD AS codpro,
+                COMPOSICAO_r.VALOR AS icms_valor,
+                NMR.NUMORD, 
+                ROW_NUMBER() OVER (PARTITION BY PC.COD ORDER BY PESQUISA_R.criadoem DESC) AS rn
+            FROM produtos_com_divergencia PC
+            JOIN PESQUISA_R ON PC.COD = PESQUISA_R.CODIGOEXTERNO
+            JOIN COMPOSICAO_R ON PESQUISA_R.oid = COMPOSICAO_R.RPESQUISA
+            JOIN NotaMaisRecente NMR ON PC.COD = NMR.codpro 
+            WHERE COMPOSICAO_R.RTIPOPESQUISA = '3035525' AND rn = 1
+        )
+
+        -- SELECT FINAL: Retornando apenas a turma com markup divergente
+        SELECT 
+            CONVERT(varchar, r.ENT, 23) AS ENT,
+            CONVERT(varchar, r.REM, 23) AS REM,
+            r.COD,
+            r.DESCRICAO,
+            CAST(ISNULL(r.QUANT, 0) AS DECIMAL(18,2)) AS QUAN,
+            r.UND,
+            CAST(ISNULL(r.[P_LISTA], 0) AS DECIMAL(18,2)) AS P_LISTA,
+            CAST(CASE 
+                WHEN icms.icms_valor IS NOT NULL THEN icms.icms_valor
+                ELSE NMR.valor_calculado
+            END AS DECIMAL(18,2)) AS ICMS,
+            CAST(ISNULL((
+                SELECT TOP 1 c.VALOR 
+                FROM PESQUISA_R P 
+                JOIN COMPOSICAO_R C ON p.oid = C.RPESQUISA 
+                JOIN produtocad ON produtocad.codpro = P.CODIGOEXTERNO
+                WHERE RTIPOPESQUISA IN ('2796133' , '2796136') 
+                AND numord = nmr.numord 
+                AND codpro = r.COD 
+                ORDER BY RPESQUISA DESC
+            ), 0) AS DECIMAL(18,2)) AS FRETE,
+            CAST(ISNULL(NMR.DESPESAS, 0) AS DECIMAL(18,2)) AS OUTROS,
+            
+            CAST(r.[P_CUSTO] AS DECIMAL(18,4)) AS P_CUSTO,
+            CAST(r.[P_CUSTO] * (1 + (r.MKP / 100)) AS DECIMAL(18,4)) AS P_SUGER,
+            CAST(r.[P_ATUAL] AS DECIMAL(18,4)) AS P_ATUAL,
+            CAST(r.MKP_REAL AS DECIMAL(18,4)) AS MKP_REAL,
+            CAST(r.MKP AS DECIMAL(18,4)) AS MKP,
+            CAST(r.MKP_REAL - r.MKP AS DECIMAL(18,4)) AS DIF_MKP,
+            CAST(r.CONV AS DECIMAL(18,2)) AS CONVER
+
+        FROM produtos_com_divergencia r
+        LEFT JOIN NotaMaisRecente NMR ON r.COD = NMR.codpro AND NMR.rn = 1
+        LEFT JOIN ICMSMaisRecente icms ON r.COD = icms.codpro AND icms.rn = 1 AND icms.NUMORD = NMR.NUMORD
+        ORDER BY DIF_MKP DESC;
+        """,
     }

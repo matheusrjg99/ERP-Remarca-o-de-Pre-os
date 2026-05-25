@@ -312,44 +312,67 @@ async def pesquisar_produto_avancado(
     usuario: str = Depends(obter_usuario_atual)
 ):
     db_name = AMBIENTES[ambiente]
-    query = Scripts.query['pesquisar_produto']
+    
+    # Base query SEM WHERE (vamos construir dinamicamente)
+    query = """
+        SELECT
+            p.codpro AS CODPRO,
+            cp.descricaolonga AS DESCRICAOLONGA,
+            f.NOME AS RAZSOC,
+            c.descr AS CLASSIFICACAO,
+            i.NOME AS STATUS_DISP
+        FROM PRODUTOCAD p
+        LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
+        LEFT JOIN FORNECECAD f ON p.codfor = f.oid
+        LEFT JOIN item i ON p.Disponibilidade = i.OID
+        LEFT JOIN CLASSIFCAD c ON p.clasprod = c.clasprod
+    """
+    
+    conditions = []
     params = []
     
     if termo:
-        query += " AND cp.descricaolonga LIKE ?"
+        conditions.append("cp.descricaolonga LIKE ?")
         params.append(f"%{termo}%")
         
     if codigo:
-        query += " AND p.codpro LIKE ?"
+        conditions.append("p.codpro LIKE ?")
         params.append(f"%{codigo}%")
         
     if fornecedor:
-        # Como combinamos: Recebe apenas o NOME limpo do Fornecedor e pesquisa
-        query += " AND f.NOME LIKE ?" 
+        conditions.append("f.NOME LIKE ?")
         params.append(f"%{fornecedor}%")
             
     if classificacao:
-        # SE O REACT MANDOU "0502 - TINTAS", SEPARA E PEGA SÓ O "0502"
         if " - " in classificacao:
             clasprod = classificacao.split(" - ")[0].strip().replace(".", "")
-            query += " AND p.clasprod LIKE ?"
+            conditions.append("p.clasprod LIKE ?")
             params.append(f"{clasprod}%")
         else:
-            # Se ele só digitou um pedaço livre na caixinha e apertou Enter
             class_limpa = classificacao.replace(".", "").strip()
             if class_limpa.isdigit():
-                query += " AND p.clasprod LIKE ?"
+                conditions.append("p.clasprod LIKE ?")
                 params.append(f"{class_limpa}%")
             else:
-                query += " AND c.descr LIKE ?"
+                conditions.append("c.descr LIKE ?")
                 params.append(f"%{classificacao}%")
 
     if disponibilidade:
         status_list = disponibilidade.split(',')
         placeholders = ",".join(["?"] * len(status_list))
-        query += f" AND i.NOME IN ({placeholders})"
+        conditions.append(f"i.NOME IN ({placeholders})")
         params.extend(status_list)
-
+    
+    # Monta a query final
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " ORDER BY p.codpro"
+    
+    # Debug
+    print(f"Query: {query}")
+    print(f"Params: {params}")
+    
     dados = await executar_query(
         banco=db_name, 
         query=query, 
@@ -358,7 +381,6 @@ async def pesquisar_produto_avancado(
         endpoint="/api/pesquisar"
     )
     return dados if dados else []
-
 # --- ROTAS DE OPERAÇÃO (UPDATE) ---
 
 @app.put("/api/remarcar", tags=["Operações"])

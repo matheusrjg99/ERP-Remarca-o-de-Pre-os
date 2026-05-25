@@ -7,6 +7,7 @@ export const COLUNAS = [
   { key: 'unidade', label: 'UND', width: 50, align: 'center', type: 'text', sortable: true },
   { key: 'lista', label: 'P. LISTA', width: 80, align: 'center', type: 'currency', sortable: true },
   { key: 'icms', label: 'ICMS', width: 60, align: 'center', type: 'percent', sortable: true },
+  { key: 'valoripi', label: 'IPI', width:60, align: 'center', type: 'number', sortable: true},
   { key: 'frete', label: 'FRETE', width: 70, align: 'center', type: 'currency', sortable: true },
   { key: 'custo', label: 'P. CUSTO', width: 90, align: 'center', type: 'editable-currency', sortable: true },
   { key: 'sugerido', label: 'P. SUGER', width: 90, align: 'center', type: 'editable-currency', sortable: true },

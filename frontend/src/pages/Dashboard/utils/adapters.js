@@ -10,7 +10,7 @@ export const adaptarProdutoDeEntrada = (p) => ({
   unidade: p.UND || '-',
   lista: toFloat(p.P_LISTA || p.RS_LISTA),
   icms: toFloat(p.ICMS),
-  outros: toFloat(p.OUTROS || p.DESPESAS),
+  valoripi: toFloat(p.valoripi || p.VALORIPI),
   frete: toFloat(p.FRETE),
   custo: toFloat(p.P_CUSTO || p.RS_CUSTO),
   sugerido: toFloat(p.P_SUGER || p.RS_VENDA_SUG),

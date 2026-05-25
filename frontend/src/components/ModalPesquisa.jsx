@@ -264,7 +264,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
                         const oidStr = f.OID || f.oid || '';
                         const nomeStr = f.NOME || f.nome || '';
                         return (
-                          <div key={idx} onClick={() => { setFiltros({...filtros, fornecedor: nomeStr}); setShowFornDropdown(false); }} className="p-2 text-xs text-zinc-200 hover:bg-blue-600 cursor-pointer border-b border-zinc-700/50 last:border-0 truncate">
+                          <div key={oidStr || idx} onClick={() => { setFiltros({...filtros, fornecedor: nomeStr}); setShowFornDropdown(false); }} className="p-2 text-xs text-zinc-200 hover:bg-blue-600 cursor-pointer border-b border-zinc-700/50 last:border-0 truncate">
                             {nomeStr}
                           </div>
                         )
@@ -303,7 +303,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
                         const padding = nivel <= 2 ? 'pl-2 font-bold text-zinc-100 bg-zinc-900/50' : nivel <= 4 ? 'pl-6 text-zinc-200' : 'pl-10 text-zinc-400 text-[11px]';
 
                         return (
-                          <div key={idx} onClick={() => { setFiltros({...filtros, classificacao: `${codStr} - ${c.descr}`}); setShowClassDropdown(false); }} className={`py-1.5 pr-2 flex gap-2 hover:bg-blue-600 hover:text-white cursor-pointer border-b border-zinc-700/30 ${padding}`}>
+                          <div key={codStr || idx} onClick={() => { setFiltros({...filtros, classificacao: `${codStr} - ${c.descr}`}); setShowClassDropdown(false); }} className={`py-1.5 pr-2 flex gap-2 hover:bg-blue-600 hover:text-white cursor-pointer border-b border-zinc-700/30 ${padding}`}>
                             <span className="opacity-50 w-14 font-mono">{codStr}</span>
                             <span className="truncate">{c.descr}</span>
                           </div>
@@ -336,10 +336,18 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
 
         <div className="p-4 flex gap-3 bg-[#18181b] min-h-[300px]">
           {/* Aqui mudamos de overflow-y-auto para overflow-auto, ativando rolagem tanto horizontal quanto vertical */}
-          <div className="flex-1 border border-zinc-700 bg-[#09090b] overflow-auto custom-scrollbar">
-             <table className="w-full text-xs text-left select-none">
-                <tbody>{renderEsquerda}</tbody>
-             </table>
+          <div className="flex-1 border border-zinc-700 bg-[#09090b] overflow-auto custom-scrollbar relative">
+              {loading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                      <div className="flex flex-col items-center gap-2">
+                          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs text-zinc-300">Buscando produtos...</span>
+                      </div>
+                  </div>
+              )}
+              <table className="w-full text-xs text-left select-none">
+                  <tbody>{renderEsquerda}</tbody>
+              </table>
           </div>
 
           <div className="flex flex-col justify-center gap-2">

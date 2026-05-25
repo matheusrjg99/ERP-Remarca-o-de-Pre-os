@@ -5,7 +5,6 @@ export default function ModalRemarcar({ produto, ambiente, onClose, onSuccess })
   const [novoPreco, setNovoPreco] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Quando a modal abre, foca no campo de preço
   useEffect(() => {
     setNovoPreco(produto?.PRECOVENDA || produto?.PRECO || '');
   }, [produto]);
@@ -22,8 +21,8 @@ export default function ModalRemarcar({ produto, ambiente, onClose, onSuccess })
           ambiente: ambiente
         }
       });
-      onSuccess(); // Avisa o Dashboard para atualizar a lista
-      onClose();   // Fecha a modal
+      onSuccess();
+      onClose();
     } catch (err) {
       alert("Erro ao salvar: " + (err.response?.data?.detail || "Erro interno"));
     } finally {
@@ -35,7 +34,16 @@ export default function ModalRemarcar({ produto, ambiente, onClose, onSuccess })
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 w-full max-w-md shadow-2xl">
+      <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 w-full max-w-md shadow-2xl relative">
+        
+        {/* Overlay de loading */}
+        {loading && (
+          <div className="absolute inset-0 bg-black/70 rounded-xl flex flex-col items-center justify-center z-10">
+            <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <span className="text-white text-sm">Atualizando preço...</span>
+          </div>
+        )}
+
         <h2 className="text-xl font-bold text-blue-400 mb-2">Remarcar Produto</h2>
         <p className="text-gray-400 text-sm mb-6">{produto.DESCRICAOLONGA || produto.DESCRPROD}</p>
 
@@ -50,13 +58,15 @@ export default function ModalRemarcar({ produto, ambiente, onClose, onSuccess })
               value={novoPreco}
               onChange={(e) => setNovoPreco(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && salvar()}
+              disabled={loading}
             />
           </div>
 
           <div className="flex gap-3 pt-4">
             <button 
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-transparent hover:bg-[#333] border border-[#444] rounded font-semibold transition-all"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-transparent hover:bg-[#333] border border-[#444] rounded font-semibold transition-all disabled:opacity-50"
             >
               Cancelar
             </button>

@@ -5,7 +5,7 @@ import ToggleSwitch from './components/ToggleSwitch';
 import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
-import { ArrowLeftRight, UserCog, Scale } from 'lucide-react';
+import { ArrowLeftRight, UserCog, Scale,Loader2 } from 'lucide-react';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -584,11 +584,17 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
 
             <button 
               onClick={() => buscarDivergenciasMarkup()} 
-              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors" 
+              disabled={loading} // Evita cliques duplos enquanto busca
+              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
               title="Divergências de Markup"
             >
-              <Scale size={18} />
+              {loading ? (
+                <Loader2 size={18} className="animate-spin text-emerald-500" />
+              ) : (
+                <Scale size={18} />
+              )}
             </button>
+            
           </div>
           
           <div className="flex items-center gap-4">

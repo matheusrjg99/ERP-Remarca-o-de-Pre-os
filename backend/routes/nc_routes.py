@@ -21,7 +21,7 @@ async def get_db_connection():
         f"UID={DB_USER};"
         f"PWD={DB_PASSWORD}"
     )
-    return await aioodbc.connect(dsn=conn_str, autocommit=True)
+    return await aioodbc.connect(connection_string=conn_str, autocommit=True)
 
 # --- Schemas Pydantic (V2 - Com IDs) ---
 

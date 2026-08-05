@@ -14,14 +14,21 @@ DB_USER = os.getenv("DB_USER", "seu_usuario")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "sua_senha")
 
 async def get_db_connection():
+    # Constrói a string de conexão completa exigida pelo ODBC Driver no Windows
     conn_str = (
-        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"DRIVER={{SQL Server}};"
         f"SERVER={DB_HOST};"
         f"DATABASE={DB_NAME};"
         f"UID={DB_USER};"
-        f"PWD={DB_PASSWORD}"
+        f"PWD={DB_PASSWORD};"
+        "Connection Timeout=30;"
     )
-    return await aioodbc.connect(dsn="", connection_string=conn_str, autocommit=True)
+    
+    try:
+        return await aioodbc.connect(dsn=conn_str)
+    except aioodbc.Error as e:
+        print(f"Erro de conexão com o banco de dados: {e}")
+        raise
 
 # --- Schemas Pydantic (V2 - Com IDs) ---
 

@@ -4,7 +4,7 @@
 -- Data: 2024
 -- ============================================================
 -- OBSERVAÇÕES:
--- 1. A tabela 'colaboradores' JÁ EXISTE e NÃO será criada aqui.
+-- 1. A tabela 'colaboradores' será criada se não existir.
 -- 2. As novas tabelas usam o sufixo '_v2' para coexistir com a antiga.
 -- 3. Não há migração automática de dados neste script.
 -- 4. Logs de aplicação NÃO são gerados aqui (reservado para Remarcação).
@@ -13,6 +13,72 @@
 SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
+GO
+
+-- ============================================================
+-- 0. TABELA: colaboradores (cria se não existir)
+-- Descrição: Cadastro de colaboradores do sistema
+-- ============================================================
+IF OBJECT_ID('dbo.colaboradores', 'U') IS NULL
+BEGIN
+    PRINT 'Criando tabela colaboradores...';
+    
+    CREATE TABLE dbo.colaboradores (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        nome NVARCHAR(200) NOT NULL,
+        cargo NVARCHAR(100) NULL,
+        departamento NVARCHAR(100) NULL,
+        ativo BIT NOT NULL DEFAULT 1,
+        criado_em DATETIME NOT NULL DEFAULT GETDATE(),
+        atualizado_em DATETIME NULL
+    );
+    
+    CREATE INDEX IX_Colaboradores_Nome ON dbo.colaboradores(nome);
+    CREATE INDEX IX_Colaboradores_Ativo ON dbo.colaboradores(ativo);
+    
+    PRINT 'Tabela colaboradores criada com sucesso!';
+END
+ELSE
+BEGIN
+    PRINT 'Tabela colaboradores já existe. Verificando colunas...';
+    
+    -- Adiciona coluna 'ativo' se não existir
+    IF COL_LENGTH('dbo.colaboradores', 'ativo') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD ativo BIT NOT NULL DEFAULT 1;
+        PRINT 'Coluna ''ativo'' adicionada à tabela colaboradores.';
+    END
+    
+    -- Adiciona coluna 'criado_em' se não existir
+    IF COL_LENGTH('dbo.colaboradores', 'criado_em') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD criado_em DATETIME NOT NULL DEFAULT GETDATE();
+        PRINT 'Coluna ''criado_em'' adicionada à tabela colaboradores.';
+    END
+    
+    -- Adiciona coluna 'atualizado_em' se não existir
+    IF COL_LENGTH('dbo.colaboradores', 'atualizado_em') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD atualizado_em DATETIME NULL;
+        PRINT 'Coluna ''atualizado_em'' adicionada à tabela colaboradores.';
+    END
+    
+    -- Adiciona coluna 'cargo' se não existir
+    IF COL_LENGTH('dbo.colaboradores', 'cargo') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD cargo NVARCHAR(100) NULL;
+        PRINT 'Coluna ''cargo'' adicionada à tabela colaboradores.';
+    END
+    
+    -- Adiciona coluna 'departamento' se não existir
+    IF COL_LENGTH('dbo.colaboradores', 'departamento') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD departamento NVARCHAR(100) NULL;
+        PRINT 'Coluna ''departamento'' adicionada à tabela colaboradores.';
+    END
+    
+    PRINT 'Tabela colaboradores verificada/atualizada com sucesso!';
+END
 GO
 
 -- ============================================================
@@ -57,8 +123,8 @@ CREATE TABLE dbo.contestacoes_v2 (
     id INT IDENTITY(1,1) PRIMARY KEY,
     nao_conformidade_id INT NOT NULL,
     mensagem NVARCHAR(MAX) NOT NULL,
-    remetente_tipo NVARCHAR(10) NOT NULL, -- 'COLABORADOR' ou 'ADMIN'
-    data_envio DATETIME NOT NULL DEFAULT GETDATE(),
+    usuario NVARCHAR(100) NOT NULL, -- 'COLABORADOR' ou 'ADMIN' ou nome do usuário
+    data_hora DATETIME NOT NULL DEFAULT GETDATE(),
     lida BIT NOT NULL DEFAULT 0,
 
     -- Chave estrangeira
@@ -101,10 +167,10 @@ PRINT '============================================================';
 PRINT 'NOVA ESTRUTURA V2 CRIADA COM SUCESSO!';
 PRINT '============================================================';
 PRINT 'Tabelas criadas:';
+PRINT '  - dbo.colaboradores (se não existia)';
 PRINT '  - dbo.nao_conformidades_v2';
 PRINT '  - dbo.contestacoes_v2';
 PRINT '  - dbo.historico_nc_v2';
 PRINT '';
-PRINT 'A tabela "colaboradores" foi mantida (já existente).';
 PRINT 'Próximo passo: Ajustar o backend Python para usar as tabelas _v2.';
 PRINT '============================================================';

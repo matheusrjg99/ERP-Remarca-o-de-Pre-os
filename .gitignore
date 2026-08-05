@@ -1,14 +1,78 @@
+```
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.js.map
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Logs
+*.log
+
 # Python
 __pycache__/
-venv/
-env/
-.env
+*.pyc
+*.pyo
+*.pyd
 
-# React / Node
-node_modules/
-build/
-dist/
+# Temporary files
+*.tmp
+*.swp
+*.swo
 
-# Logs e SO
-*.log
+# OS
 .DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+
+# Compiled
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.out
+
+# Archives
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```

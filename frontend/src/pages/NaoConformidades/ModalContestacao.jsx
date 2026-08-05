@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { X, Send, MessageSquare, Trash2, ShieldCheck, User, Lock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { X, Send, MessageSquare, ShieldCheck, User, Lock, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista }) {
   const [texto, setTexto] = useState("");
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(false);
-  const [statusLocal, setStatusLocal] = useState(registro.status_contestacao || 'ABERTO');
+  const [statusLocal, setStatusLocal] = useState(registro.status || 'Pendente');
   
   // Estado para Admin trocar entre Responder (Auditoria) ou Contestar (Lado do Operador)
   const [modoContestador, setModoContestador] = useState(false);
@@ -15,35 +15,25 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
   const nomeUsuario = localStorage.getItem('usuario') || 'Usuário'; 
   const nivelAcesso = localStorage.getItem('nivel_acesso') || 'OPERADOR'; 
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const tratarNome = (n) => {
     if (!n) return '';
     return n.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
   };
 
-  const infrator = tratarNome(registro.colaborador);
+  const infrator = tratarNome(registro.nome_colaborador);
 
   const buscarHistorico = useCallback(() => {
     if (!registro?.id) return;
     setCarregando(true);
-    axios.get(`${API_URL}/api/nc/registros/${registro.id}/contestacoes`, config)
+    axios.get(`${API_URL}/contestacoes/${registro.id}`, config)
       .then(res => setHistorico(Array.isArray(res.data) ? res.data : []))
       .catch(() => setHistorico([]))
       .finally(() => setCarregando(false));
   }, [registro?.id, API_URL]);
 
   useEffect(() => { buscarHistorico(); }, [buscarHistorico]);
-
-  // --- FUNÇÃO DE ELIMINAR (RESTAURADA) ---
-  const excluirMensagem = (id) => {
-    if (!window.confirm("Deseja realmente apagar esta mensagem?")) return;
-    axios.delete(`${API_URL}/api/nc/contestacoes/${id}`, config)
-      .then(() => {
-        buscarHistorico();
-        if (aoAtualizarLista) aoAtualizarLista();
-      });
-  };
 
   const enviar = () => {
     if (!texto.trim() || carregando) return;
@@ -52,12 +42,12 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
     const textoFinal = modoContestador ? `[C] ${texto}` : texto;
     
     const payload = {
-      id_registro: registro.id,
-      autor: tratarNome(nomeUsuario),
-      texto: textoFinal
+      nao_conformidade_id: registro.id,
+      mensagem: textoFinal,
+      usuario: tratarNome(nomeUsuario)
     };
 
-    axios.post(`${API_URL}/api/nc/contestacoes`, payload, config)
+    axios.post(`${API_URL}/contestacoes`, payload, config)
       .then(() => {
         setTexto("");
         buscarHistorico();
@@ -68,9 +58,18 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
   const resolverCaso = (decisao) => {
     if (!window.confirm(`Aplicar veredicto: ${decisao}?`)) return;
     setCarregando(true);
-    axios.put(`${API_URL}/api/nc/registros/${registro.id}/resolver`, { status_contestacao: decisao }, config)
+    
+    const statusMap = {
+      'DEFERIDO': 'Deferido',
+      'INDEFERIDO': 'Indeferido'
+    };
+    
+    axios.put(`${API_URL}/nao-conformidades/${registro.id}`, { 
+      status: statusMap[decisao] || decisao, 
+      observacoes: registro.observacoes 
+    }, config)
       .then(() => {
-        setStatusLocal(decisao);
+        setStatusLocal(statusMap[decisao] || decisao);
         if (aoAtualizarLista) aoAtualizarLista();
       })
       .finally(() => setCarregando(false));
@@ -93,11 +92,15 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">ID #{registro.id}</span>
               <div className="w-1 h-1 rounded-full bg-zinc-700"></div>
               <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase border ${
-                statusLocal === 'ABERTO' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                statusLocal === 'DEFERIDO' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                'bg-red-500/10 text-red-500 border-red-500/20'
+                statusLocal === 'Pendente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                statusLocal === 'Deferido' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                statusLocal === 'Indeferido' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                statusLocal === 'Resolvido' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                'bg-blue-500/10 text-blue-500 border-blue-500/20'
               }`}>
-                {statusLocal === 'ABERTO' ? (historico.length === 0 ? 'Sem Contestação' : 'Em Análise') : statusLocal === 'DEFERIDO' ? 'Defesa Aceite' : 'Inconsistência Mantida'}
+                {statusLocal === 'Pendente' ? (historico.length === 0 ? 'Sem Contestação' : 'Em Análise') : 
+                 statusLocal === 'Deferido' ? 'Defesa Aceite' : 
+                 statusLocal === 'Indeferido' ? 'Inconsistência Mantida' : statusLocal}
               </span>
             </div>
           </div>
@@ -112,15 +115,15 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
 
         {/* HISTÓRICO / CHAT */}
         <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6 bg-[#09090b] custom-scrollbar relative">
-          {statusLocal !== 'ABERTO' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]"><ShieldCheck size={300} /></div>}
+          {statusLocal !== 'Pendente' && statusLocal !== 'Contestado' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]"><ShieldCheck size={300} /></div>}
 
           {historico.length === 0 && !carregando ? (
             <div className="text-center py-20 opacity-20 text-xs font-black uppercase tracking-widest">Aguardando manifestação...</div>
           ) : (
             historico.map((item) => {
-              const isTagContestador = item.texto.startsWith("[C] ");
-              const isContestante = tratarNome(item.autor) === infrator || isTagContestador;
-              const textoExibicao = isTagContestador ? item.texto.replace("[C] ", "") : item.texto;
+              const isTagContestador = item.mensagem.startsWith("[C] ");
+              const isContestante = tratarNome(item.usuario) === infrator || isTagContestador;
+              const textoExibicao = isTagContestador ? item.mensagem.replace("[C] ", "") : item.mensagem;
 
               return (
                 <div key={item.id} className={`flex flex-col w-[85%] ${isContestante ? 'self-start' : 'self-end'}`}>
@@ -132,20 +135,13 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex items-center gap-2">
                         {isContestante ? <User size={13} className="text-[#3B8ED0]"/> : <ShieldCheck size={13} className="text-amber-500"/>}
-                        <span className={`text-xs font-black uppercase ${isContestante ? 'text-zinc-200' : 'text-amber-400'}`}>{tratarNome(item.autor)}</span>
+                        <span className={`text-xs font-black uppercase ${isContestante ? 'text-zinc-200' : 'text-amber-400'}`}>{tratarNome(item.usuario)}</span>
                         <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase ${isContestante ? 'bg-[#3B8ED0]/10 text-[#3B8ED0]' : 'bg-amber-500/10 text-amber-500'}`}>
                           {isContestante ? 'Contestante' : 'Auditoria'}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[9px] text-zinc-600 font-bold">{item.data}</span>
-                        
-                        {/* BOTÃO DE ELIMINAR (VOLTOU!) */}
-                        {statusLocal === 'ABERTO' && (
-                          <button onClick={() => excluirMensagem(item.id)} className="text-zinc-700 hover:text-red-500 transition-colors">
-                            <Trash2 size={14}/>
-                          </button>
-                        )}
+                        <span className="text-[9px] text-zinc-600 font-bold">{new Date(item.data_hora).toLocaleString('pt-BR')}</span>
                       </div>
                     </div>
                     <p className="text-[13px] text-zinc-300 leading-relaxed font-medium">"{textoExibicao}"</p>
@@ -158,7 +154,7 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
 
         {/* ÁREA DE RESPOSTA */}
         <div className="border-t border-zinc-800 bg-[#121215]">
-          {statusLocal !== 'ABERTO' ? (
+          {statusLocal === 'Deferido' || statusLocal === 'Indeferido' || statusLocal === 'Resolvido' ? (
             <div className="p-6 flex items-center justify-center gap-3 text-zinc-500">
               <Lock size={16} /> <p className="text-[10px] font-black uppercase tracking-[0.2em]">Ocorrência Encerrada</p>
             </div>
@@ -169,7 +165,7 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
               {nivelAcesso === 'ADMIN' && (
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800/50 pb-4">
                   
-                  {/* SELETOR DE IDENTIDADE (AQUI ESTÁ O NOVO BOTÃO) */}
+                  {/* SELETOR DE IDENTIDADE */}
                   <div className="flex bg-black p-1 rounded-xl border border-zinc-800">
                     <button 
                       onClick={() => setModoContestador(false)}

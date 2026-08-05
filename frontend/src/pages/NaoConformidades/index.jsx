@@ -22,19 +22,19 @@ export default function NaoConformidades() {
 
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   // Puxando o nome do usuário logado (igual na remarcação)
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
 
   const buscarRegistros = () => {
-    axios.get(`${API_URL}/api/nc/registros?mes=${mes}&ano=${ano}`, config)
+    axios.get(`${API_URL}/nao-conformidades`, config)
          .then(res => setRegistros(Array.isArray(res.data) ? res.data : []))
          .catch(() => setRegistros([]));
   };
 
   const buscarColabs = () => {
-    axios.get(`${API_URL}/api/nc/colaboradores`, config)
+    axios.get(`${API_URL}/colaboradores`, config)
          .then(res => setColaboradores(Array.isArray(res.data) ? res.data : []))
          .catch(() => setColaboradores([]));
   };
@@ -42,7 +42,7 @@ export default function NaoConformidades() {
   useEffect(() => { 
     buscarRegistros(); 
     buscarColabs(); 
-  }, [mes, ano]);
+  }, []);
 
   const onLogout = () => {
     localStorage.clear();
@@ -52,7 +52,7 @@ export default function NaoConformidades() {
   return (
     <div className="bg-[#09090b] min-h-screen text-zinc-300 font-sans selection:bg-blue-500/30 pb-10">
       
-      {/* NAVBAR UNIFICADA (Idêntica ao Dashboard de Remarcação) */}
+      {/* NAVBAR UNIFICADA */}
       <nav className="bg-[#09090b] border-b border-zinc-800/80 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         
         {/* LADO ESQUERDO - Logo e Título */}
@@ -71,7 +71,7 @@ export default function NaoConformidades() {
         {/* LADO DIREITO - Menu de Abas e Avatar */}
         <div className="flex items-center gap-4">
           
-          {/* MENU DE NAVEGAÇÃO DO MÓDULO (Estilo Toggle do Admin) */}
+          {/* MENU DE NAVEGAÇÃO DO MÓDULO */}
           <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-md shadow-sm mr-2">
             <button 
               onClick={() => setAbaAtiva('consulta')} 
@@ -113,7 +113,7 @@ export default function NaoConformidades() {
         </div>
       </nav>
 
-      {/* VIEWPORT PRINCIPAL (Mesmo limite de 1800px da Remarcação) */}
+      {/* VIEWPORT PRINCIPAL */}
       <main className="max-w-[1800px] mx-auto px-6 py-8 animate-in fade-in duration-300">
         {abaAtiva === 'consulta' && (
           <Consulta 

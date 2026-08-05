@@ -4,11 +4,13 @@ import { Trash2, UserPlus, Users } from 'lucide-react';
 
 export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoNome, setNovoNome] = useState("");
+  const [novoCargo, setNovoCargo] = useState("");
+  const [novoDepartamento, setNovoDepartamento] = useState("");
   const [loading, setLoading] = useState(false);
 
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -19,24 +21,22 @@ export default function Equipe({ colaboradores, buscarColabs }) {
     if (!novoNome.trim()) return;
     setLoading(true);
     
-    axios.post(`${API_URL}/api/nc/colaboradores`, { nome: novoNome }, config)
+    axios.post(`${API_URL}/colaboradores`, { 
+      nome: novoNome, 
+      cargo: novoCargo || null, 
+      departamento: novoDepartamento || null 
+    }, config)
       .then(() => {
-        setNovoNome(""); 
+        setNovoNome("");
+        setNovoCargo("");
+        setNovoDepartamento("");
         buscarColabs();
       })
       .catch(err => {
         console.error("Erro ao adicionar:", err);
-        alert("Falha ao adiciona Colaborador.");
+        alert("Falha ao adicionar Colaborador.");
       })
       .finally(() => setLoading(false));
-  };
-
-  const remover = (nome) => {
-    if (window.confirm(`Deseja remover ${tratarNome(nome)} da equipe?`)) {
-      axios.delete(`${API_URL}/api/nc/colaboradores/${nome}`, config)
-        .then(() => buscarColabs())
-        .catch(err => alert("Erro ao remover colaborador."));
-    }
   };
 
   return (
@@ -50,7 +50,6 @@ export default function Equipe({ colaboradores, buscarColabs }) {
               <Users size={18} className="text-[#3B8ED0]" />
               <h3 className="text-lg font-black text-white tracking-tighter uppercase italic">Colaboradores</h3>
             </div>
-            {/* Clareado para zinc-300 */}
             <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">
               Gerenciamento de Equipe
             </span>
@@ -64,22 +63,34 @@ export default function Equipe({ colaboradores, buscarColabs }) {
         <div className="p-8 flex flex-col gap-8 bg-black/20">
           
           {/* INPUT DE ADICIONAR */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
               <UserPlus size={14} /> Novo Colaborador
             </label>
-            <div className="flex gap-3 bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1.5 shadow-inner">
+            <div className="flex flex-col gap-3 bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-4 shadow-inner">
               <input 
-                className="flex-1 bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium"
-                placeholder="Digite o nome completo..."
+                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
+                placeholder="Nome completo..."
                 value={novoNome}
                 onChange={e => setNovoNome(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && adicionar()}
               />
+              <input 
+                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
+                placeholder="Cargo (opcional)"
+                value={novoCargo}
+                onChange={e => setNovoCargo(e.target.value)}
+              />
+              <input 
+                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
+                placeholder="Departamento (opcional)"
+                value={novoDepartamento}
+                onChange={e => setNovoDepartamento(e.target.value)}
+              />
               <button 
                 onClick={adicionar} 
                 disabled={!novoNome.trim() || loading}
-                className="bg-[#3B8ED0] text-white px-6 rounded-xl hover:bg-[#2d74ab] active:scale-95 transition-all flex items-center justify-center font-black text-[11px] uppercase tracking-widest disabled:opacity-20 shadow-lg shadow-[#3B8ED0]/20"
+                className="bg-[#3B8ED0] text-white px-6 py-3 rounded-xl hover:bg-[#2d74ab] active:scale-95 transition-all flex items-center justify-center font-black text-[11px] uppercase tracking-widest disabled:opacity-20 shadow-lg shadow-[#3B8ED0]/20"
               >
                 {loading ? "..." : "Adicionar"}
               </button>
@@ -98,22 +109,20 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                   <p className="text-xs font-black text-zinc-300 uppercase tracking-[0.3em]">Nenhum colaborador cadastrado</p>
                 </div>
               ) : (
-                colaboradores.map(nome => (
+                colaboradores.map(c => (
                   <div 
-                    key={nome} 
-                    className="flex justify-between items-center bg-white/[0.02] border border-white/5 p-4 rounded-2xl group hover:border-[#3B8ED0]/30 transition-all border-l-4 border-l-transparent hover:border-l-[#3B8ED0]"
+                    key={c.id} 
+                    className="flex flex-col gap-1 bg-white/[0.02] border border-white/5 p-4 rounded-2xl group hover:border-[#3B8ED0]/30 transition-all border-l-4 border-l-transparent hover:border-l-[#3B8ED0]"
                   >
-                    {/* Nome clareado para white nativo em vez de cinza */}
                     <span className="font-black text-sm text-white uppercase tracking-tight">
-                      {tratarNome(nome)}
+                      {tratarNome(c.nome)}
                     </span>
-                    <button 
-                      onClick={() => remover(nome)} 
-                      className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-400 transition-all"
-                      title="Remover Colaborador"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {c.cargo && (
+                      <span className="text-[10px] text-zinc-500 font-medium">{c.cargo}</span>
+                    )}
+                    {c.departamento && (
+                      <span className="text-[10px] text-zinc-500 font-medium">{c.departamento}</span>
+                    )}
                   </div>
                 ))
               )}

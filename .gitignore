@@ -1,55 +1,45 @@
+```
 # Compiled and build artifacts
 *.pyc
 __pycache__/
 *.o
 *.obj
-*.so
-*.dll
-*.exe
-*.class
-*.out
 
 # Dependencies
 .venv/
 venv/
-.env
-.env.local
-.env.*
+node_modules/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
+
+# Environment
+.env
+.env.local
+.env.*
 
 # Editors
 .vscode/
 .idea/
 
-# Build and distribution
-build/
-dist/
-target/
-*.egg-info/
-.tox/
+# Coverage
 .coverage
 coverage/
 htmlcov/
 
 # Python specific
 *.pyc
-__pycache__/
-.Python
 *.pyo
 *.pyd
-*$py.class
-*$py.o
-*$py.d
+.Python
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
 
-# System files
-.DS_Store
-Thumbs.db
-.directory
-*.swp
-*.swo
-*~
+# Original rules preserved
+*.log
+```

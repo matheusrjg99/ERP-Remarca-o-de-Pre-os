@@ -40,7 +40,6 @@ class NaoConformidadeBase(BaseModel):
     descricao: str
     data_ocorrencia: datetime
     status: str = 'Pendente' # Pendente, Contestado, Deferido, Indeferido, Resolvido
-    observacoes: Optional[str] = None
 
 class NaoConformidadeCreate(NaoConformidadeBase):
     colaborador_id: int  # AGORA É ID INTEIRO
@@ -49,6 +48,8 @@ class NaoConformidade(NaoConformidadeBase):
     id: int
     colaborador_id: int
     nome_colaborador: str # Campo calculado via JOIN
+    criado_em: datetime
+    atualizado_em: Optional[datetime] = None
 
 # --- Rotas ---
 
@@ -105,8 +106,9 @@ async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str]
     """Lista NCs com dados do colaborador (JOIN)"""
     query = """
         SELECT 
-            nc.id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes,
-            nc.colaborador_id, c.nome as nome_colaborador
+            nc.id, nc.descricao, nc.data_ocorrencia, nc.status,
+            nc.colaborador_id, c.nome as nome_colaborador,
+            nc.criado_em, nc.atualizado_em
         FROM nao_conformidades_v2 nc
         INNER JOIN colaboradores c ON nc.colaborador_id = c.id
         WHERE 1=1
@@ -153,10 +155,10 @@ async def criar_nc(nc: NaoConformidadeCreate):
     
     query_insert = """
         INSERT INTO nao_conformidades_v2 
-        (colaborador_id, descricao, data_ocorrencia, status, observacoes) 
-        VALUES (?, ?, ?, ?, ?)
+        (colaborador_id, descricao, data_ocorrencia, status) 
+        VALUES (?, ?, ?, ?)
     """
-    params_insert = (nc.colaborador_id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes)
+    params_insert = (nc.colaborador_id, nc.descricao, nc.data_ocorrencia, nc.status)
     
     sucesso = await executar_query(
         banco="Bddemo",
@@ -172,8 +174,9 @@ async def criar_nc(nc: NaoConformidadeCreate):
     
     # Retorna completo com nome
     query_select = """
-        SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes,
-               nc.colaborador_id, c.nome as nome_colaborador
+        SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status,
+               nc.colaborador_id, c.nome as nome_colaborador,
+               nc.criado_em, nc.atualizado_em
         FROM nao_conformidades_v2 nc
         JOIN colaboradores c ON nc.colaborador_id = c.id
         WHERE nc.id = (SELECT TOP 1 id FROM nao_conformidades_v2 ORDER BY id DESC)
@@ -193,16 +196,16 @@ async def criar_nc(nc: NaoConformidadeCreate):
 
 @router.put("/nao-conformidades/{nc_id}", response_model=NaoConformidade)
 async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
-    """Atualiza status ou observações de uma NC"""
+    """Atualiza status de uma NC"""
     query_update = """
         UPDATE nao_conformidades_v2 
-        SET status = ?, observacoes = ?
+        SET status = ?, atualizado_em = GETDATE()
         WHERE id = ?
     """
     sucesso = await executar_query(
         banco="Bddemo",
         query=query_update,
-        params=(nc_update.status, nc_update.observacoes, nc_id),
+        params=(nc_update.status, nc_id),
         usuario="SISTEMA",
         endpoint="/nao-conformidades",
         is_select=False
@@ -213,8 +216,9 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
     
     # Retorna atualizado
     query_select = """
-        SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes,
-               nc.colaborador_id, c.nome as nome_colaborador
+        SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status,
+               nc.colaborador_id, c.nome as nome_colaborador,
+               nc.criado_em, nc.atualizado_em
         FROM nao_conformidades_v2 nc
         JOIN colaboradores c ON nc.colaborador_id = c.id
         WHERE nc.id = ?

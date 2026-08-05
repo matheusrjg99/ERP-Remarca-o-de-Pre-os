@@ -2,18 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit3, Save, User, FileText } from 'lucide-react';
 
 const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
-  const [form, setForm] = useState({ 
-    descricao: '', 
-    status: 'Pendente',
-    observacoes: '' 
+  const [form, setForm] = useState({
+    descricao: '',
+    status: 'Pendente'
   });
 
   useEffect(() => {
     if (registro) {
-      setForm({ 
-        descricao: registro.descricao, 
-        status: registro.status || 'Pendente',
-        observacoes: registro.observacoes || ''
+      setForm({
+        descricao: registro.descricao,
+        status: registro.status || 'Pendente'
       });
     }
   }, [registro]);
@@ -98,26 +96,10 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
                 onChange={e => setForm({ ...form, status: e.target.value })}
               >
                 <option value="Pendente" className="bg-[#0f0f11]">Pendente</option>
-                <option value="Contestado" className="bg-[#0f0f11]">Contestado</option>
-                <option value="Deferido" className="bg-[#0f0f11]">Deferido</option>
-                <option value="Indeferido" className="bg-[#0f0f11]">Indeferido</option>
-                <option value="Resolvido" className="bg-[#0f0f11]">Resolvido</option>
+                <option value="Contestada" className="bg-[#0f0f11]">Contestada</option>
+                <option value="Resolvida" className="bg-[#0f0f11]">Resolvida</option>
+                <option value="Aceita" className="bg-[#0f0f11]">Aceita</option>
               </select>
-            </div>
-          </div>
-
-          {/* OBSERVAÇÕES */}
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
-              Observações
-            </label>
-            <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
-              <textarea 
-                className="w-full bg-transparent p-3 text-sm text-white outline-none resize-none min-h-[80px] custom-scrollbar placeholder:text-zinc-500"
-                placeholder="Adicione observações..."
-                value={form.observacoes}
-                onChange={e => setForm({ ...form, observacoes: e.target.value })}
-              />
             </div>
           </div>
 

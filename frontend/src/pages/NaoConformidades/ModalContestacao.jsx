@@ -60,13 +60,13 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
     setCarregando(true);
     
     const statusMap = {
-      'DEFERIDO': 'Deferido',
-      'INDEFERIDO': 'Indeferido'
+      'Resolvida': 'Resolvida',
+      'Aceita': 'Aceita'
     };
     
     axios.put(`${API_URL}/nao-conformidades/${registro.id}`, { 
       status: statusMap[decisao] || decisao, 
-      observacoes: registro.observacoes 
+      
     }, config)
       .then(() => {
         setStatusLocal(statusMap[decisao] || decisao);
@@ -187,8 +187,8 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
 
                   {/* BOTÕES DE VEREDICTO */}
                   <div className="flex gap-2">
-                    <button onClick={() => resolverCaso('DEFERIDO')} className="text-[9px] font-black text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/10 px-4 py-2 rounded-xl uppercase transition-all">Deferir</button>
-                    <button onClick={() => resolverCaso('INDEFERIDO')} className="text-[9px] font-black text-red-500 border border-red-500/30 hover:bg-red-500/10 px-4 py-2 rounded-xl uppercase transition-all">Manter NC</button>
+                    <button onClick={() => resolverCaso('Resolvida')} className="text-[9px] font-black text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/10 px-4 py-2 rounded-xl uppercase transition-all">Deferir</button>
+                    <button onClick={() => resolverCaso('Aceita')} className="text-[9px] font-black text-red-500 border border-red-500/30 hover:bg-red-500/10 px-4 py-2 rounded-xl uppercase transition-all">Manter NC</button>
                   </div>
                 </div>
               )}

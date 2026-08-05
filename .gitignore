@@ -1,45 +1,77 @@
-```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
-*.o
-*.obj
-
+```gitignore
 # Dependencies
-.venv/
-venv/
 node_modules/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+# Build artifacts
+dist/
+build/
+*.js.map
+*.css.map
 
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Logs
+*.log
 
 # Coverage
-.coverage
 coverage/
 htmlcov/
+.coverage
 
-# Python specific
+# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.nox/
+$py.class
+.spyderproject
+.spyproject
+.ropeproject
+*.pyc
+.*.pyc
+.__pycache__/
 *.so
-*.egg-info/
-dist/
-build/
-*.egg
+.Python
+cython_debug/
 
-# Original rules preserved
-*.log
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules/
+/dist
+/public/vite-manifest.json
+/public/assets/
+!.gitignore
+*.tsbuildinfo
+*.tsx.swp
+*.jsx.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 ```

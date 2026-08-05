@@ -28,9 +28,7 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
     const payload = {
       colaborador_id: parseInt(colaborador_id),
       descricao,
-      data_ocorrencia: dataOcorrencia ? new Date(dataOcorrencia).toISOString() : new Date().toISOString(),
-      status: 'Pendente',
-      observacoes: null
+      data_ocorrencia: dataOcorrencia ? new Date(dataOcorrencia).toISOString() : new Date().toISOString()
     };
 
     axios.post(`${API_URL}/nao-conformidades`, payload, config)

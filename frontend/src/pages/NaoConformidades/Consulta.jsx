@@ -175,19 +175,19 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
                     </td>
                     
                     <td className="px-6 py-5 whitespace-nowrap">
-                      {reg.status === 'Deferido' ? (
+                      {reg.status === 'Resolvida' ? (
                         <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
                           <ShieldCheck size={14} /> Deferido
                         </span>
-                      ) : reg.status === 'Indeferido' ? (
+                      ) : reg.status === 'Aceita' ? (
                         <span className="inline-flex items-center gap-1.5 text-red-500 font-black text-[9px] uppercase tracking-widest">
                           <XCircle size={14} /> Indeferido
                         </span>
-                      ) : reg.status === 'Contestado' ? (
+                      ) : reg.status === 'Contestada' ? (
                         <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-500 font-black px-2.5 py-1.5 rounded-lg border border-amber-500/20 text-[9px] uppercase tracking-widest animate-pulse">
                           <MessageSquare size={13} fill="currentColor" /> Contestado
                         </span>
-                      ) : reg.status === 'Resolvido' ? (
+                      ) : reg.status === 'Resolvida' ? (
                         <span className="inline-flex items-center gap-1.5 text-emerald-500 font-black text-[9px] uppercase tracking-widest">
                           <CheckCircle2 size={14} /> Resolvido
                         </span>

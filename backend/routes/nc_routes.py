@@ -1,236 +1,265 @@
-from fastapi import APIRouter, HTTPException, Body, Depends
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import APIRouter, HTTPException, Depends, status
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-
-# Importamos o executor de query do próprio Sophon
-from database import executar_query
+import aioodbc
+import os
 
 router = APIRouter()
 
-# --- DEPENDÊNCIA DE SEGURANÇA DESACOPLADA ---
-# Evita o erro de importação circular com o main.py
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+# --- Configuração do Banco ---
+DB_HOST = os.getenv("DB_HOST", "192.168.0.254")
+DB_NAME = os.getenv("DB_NAME", "SEU_BANCO_DE_DADOS") # Ajuste se necessário
+DB_USER = os.getenv("DB_USER", "seu_usuario")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "sua_senha")
 
-def verificar_token(token: str = Depends(oauth2_scheme)):
-    if not token:
-        raise HTTPException(status_code=401, detail="Não autenticado")
-    return token
+async def get_db_connection():
+    conn_str = (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={DB_HOST};"
+        f"DATABASE={DB_NAME};"
+        f"UID={DB_USER};"
+        f"PWD={DB_PASSWORD}"
+    )
+    return await aioodbc.connect(conn_str, autocommit=True)
 
-# ==========================================
-# SCHEMAS (MODELOS DE DADOS)
-# ==========================================
-class RegistroSchema(BaseModel):
-    colaborador: str
+# --- Schemas Pydantic (V2 - Com IDs) ---
+
+class ColaboradorBase(BaseModel):
+    nome: str
+    cargo: Optional[str] = None
+    departamento: Optional[str] = None
+
+class ColaboradorCreate(ColaboradorBase):
+    pass
+
+class Colaborador(ColaboradorBase):
+    id: int
+
+class NCContestacaoBase(BaseModel):
+    mensagem: str
+    usuario: str # Quem escreveu (admin ou colaborador)
+
+class NCContestacaoCreate(NCContestacaoBase):
+    nao_conformidade_id: int
+
+class NCContestacao(NCContestacaoBase):
+    id: int
+    nao_conformidade_id: int
+    data_hora: datetime
+
+class NaoConformidadeBase(BaseModel):
     descricao: str
-    data_custom: Optional[str] = None
+    data_ocorrencia: datetime
+    status: str = 'Pendente' # Pendente, Contestado, Deferido, Indeferido, Resolvido
+    observacoes: Optional[str] = None
 
-class ContestacaoSchema(BaseModel):
-    id_registro: int
-    autor: str
-    texto: str
+class NaoConformidadeCreate(NaoConformidadeBase):
+    colaborador_id: int  # AGORA É ID INTEIRO
 
-class ResolucaoContestacao(BaseModel):
-    status_contestacao: str
+class NaoConformidade(NaoConformidadeBase):
+    id: int
+    colaborador_id: int
+    nome_colaborador: str # Campo calculado via JOIN
 
-@router.get("/status")
-async def nc_status():
-    return {"status": "Módulo NC operante no Sophon (Conexão BDDEMO OK)"}
+# --- Rotas ---
 
-# ==========================================
-# ROTAS: REGISTROS DE AUDITORIA
-# ==========================================
-
-@router.get("/registros")
-async def listar_registros(mes: int, ano: int, token: str = Depends(verificar_token)):
+@router.get("/colaboradores", response_model=List[Colaborador])
+async def listar_colaboradores():
+    """Lista todos os colaboradores cadastrados"""
+    conn = await get_db_connection()
     try:
-        q = """
+        cursor = await conn.cursor()
+        # Busca da tabela existente de colaboradores
+        await cursor.execute("SELECT id, nome, cargo, departamento FROM colaboradores WHERE ativo = 1 OR ativo IS NULL")
+        columns = [column[0] for column in cursor.description]
+        results = []
+        async for row in cursor:
+            results.append(dict(zip(columns, row)))
+        return results
+    finally:
+        await conn.close()
+
+@router.post("/colaboradores", response_model=Colaborador, status_code=status.HTTP_201_CREATED)
+async def criar_colaborador(colab: ColaboradorCreate):
+    """Adiciona novo colaborador"""
+    conn = await get_db_connection()
+    try:
+        cursor = await conn.cursor()
+        await cursor.execute(
+            "INSERT INTO colaboradores (nome, cargo, departamento, ativo) VALUES (?, ?, ?, 1); SELECT SCOPE_IDENTITY();",
+            (colab.nome, colab.cargo, colab.departamento)
+        )
+        new_id = await cursor.fetchone()
+        await conn.commit()
+        
+        # Retorna o objeto criado
+        await cursor.execute("SELECT id, nome, cargo, departamento FROM colaboradores WHERE id = ?", (new_id[0],))
+        row = await cursor.fetchone()
+        columns = [column[0] for column in cursor.description]
+        return dict(zip(columns, row))
+    finally:
+        await conn.close()
+
+@router.get("/nao-conformidades", response_model=List[NaoConformidade])
+async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str] = None):
+    """Lista NCs com dados do colaborador (JOIN)"""
+    conn = await get_db_connection()
+    try:
+        cursor = await conn.cursor()
+        
+        query = """
             SELECT 
-                N.ID, 
-                N.DATA, 
-                N.COLABORADOR, 
-                N.DESCRICAO, 
-                N.STATUS_CONTESTACAO,
-                (SELECT COUNT(*) FROM CONTESTACOES C WHERE C.ID_REGISTRO = N.ID) as qtd_contestacoes
-            FROM NAOCONFOR N
-            WHERE MONTH(N.DATA) = ? AND YEAR(N.DATA) = ?
-            ORDER BY N.ID DESC
+                nc.id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes,
+                nc.colaborador_id, c.nome as nome_colaborador
+            FROM nao_conformidades_v2 nc
+            INNER JOIN colaboradores c ON nc.colaborador_id = c.id
+            WHERE 1=1
         """
-        rows = await executar_query("bddemo", q, (mes, ano))
+        params = []
+
+        if colaborador_id:
+            query += " AND nc.colaborador_id = ?"
+            params.append(colaborador_id)
         
-        if not rows:
-            return []
-            
-        resultados = []
-        for r in rows:
-            status = r.get("STATUS_CONTESTACAO")
-            if not status:
-                status = "ABERTO"
-                
-            data_raw = r.get("DATA")
-            if isinstance(data_raw, str):
-                data_formatada = data_raw 
-            elif data_raw:
-                data_formatada = data_raw.strftime("%d/%m/%Y")
-            else:
-                data_formatada = ""
-            
-            resultados.append({
-                "id": r.get("ID"),
-                "data": data_formatada,
-                "colaborador": r.get("COLABORADOR", ""),
-                "descricao": r.get("DESCRICAO", ""),
-                "qtd_contestacoes": r.get("qtd_contestacoes", 0),
-                "status_contestacao": status
-            })
-            
-        return resultados
-    except Exception as e:
-        print(f"Erro ao listar registros: {e}")
-        return []
+        if status:
+            query += " AND nc.status = ?"
+            params.append(status)
 
-@router.post("/registros")
-async def criar_registro(reg: RegistroSchema, token: str = Depends(verificar_token)):
-    try:
-        if reg.data_custom:
-            q = "INSERT INTO NAOCONFOR (COLABORADOR, DESCRICAO, DATA, STATUS_CONTESTACAO) VALUES (?, ?, ?, 'ABERTO')"
-            await executar_query("bddemo", q, (reg.colaborador, reg.descricao, reg.data_custom), is_select=False)
-        else:
-            q = "INSERT INTO NAOCONFOR (COLABORADOR, DESCRICAO, DATA, STATUS_CONTESTACAO) VALUES (?, ?, GETDATE(), 'ABERTO')"
-            await executar_query("bddemo", q, (reg.colaborador, reg.descricao), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Erro ao criar registro: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao criar")
+        query += " ORDER BY nc.data_ocorrencia DESC"
 
-@router.put("/registros/{id}")
-async def editar_registro(id: int, reg: dict = Body(...), token: str = Depends(verificar_token)):
-    try:
-        q = "UPDATE NAOCONFOR SET COLABORADOR = ?, DESCRICAO = ? WHERE ID = ?"
-        await executar_query("bddemo", q, (reg.get('colaborador'), reg.get('descricao'), id), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Erro ao editar registro: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao editar")
+        await cursor.execute(query, params)
+        columns = [column[0] for column in cursor.description]
+        results = []
+        async for row in cursor:
+            results.append(dict(zip(columns, row)))
+        return results
+    finally:
+        await conn.close()
 
-@router.delete("/registros/{id}")
-async def excluir_registro(id: int, token: str = Depends(verificar_token)):
+@router.post("/nao-conformidades", response_model=NaoConformidade, status_code=status.HTTP_201_CREATED)
+async def criar_nc(nc: NaoConformidadeCreate):
+    """Cria nova Não Conformidade vinculada a um ID de colaborador"""
+    conn = await get_db_connection()
     try:
-        # Apagar as contestações primeiro para evitar conflito de chaves estrangeiras
-        await executar_query("bddemo", "DELETE FROM CONTESTACOES WHERE ID_REGISTRO = ?", (id,), is_select=False)
+        cursor = await conn.cursor()
         
-        # Apagar o registro
-        q = "DELETE FROM NAOCONFOR WHERE ID = ?"
-        await executar_query("bddemo", q, (id,), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Erro ao deletar registro: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao deletar")
+        # Valida se o colaborador existe
+        await cursor.execute("SELECT id FROM colaboradores WHERE id = ?", (nc.colaborador_id,))
+        if not await cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Colaborador não encontrado")
 
-@router.put("/registros/{id_registro}/resolver")
-async def resolver_registro(id_registro: int, resolucao: ResolucaoContestacao, token: str = Depends(verificar_token)):
-    status_valido = resolucao.status_contestacao in ['DEFERIDO', 'INDEFERIDO']
-    if not status_valido:
-        raise HTTPException(status_code=400, detail="Status inválido")
+        await cursor.execute(
+            """INSERT INTO nao_conformidades_v2 
+               (colaborador_id, descricao, data_ocorrencia, status, observacoes) 
+               VALUES (?, ?, ?, ?, ?); 
+               SELECT SCOPE_IDENTITY();""",
+            (nc.colaborador_id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes)
+        )
+        new_id = await cursor.fetchone()
+        await conn.commit()
 
-    try:
-        q = "UPDATE NAOCONFOR SET STATUS_CONTESTACAO = ? WHERE ID = ?"
-        await executar_query("bddemo", q, (resolucao.status_contestacao, id_registro), is_select=False)
-        return {"status": "ok", "novo_status": resolucao.status_contestacao}
-    except Exception as e:
-        print(f"Erro ao resolver contestação: {e}")
-        raise HTTPException(status_code=500, detail="Falha ao atualizar o status na base de dados")
-
-# ==========================================
-# ROTAS: CONTESTAÇÕES (MENSAGENS)
-# ==========================================
-
-@router.get("/registros/{id}/contestacoes")
-async def listar_contestacoes(id: int, token: str = Depends(verificar_token)):
-    try:
-        # CORREÇÃO: Usamos DATA_POSTAGEM as DATA para o frontend não quebrar
-        q = "SELECT ID, AUTOR, TEXTO, DATA_POSTAGEM as DATA FROM CONTESTACOES WHERE ID_REGISTRO = ? ORDER BY DATA_POSTAGEM ASC"
-        rows = await executar_query("bddemo", q, (id,))
+        # Retorna completo com nome
+        await cursor.execute("""
+            SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes,
+                   nc.colaborador_id, c.nome as nome_colaborador
+            FROM nao_conformidades_v2 nc
+            JOIN colaboradores c ON nc.colaborador_id = c.id
+            WHERE nc.id = ?
+        """, (new_id[0],))
         
-        # Proteção extra para evitar o erro "'str' object has no attribute 'get'"
-        if not isinstance(rows, list):
-            print(f"Erro retornado pelo banco: {rows}")
-            return []
-            
-        resultados = []
-        for r in rows:
-            data_raw = r.get("DATA")
-            if isinstance(data_raw, str):
-                data_formatada = data_raw
-            elif data_raw:
-                data_formatada = data_raw.strftime("%d/%m/%Y %H:%M")
-            else:
-                data_formatada = ""
-                
-            resultados.append({
-                "id": r.get("ID"),
-                "autor": r.get("AUTOR", ""),
-                "texto": r.get("TEXTO", ""),
-                "data": data_formatada
-            })
-        return resultados
-    except Exception as e:
-        print(f"Erro ao listar contestacoes: {e}")
-        return []
+        row = await cursor.fetchone()
+        columns = [column[0] for column in cursor.description]
+        return dict(zip(columns, row))
+    finally:
+        await conn.close()
 
-@router.post("/contestacoes")
-async def adicionar_contestacao(d: ContestacaoSchema, token: str = Depends(verificar_token)):
+@router.put("/nao-conformidades/{nc_id}", response_model=NaoConformidade)
+async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
+    """Atualiza status ou observações de uma NC"""
+    conn = await get_db_connection()
     try:
-        # CORREÇÃO: Usamos DATA_POSTAGEM no INSERT
-        q = "INSERT INTO CONTESTACOES (ID_REGISTRO, AUTOR, TEXTO, DATA_POSTAGEM) VALUES (?, ?, ?, GETDATE())"
-        await executar_query("bddemo", q, (d.id_registro, d.autor, d.texto), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Erro ao adicionar contestação: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao adicionar")
+        cursor = await conn.cursor()
+        await cursor.execute(
+            """UPDATE nao_conformidades_v2 
+               SET status = ?, observacoes = ?
+               WHERE id = ?""",
+            (nc_update.status, nc_update.observacoes, nc_id)
+        )
+        await conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="NC não encontrada")
 
-@router.delete("/contestacoes/{id}")
-async def excluir_contestacao(id: int, token: str = Depends(verificar_token)):
+        # Retorna atualizado
+        await cursor.execute("""
+            SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes,
+                   nc.colaborador_id, c.nome as nome_colaborador
+            FROM nao_conformidades_v2 nc
+            JOIN colaboradores c ON nc.colaborador_id = c.id
+            WHERE nc.id = ?
+        """, (nc_id,))
+        row = await cursor.fetchone()
+        columns = [column[0] for column in cursor.description]
+        return dict(zip(columns, row))
+    finally:
+        await conn.close()
+
+@router.delete("/nao-conformidades/{nc_id}")
+async def deletar_nc(nc_id: int):
+    """Exclui uma NC (e suas contestações em cascade)"""
+    conn = await get_db_connection()
     try:
-        q = "DELETE FROM CONTESTACOES WHERE ID = ?"
-        await executar_query("bddemo", q, (id,), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Erro ao deletar contestação")
+        cursor = await conn.cursor()
+        await cursor.execute("DELETE FROM nao_conformidades_v2 WHERE id = ?", (nc_id,))
+        await conn.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="NC não encontrada")
+        return {"message": "NC excluída com sucesso"}
+    finally:
+        await conn.close()
 
-# ==========================================
-# ROTAS: GESTÃO DE EQUIPE (COLABORADORES)
-# ==========================================
+# --- Contestações ---
 
-@router.get("/colaboradores")
-async def listar_colaboradores(token: str = Depends(verificar_token)):
+@router.get("/contestacoes/{nc_id}", response_model=List[NCContestacao])
+async def listar_contestacoes(nc_id: int):
+    """Lista todas as mensagens de uma NC específica"""
+    conn = await get_db_connection()
     try:
-        q = "SELECT NOME FROM COLABORADORES ORDER BY NOME"
-        rows = await executar_query("bddemo", q, ())
-        if not rows or not isinstance(rows, list): 
-            return []
-        return [r.get("NOME").strip() for r in rows]
-    except Exception as e:
-        print(f"Erro em colabs: {e}")
-        return []
+        cursor = await conn.cursor()
+        await cursor.execute(
+            "SELECT id, nao_conformidade_id, mensagem, usuario, data_hora FROM contestacoes_v2 WHERE nao_conformidade_id = ? ORDER BY data_hora ASC",
+            (nc_id,)
+        )
+        columns = [column[0] for column in cursor.description]
+        results = []
+        async for row in cursor:
+            results.append(dict(zip(columns, row)))
+        return results
+    finally:
+        await conn.close()
 
-@router.post("/colaboradores")
-async def adicionar_colaborador(nome: str = Body(..., embed=True), token: str = Depends(verificar_token)):
+@router.post("/contestacoes", response_model=NCContestacao, status_code=status.HTTP_201_CREATED)
+async def adicionar_contestacao(contestacao: NCContestacaoCreate):
+    """Adiciona mensagem ao chat da NC"""
+    conn = await get_db_connection()
     try:
-        q = "INSERT INTO COLABORADORES (NOME) VALUES (?)"
-        await executar_query("bddemo", q, (nome.upper(),), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Erro ao adicionar colaborador: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao adicionar colaborador")
+        cursor = await conn.cursor()
+        await cursor.execute(
+            """INSERT INTO contestacoes_v2 (nao_conformidade_id, mensagem, usuario, data_hora) 
+               VALUES (?, ?, ?, GETDATE()); 
+               SELECT SCOPE_IDENTITY();""",
+            (contestacao.nao_conformidade_id, contestacao.mensagem, contestacao.usuario)
+        )
+        new_id = await cursor.fetchone()
+        await conn.commit()
 
-@router.delete("/colaboradores/{nome}")
-async def remover_colaborador(nome: str, token: str = Depends(verificar_token)):
-    try:
-        q = "DELETE FROM COLABORADORES WHERE NOME = ?"
-        await executar_query("bddemo", q, (nome,), is_select=False)
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Erro ao remover colaborador: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao remover colaborador")
+        await cursor.execute(
+            "SELECT id, nao_conformidade_id, mensagem, usuario, data_hora FROM contestacoes_v2 WHERE id = ?",
+            (new_id[0],)
+        )
+        row = await cursor.fetchone()
+        columns = [column[0] for column in cursor.description]
+        return dict(zip(columns, row))
+    finally:
+        await conn.close()

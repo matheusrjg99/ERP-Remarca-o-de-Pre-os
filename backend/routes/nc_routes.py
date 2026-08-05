@@ -57,7 +57,7 @@ async def listar_colaboradores():
     """Lista todos os colaboradores cadastrados"""
     query = "SELECT id, nome, cargo, departamento FROM colaboradores WHERE ativo = 1 OR ativo IS NULL"
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query,
         params=(),
         usuario="SISTEMA",
@@ -74,7 +74,7 @@ async def criar_colaborador(colab: ColaboradorCreate):
     params_insert = (colab.nome, colab.cargo, colab.departamento)
     
     sucesso = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_insert,
         params=params_insert,
         usuario="SISTEMA",
@@ -88,7 +88,7 @@ async def criar_colaborador(colab: ColaboradorCreate):
     # Busca o ID recém-criado
     query_select = "SELECT TOP 1 id, nome, cargo, departamento FROM colaboradores WHERE nome = ? ORDER BY id DESC"
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_select,
         params=(colab.nome,),
         usuario="SISTEMA",
@@ -124,7 +124,7 @@ async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str]
     query += " ORDER BY nc.data_ocorrencia DESC"
 
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query,
         params=tuple(params),
         usuario="SISTEMA",
@@ -141,7 +141,7 @@ async def criar_nc(nc: NaoConformidadeCreate):
     # Valida se o colaborador existe
     query_valida = "SELECT id FROM colaboradores WHERE id = ?"
     valida = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_valida,
         params=(nc.colaborador_id,),
         usuario="SISTEMA",
@@ -159,7 +159,7 @@ async def criar_nc(nc: NaoConformidadeCreate):
     params_insert = (nc.colaborador_id, nc.descricao, nc.data_ocorrencia, nc.status, nc.observacoes)
     
     sucesso = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_insert,
         params=params_insert,
         usuario="SISTEMA",
@@ -179,7 +179,7 @@ async def criar_nc(nc: NaoConformidadeCreate):
         WHERE nc.id = (SELECT TOP 1 id FROM nao_conformidades_v2 ORDER BY id DESC)
     """
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_select,
         params=(),
         usuario="SISTEMA",
@@ -200,7 +200,7 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
         WHERE id = ?
     """
     sucesso = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_update,
         params=(nc_update.status, nc_update.observacoes, nc_id),
         usuario="SISTEMA",
@@ -220,7 +220,7 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
         WHERE nc.id = ?
     """
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_select,
         params=(nc_id,),
         usuario="SISTEMA",
@@ -240,7 +240,7 @@ async def deletar_nc(nc_id: int):
     """Exclui uma NC (e suas contestações em cascade)"""
     query = "DELETE FROM nao_conformidades_v2 WHERE id = ?"
     sucesso = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query,
         params=(nc_id,),
         usuario="SISTEMA",
@@ -265,7 +265,7 @@ async def listar_contestacoes(nc_id: int):
         ORDER BY data_hora ASC
     """
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query,
         params=(nc_id,),
         usuario="SISTEMA",
@@ -287,7 +287,7 @@ async def adicionar_contestacao(contestacao: NCContestacaoCreate):
     params_insert = (contestacao.nao_conformidade_id, contestacao.mensagem, contestacao.usuario)
     
     sucesso = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_insert,
         params=params_insert,
         usuario="SISTEMA",
@@ -306,7 +306,7 @@ async def adicionar_contestacao(contestacao: NCContestacaoCreate):
         ORDER BY data_hora DESC
     """
     resultado = await executar_query(
-        banco="Bdenter",
+        banco="Bddemo",
         query=query_select,
         params=(contestacao.nao_conformidade_id,),
         usuario="SISTEMA",

@@ -44,6 +44,13 @@ class NaoConformidadeBase(BaseModel):
 class NaoConformidadeCreate(NaoConformidadeBase):
     colaborador_id: int  # AGORA É ID INTEIRO
 
+# Modelo específico para atualização (todos os campos opcionais)
+class NaoConformidadeUpdate(BaseModel):
+    descricao: Optional[str] = None
+    data_ocorrencia: Optional[datetime] = None
+    status: Optional[str] = None
+    colaborador_id: Optional[int] = None
+
 class NaoConformidade(NaoConformidadeBase):
     id: int
     colaborador_id: int
@@ -195,8 +202,94 @@ async def criar_nc(nc: NaoConformidadeCreate):
     return resultado[0] if resultado else {}
 
 @router.put("/nao-conformidades/{nc_id}", response_model=NaoConformidade)
-async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
-    """Atualiza status de uma NC"""
+async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeUpdate):
+    """Atualiza campos de uma NC (apenas os fornecidos)"""
+    # Constrói a query dinamicamente baseada nos campos fornecidos
+    updates = []
+    params = []
+    
+    if nc_update.descricao is not None:
+        updates.append("descricao = ?")
+        params.append(nc_update.descricao)
+    
+    if nc_update.data_ocorrencia is not None:
+        updates.append("data_ocorrencia = ?")
+        params.append(nc_update.data_ocorrencia)
+    
+    if nc_update.status is not None:
+        updates.append("status = ?")
+        params.append(nc_update.status)
+    
+    if nc_update.colaborador_id is not None:
+        updates.append("colaborador_id = ?")
+        params.append(nc_update.colaborador_id)
+    
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+    
+    updates.append("atualizado_em = GETDATE()")
+    params.append(nc_id)
+    
+    query_update = f"""
+        UPDATE nao_conformidades_v2 
+        SET {', '.join(updates)}
+        WHERE id = ?
+    """
+    
+    sucesso = await executar_query(
+        banco="Bddemo",
+        query=query_update,
+        params=tuple(params),
+        usuario="SISTEMA",
+        endpoint="/nao-conformidades",
+        is_select=False
+    )
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao atualizar NC")
+    
+    # Retorna atualizado
+    query_select = """
+        SELECT nc.id, nc.descricao, nc.data_ocorrencia, nc.status,
+               nc.colaborador_id, c.nome as nome_colaborador,
+               nc.criado_em, nc.atualizado_em
+        FROM nao_conformidades_v2 nc
+        JOIN colaboradores c ON nc.colaborador_id = c.id
+        WHERE nc.id = ?
+    """
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query_select,
+        params=(nc_id,),
+        usuario="SISTEMA",
+        endpoint="/nao-conformidades"
+    )
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    if not resultado:
+        raise HTTPException(status_code=404, detail="NC não encontrada")
+    
+    return resultado[0]
+
+@router.post("/nao-conformidades/{nc_id}/deferir", response_model=NaoConformidade)
+async def deferir_nc(nc_id: int):
+    """Marca NC como Deferida"""
+    return await _atualizar_status_nc(nc_id, "Deferido")
+
+@router.post("/nao-conformidades/{nc_id}/indeferir", response_model=NaoConformidade)
+async def indeferir_nc(nc_id: int):
+    """Marca NC como Indeferida"""
+    return await _atualizar_status_nc(nc_id, "Indeferido")
+
+@router.post("/nao-conformidades/{nc_id}/resolver", response_model=NaoConformidade)
+async def resolver_nc(nc_id: int):
+    """Marca NC como Resolvida"""
+    return await _atualizar_status_nc(nc_id, "Resolvido")
+
+async def _atualizar_status_nc(nc_id: int, novo_status: str):
+    """Função auxiliar para atualizar status"""
     query_update = """
         UPDATE nao_conformidades_v2 
         SET status = ?, atualizado_em = GETDATE()
@@ -205,14 +298,14 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeBase):
     sucesso = await executar_query(
         banco="Bddemo",
         query=query_update,
-        params=(nc_update.status, nc_id),
+        params=(novo_status, nc_id),
         usuario="SISTEMA",
         endpoint="/nao-conformidades",
         is_select=False
     )
     
     if sucesso is not True:
-        raise HTTPException(status_code=500, detail="Erro ao atualizar NC")
+        raise HTTPException(status_code=500, detail=f"Erro ao marcar NC como {novo_status}")
     
     # Retorna atualizado
     query_select = """

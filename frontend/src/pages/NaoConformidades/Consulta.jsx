@@ -14,7 +14,7 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
 
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -25,15 +25,15 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
   const stats = useMemo(() => {
     return {
       total: registros.length,
-      pendentes: registros.filter(r => r.qtd_contestacoes > 0 && r.status_contestacao === 'ABERTO').length,
-      resolvidos: registros.filter(r => r.status_contestacao && r.status_contestacao !== 'ABERTO').length
+      pendentes: registros.filter(r => r.status === 'Pendente').length,
+      resolvidos: registros.filter(r => r.status !== 'Pendente').length
     };
   }, [registros]);
 
   // --- LÓGICA DE FILTRAGEM E ORDENAÇÃO ---
   const registrosProcessados = useMemo(() => {
     let dadosFiltrados = registros.filter(reg => 
-      filtroColab === "" ? true : reg.colaborador === filtroColab
+      filtroColab === "" ? true : reg.colaborador_id.toString() === filtroColab
     );
 
     if (ordem.chave) {
@@ -61,7 +61,7 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
   const acaoExcluir = (id) => {
     const senha = prompt("SENHA DE ADMIN PARA EXCLUIR:");
     if (senha === "66197700") {
-      axios.delete(`${API_URL}/api/nc/registros/${id}`, config).then(() => buscarRegistros());
+      axios.delete(`${API_URL}/nao-conformidades/${id}`, config).then(() => buscarRegistros());
     }
   };
 
@@ -122,7 +122,7 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
             <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><User size={14} /></div>
             <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none w-full uppercase cursor-pointer" value={filtroColab} onChange={e => setFiltroColab(e.target.value)}>
               <option value="" className="bg-[#09090b]">Todos os Operadores</option>
-              {colaboradores.map(n => <option key={n} value={n} className="bg-[#09090b]">{tratarNome(n)}</option>)}
+              {colaboradores.map(c => <option key={c.id} value={c.id} className="bg-[#09090b]">{tratarNome(c.nome)}</option>)}
             </select>
           </div>
 
@@ -139,10 +139,10 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
             <thead className="bg-[#121215] sticky top-0 z-10">
               <tr className="border-b border-zinc-800/80">
                 <Th label="ID" chave="id" width="w-[100px]" />
-                <Th label="Data" chave="data" width="w-[140px]" />
-                <Th label="Colaborador" chave="colaborador" width="w-[240px]" />
+                <Th label="Data" chave="data_ocorrencia" width="w-[140px]" />
+                <Th label="Colaborador" chave="nome_colaborador" width="w-[240px]" />
                 <Th label="Ocorrência" chave="descricao" />
-                <Th label="Status" chave="status_contestacao" width="w-[160px]" />
+                <Th label="Status" chave="status" width="w-[160px]" />
                 <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right w-[140px]">Ações</th>
               </tr>
             </thead>
@@ -160,11 +160,11 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
                     </td>
                     
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-[12px] font-mono text-zinc-500">{reg.data}</span>
+                      <span className="text-[12px] font-mono text-zinc-500">{new Date(reg.data_ocorrencia).toLocaleDateString('pt-BR')}</span>
                     </td>
                     
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">{tratarNome(reg.colaborador)}</span>
+                      <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">{tratarNome(reg.nome_colaborador)}</span>
                     </td>
                     
                     {/* OCORRÊNCIA EM ALTA DEFINIÇÃO (BRANCO PURO / SEM ITÁLICO / FONTE MAIOR) */}
@@ -175,20 +175,24 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
                     </td>
                     
                     <td className="px-6 py-5 whitespace-nowrap">
-                      {reg.status_contestacao === 'DEFERIDO' ? (
+                      {reg.status === 'Resolvida' ? (
                         <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
-                          <ShieldCheck size={14} /> Aceito
+                          <ShieldCheck size={14} /> Deferido
                         </span>
-                      ) : reg.status_contestacao === 'INDEFERIDO' ? (
+                      ) : reg.status === 'Aceita' ? (
                         <span className="inline-flex items-center gap-1.5 text-red-500 font-black text-[9px] uppercase tracking-widest">
-                          <XCircle size={14} /> Mantido
+                          <XCircle size={14} /> Indeferido
                         </span>
-                      ) : reg.qtd_contestacoes > 0 ? (
+                      ) : reg.status === 'Contestada' ? (
                         <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-500 font-black px-2.5 py-1.5 rounded-lg border border-amber-500/20 text-[9px] uppercase tracking-widest animate-pulse">
-                          <MessageSquare size={13} fill="currentColor" /> {reg.qtd_contestacoes} MSG
+                          <MessageSquare size={13} fill="currentColor" /> Contestado
+                        </span>
+                      ) : reg.status === 'Resolvida' ? (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-500 font-black text-[9px] uppercase tracking-widest">
+                          <CheckCircle2 size={14} /> Resolvido
                         </span>
                       ) : (
-                        <span className="text-[9px] font-bold text-zinc-700 uppercase tracking-widest">Regular</span>
+                        <span className="text-[9px] font-bold text-zinc-700 uppercase tracking-widest">Pendente</span>
                       )}
                     </td>
                     
@@ -223,7 +227,7 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
 
       {/* MODAIS */}
       {editando && <ModalEdicao registro={editando} colaboradores={colaboradores} aoFechar={() => setEditando(null)} aoSalvar={(d) => {
-          axios.put(`${API_URL}/api/nc/registros/${editando.id}`, d, config).then(() => { setEditando(null); buscarRegistros(); });
+          axios.put(`${API_URL}/nao-conformidades/${editando.id}`, d, config).then(() => { setEditando(null); buscarRegistros(); });
       }} />}
 
       {selecionado && <ModalContestacao registro={selecionado} aoFechar={() => setSelecionado(null)} aoAtualizarLista={buscarRegistros} />}

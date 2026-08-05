@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit3, Save, User, FileText } from 'lucide-react';
 
 const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
-  const [form, setForm] = useState({ colaborador: '', descricao: '' });
+  const [form, setForm] = useState({
+    descricao: '',
+    status: 'Pendente'
+  });
 
   useEffect(() => {
     if (registro) {
-      setForm({ colaborador: registro.colaborador, descricao: registro.descricao });
+      setForm({
+        descricao: registro.descricao,
+        status: registro.status || 'Pendente'
+      });
     }
   }, [registro]);
 
@@ -52,22 +58,15 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
         {/* CORPO DO FORMULÁRIO */}
         <div className="p-8 flex flex-col gap-6 bg-black/20">
           
-          {/* RESPONSÁVEL */}
+          {/* COLABORADOR (SOMENTE LEITURA) */}
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
               <User size={14} /> Responsável
             </label>
-            <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
-              <select 
-                className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none cursor-pointer appearance-none"
-                value={form.colaborador}
-                onChange={e => setForm({ ...form, colaborador: e.target.value })}
-              >
-                <option value="" className="bg-[#0f0f11]">Selecione...</option>
-                {colaboradores.map(n => (
-                  <option key={n} value={n} className="bg-[#0f0f11]">{tratarNome(n)}</option>
-                ))}
-              </select>
+            <div className="bg-[#161618] rounded-2xl border border-white/10 p-3">
+              <span className="text-sm font-medium text-zinc-400">
+                {tratarNome(registro.nome_colaborador)}
+              </span>
             </div>
           </div>
 
@@ -85,6 +84,25 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
             </div>
           </div>
 
+          {/* STATUS */}
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
+              Status
+            </label>
+            <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
+              <select 
+                className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none cursor-pointer appearance-none"
+                value={form.status}
+                onChange={e => setForm({ ...form, status: e.target.value })}
+              >
+                <option value="Pendente" className="bg-[#0f0f11]">Pendente</option>
+                <option value="Contestada" className="bg-[#0f0f11]">Contestada</option>
+                <option value="Resolvida" className="bg-[#0f0f11]">Resolvida</option>
+                <option value="Aceita" className="bg-[#0f0f11]">Aceita</option>
+              </select>
+            </div>
+          </div>
+
         </div>
 
         {/* FOOTER (AÇÕES) */}
@@ -98,7 +116,7 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
           </button>
           <button 
             type="submit" 
-            disabled={!form.colaborador || !form.descricao.trim()}
+            disabled={!form.descricao.trim()}
             className="bg-[#3B8ED0] text-white px-8 py-3.5 rounded-xl hover:bg-[#2d74ab] active:scale-95 transition-all flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest disabled:opacity-20 shadow-lg shadow-[#3B8ED0]/20"
           >
             <Save size={16} />

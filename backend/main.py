@@ -522,7 +522,7 @@ async def salvar_preferencias(dados: PreferenciasUpdate, usuario_logado: str = D
 # 🔌 ROTAS DO MÓDULO: NÃO CONFORMIDADES
 # ==========================================
 # IMPORTANTE: Tem que ficar ANTES do catch-all do React!
-app.include_router(nc_router, prefix="/api/nc", tags=["Não Conformidades"])
+app.include_router(nc_router, prefix="", tags=["Não Conformidades"])
 
 # ==========================================
 # HOSPEDAGEM DO FRONTEND REACT (Pasta Dist)

@@ -1,14 +1,1 @@
-# Python
-__pycache__/
-venv/
-env/
-.env
-
-# React / Node
-node_modules/
-build/
-dist/
-
-# Logs e SO
-*.log
-.DS_Store
+Nothing should be ignored based on the provided file changes. The only modified file is a Python source file (`backend/routes/nc_routes.py`), which should not be added to .gitignore.

@@ -3,14 +3,14 @@ import axios from 'axios';
 import { Save, User, FileText, Calendar } from 'lucide-react';
 
 export default function NovoRegistro({ aoSalvar, colaboradores }) {
-  const [colaborador, setColaborador] = useState('');
+  const [colaborador_id, setColaboradorId] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [dataCustom, setDataCustom] = useState('');
+  const [dataOcorrencia, setDataOcorrencia] = useState('');
   const [loading, setLoading] = useState(false);
 
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.250:9000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -19,24 +19,24 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    if (!colaborador) return alert("Selecione um Colaborador.");
+
+    if (!colaborador_id) return alert("Selecione um Colaborador.");
     if (!descricao.trim()) return alert("A descrição é obrigatória.");
 
     setLoading(true);
 
     const payload = {
-      colaborador,
+      colaborador_id: parseInt(colaborador_id),
       descricao,
-      data_custom: dataCustom || null
+      data_ocorrencia: dataOcorrencia ? new Date(dataOcorrencia).toISOString() : new Date().toISOString()
     };
 
-    axios.post(`${API_URL}/api/nc/registros`, payload, config)
+    axios.post(`${API_URL}/nao-conformidades`, payload, config)
       .then(() => {
-        setColaborador('');
+        setColaboradorId('');
         setDescricao('');
-        setDataCustom('');
-        if (aoSalvar) aoSalvar(); 
+        setDataOcorrencia('');
+        if (aoSalvar) aoSalvar();
       })
       .catch(err => {
         console.error("Erro ao salvar:", err);
@@ -56,7 +56,6 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
               <FileText size={18} className="text-[#3B8ED0]" />
               <h3 className="text-lg font-black text-white tracking-tighter uppercase italic">Novo Registro</h3>
             </div>
-            {/* Texto clareado para zinc-300 */}
             <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">
               Lançamento de Inconsistência
             </span>
@@ -73,15 +72,14 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
                 <User size={14} /> Colaborador
               </label>
               <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
-                {/* Texto mudado para text-white */}
                 <select 
                   className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none cursor-pointer appearance-none"
-                  value={colaborador}
-                  onChange={e => setColaborador(e.target.value)}
+                  value={colaborador_id}
+                  onChange={e => setColaboradorId(e.target.value)}
                 >
                   <option value="" className="bg-[#0f0f11]">Selecione...</option>
-                  {colaboradores.map(n => (
-                    <option key={n} value={n} className="bg-[#0f0f11]">{tratarNome(n)}</option>
+                  {colaboradores.map(c => (
+                    <option key={c.id} value={c.id} className="bg-[#0f0f11]">{tratarNome(c.nome)}</option>
                   ))}
                 </select>
               </div>
@@ -95,12 +93,11 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
                 </label>
               </div>
               <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
-                {/* Texto text-white */}
                 <input 
                   type="date" 
                   className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none css-invert-calendar opacity-90 focus:opacity-100 transition-opacity"
-                  value={dataCustom}
-                  onChange={e => setDataCustom(e.target.value)}
+                  value={dataOcorrencia}
+                  onChange={e => setDataOcorrencia(e.target.value)}
                   title="Deixe em branco para usar a data atual"
                 />
               </div>
@@ -128,7 +125,7 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
         <div className="p-6 border-t border-white/5 bg-[#0a0a0c] flex justify-end">
           <button 
             onClick={handleSubmit}
-            disabled={loading || !colaborador || !descricao.trim()}
+            disabled={loading || !colaborador_id || !descricao.trim()}
             className="bg-[#3B8ED0] text-white px-8 py-3.5 rounded-xl hover:bg-[#2d74ab] active:scale-95 transition-all flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest disabled:opacity-20 shadow-lg shadow-[#3B8ED0]/20"
           >
             {loading ? "Processando..." : <><Save size={16} /> Registrar</>}

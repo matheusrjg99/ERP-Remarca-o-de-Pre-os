@@ -1,1 +1,31 @@
-Nothing should be ignored based on the provided file changes. The only modified file is a Python source file (`backend/routes/nc_routes.py`), which should not be added to .gitignore.
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Dependencies
+venv/
+.venv/
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Build artifacts
+dist/
+build/
+target/
+```

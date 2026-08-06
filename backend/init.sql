@@ -174,3 +174,57 @@ PRINT '  - dbo.historico_nc_v2';
 PRINT '';
 PRINT 'Próximo passo: Ajustar o backend Python para usar as tabelas _v2.';
 PRINT '============================================================';
+-- ============================================================
+-- 4. TABELA: comissoes_config
+-- Descrição: Configuração do valor máximo de comissão por colaborador
+-- ============================================================
+IF OBJECT_ID('dbo.comissoes_config', 'U') IS NOT NULL
+    DROP TABLE dbo.comissoes_config;
+GO
+
+CREATE TABLE dbo.comissoes_config (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    colaborador_id INT NOT NULL,
+    valor_maximo DECIMAL(10,2) NOT NULL DEFAULT 0,
+    criado_em DATETIME NOT NULL DEFAULT GETDATE(),
+    atualizado_em DATETIME NULL,
+
+    CONSTRAINT FK_COMISSOES_CONFIG_Colaborador FOREIGN KEY (colaborador_id)
+        REFERENCES dbo.colaboradores(id)
+        ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX IX_COMISSOES_CONFIG_Colaborador ON dbo.comissoes_config(colaborador_id);
+GO
+
+-- ============================================================
+-- 5. TABELA: comissoes_percentuais
+-- Descrição: Percentuais de perda aplicáveis por tipo de não conformidade
+-- ============================================================
+IF OBJECT_ID('dbo.comissoes_percentuais', 'U') IS NOT NULL
+    DROP TABLE dbo.comissoes_percentuais;
+GO
+
+CREATE TABLE dbo.comissoes_percentuais (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    descricao NVARCHAR(200) NOT NULL,
+    percentual DECIMAL(5,2) NOT NULL, -- Ex: 5.00 para 5%
+    ativo BIT NOT NULL DEFAULT 1,
+    criado_em DATETIME NOT NULL DEFAULT GETDATE()
+);
+GO
+
+CREATE INDEX IX_COMISSOES_PERCENTUAIS_Ativo ON dbo.comissoes_percentuais(ativo);
+GO
+
+-- Dados iniciais de exemplo
+INSERT INTO dbo.comissoes_percentuais (descricao, percentual, ativo, criado_em) VALUES
+('Perda Padrão - NC Leve', 5.00, 1, GETDATE()),
+('Perda - NC Grave', 10.00, 1, GETDATE()),
+('Perda - NC Gravíssima', 20.00, 1, GETDATE());
+GO
+
+PRINT 'Tabelas de comissão criadas com sucesso!';
+PRINT '  - dbo.comissoes_config';
+PRINT '  - dbo.comissoes_percentuais';

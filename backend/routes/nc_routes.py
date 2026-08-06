@@ -8,6 +8,8 @@ import os
 # Adiciona o path do backend para importar database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import executar_query
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from models.schemas import ComissaoConfig, ComissaoConfigCreate, PercentualPerda, PercentualPerdaCreate, ComissaoRelatorioItem
 
 router = APIRouter()
 
@@ -414,3 +416,269 @@ async def adicionar_contestacao(contestacao: NCContestacaoCreate):
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     return resultado[0] if resultado else {}
+
+
+# ==========================================
+# ROTAS DE COMISSÕES
+# ==========================================
+
+@router.get("/comissoes/configuracoes", response_model=List[ComissaoConfig])
+async def listar_configuracoes_comissoes():
+    """Lista todas as configurações de comissão dos colaboradores"""
+    query = """
+        SELECT cc.id, cc.colaborador_id, c.nome as nome_colaborador, cc.valor_maximo, cc.criado_em, cc.atualizado_em
+        FROM comissoes_config cc
+        INNER JOIN colaboradores c ON cc.colaborador_id = c.id
+        WHERE c.ativo = 1
+        ORDER BY c.nome
+    """
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query,
+        params=(),
+        usuario="SISTEMA",
+        endpoint="/comissoes/configuracoes"
+    )
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    return resultado if resultado else []
+
+
+@router.post("/comissoes/configuracoes", response_model=ComissaoConfig, status_code=status.HTTP_201_CREATED)
+async def criar_configuracao_comissao(config: ComissaoConfigCreate):
+    """Cria ou atualiza a configuração de comissão para um colaborador"""
+    # Verifica se já existe configuração para este colaborador
+    query_verifica = "SELECT id FROM comissoes_config WHERE colaborador_id = ?"
+    verifica = await executar_query(
+        banco="Bddemo",
+        query=query_verifica,
+        params=(config.colaborador_id,),
+        usuario="SISTEMA",
+        endpoint="/comissoes/configuracoes"
+    )
+    
+    if verifica:
+        # Atualiza existente
+        query_update = """
+            UPDATE comissoes_config 
+            SET valor_maximo = ?, atualizado_em = GETDATE()
+            WHERE colaborador_id = ?
+        """
+        sucesso = await executar_query(
+            banco="Bddemo",
+            query=query_update,
+            params=(config.valor_maximo, config.colaborador_id),
+            usuario="SISTEMA",
+            endpoint="/comissoes/configuracoes",
+            is_select=False
+        )
+    else:
+        # Cria nova
+        query_insert = """
+            INSERT INTO comissoes_config (colaborador_id, valor_maximo, criado_em)
+            VALUES (?, ?, GETDATE())
+        """
+        sucesso = await executar_query(
+            banco="Bddemo",
+            query=query_insert,
+            params=(config.colaborador_id, config.valor_maximo),
+            usuario="SISTEMA",
+            endpoint="/comissoes/configuracoes",
+            is_select=False
+        )
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao salvar configuração de comissão")
+    
+    # Retorna a configuração salva
+    query_select = """
+        SELECT cc.id, cc.colaborador_id, c.nome as nome_colaborador, cc.valor_maximo, cc.criado_em, cc.atualizado_em
+        FROM comissoes_config cc
+        INNER JOIN colaboradores c ON cc.colaborador_id = c.id
+        WHERE cc.colaborador_id = ?
+    """
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query_select,
+        params=(config.colaborador_id,),
+        usuario="SISTEMA",
+        endpoint="/comissoes/configuracoes"
+    )
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    return resultado[0] if resultado else {}
+
+
+@router.get("/comissoes/percentuais", response_model=List[PercentualPerda])
+async def listar_percentuais_perda():
+    """Lista todos os percentuais de perda por tipo de não conformidade"""
+    query = "SELECT id, descricao, percentual, ativo, criado_em FROM comissoes_percentuais WHERE ativo = 1 ORDER BY descricao"
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query,
+        params=(),
+        usuario="SISTEMA",
+        endpoint="/comissoes/percentuais"
+    )
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    return resultado if resultado else []
+
+
+@router.post("/comissoes/percentuais", response_model=PercentualPerda, status_code=status.HTTP_201_CREATED)
+async def criar_percentual_perda(percentual: PercentualPerdaCreate):
+    """Cadastra um novo percentual de perda"""
+    query_insert = """
+        INSERT INTO comissoes_percentuais (descricao, percentual, ativo, criado_em)
+        VALUES (?, ?, 1, GETDATE())
+    """
+    sucesso = await executar_query(
+        banco="Bddemo",
+        query=query_insert,
+        params=(percentual.descricao, percentual.percentual),
+        usuario="SISTEMA",
+        endpoint="/comissoes/percentuais",
+        is_select=False
+    )
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao cadastrar percentual")
+    
+    # Retorna o percentual criado
+    query_select = """
+        SELECT TOP 1 id, descricao, percentual, ativo, criado_em
+        FROM comissoes_percentuais
+        ORDER BY ID DESC
+    """
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query_select,
+        params=(),
+        usuario="SISTEMA",
+        endpoint="/comissoes/percentuais"
+    )
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    return resultado[0] if resultado else {}
+
+
+@router.put("/comissoes/percentuais/{percentual_id}", response_model=PercentualPerda)
+async def atualizar_percentual_perda(percentual_id: int, percentual: PercentualPerdaCreate):
+    """Atualiza um percentual de perda existente"""
+    query_update = """
+        UPDATE comissoes_percentuais
+        SET descricao = ?, percentual = ?
+        WHERE id = ?
+    """
+    sucesso = await executar_query(
+        banco="Bddemo",
+        query=query_update,
+        params=(percentual.descricao, percentual.percentual, percentual_id),
+        usuario="SISTEMA",
+        endpoint="/comissoes/percentuais",
+        is_select=False
+    )
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao atualizar percentual")
+    
+    # Retorna o percentual atualizado
+    query_select = """
+        SELECT id, descricao, percentual, ativo, criado_em
+        FROM comissoes_percentuais
+        WHERE id = ?
+    """
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query_select,
+        params=(percentual_id,),
+        usuario="SISTEMA",
+        endpoint="/comissoes/percentuais"
+    )
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    if not resultado:
+        raise HTTPException(status_code=404, detail="Percentual não encontrado")
+    
+    return resultado[0]
+
+
+@router.delete("/comissoes/percentuais/{percentual_id}")
+async def deletar_percentual_perda(percentual_id: int):
+    """Desativa um percentual de perda (soft delete)"""
+    query = "UPDATE comissoes_percentuais SET ativo = 0 WHERE id = ?"
+    sucesso = await executar_query(
+        banco="Bddemo",
+        query=query,
+        params=(percentual_id,),
+        usuario="SISTEMA",
+        endpoint="/comissoes/percentuais",
+        is_select=False
+    )
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao desativar percentual")
+    
+    return {"message": "Percentual desativado com sucesso"}
+
+
+@router.get("/comissoes/relatorio", response_model=List[ComissaoRelatorioItem])
+async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int] = None):
+    """Gera relatório de comissões com base nas NCs do período"""
+    from datetime import date
+    
+    hoje = date.today()
+    if mes is None:
+        mes = hoje.month
+    if ano is None:
+        ano = hoje.year
+    
+    # Primeiro dia do mês
+    data_inicio = f"{ano}-{mes:02d}-01"
+    
+    # Último dia do mês (usando EOMONTH do SQL Server)
+    data_fim_sql = f"EOMONTH('{data_inicio}')"
+    
+    query = f"""
+        SELECT 
+            c.id as colaborador_id,
+            c.nome as nome_colaborador,
+            ISNULL(cc.valor_maximo, 0) as valor_maximo_comissao,
+            COUNT(nc.id) as total_ncs,
+            ISNULL(SUM(CASE 
+                WHEN nc.status IN ('Deferido', 'Indeferido') THEN cp.percentual
+                ELSE 0
+            END), 0) as total_perdas,
+            ISNULL(cc.valor_maximo, 0) - (ISNULL(cc.valor_maximo, 0) * ISNULL(SUM(CASE 
+                WHEN nc.status IN ('Deferido', 'Indeferido') THEN cp.percentual / 100.0
+                ELSE 0
+            END), 0)) as valor_comissao_final
+        FROM colaboradores c
+        LEFT JOIN comissoes_config cc ON c.id = cc.colaborador_id
+        LEFT JOIN nao_conformidades_v2 nc ON c.id = nc.colaborador_id 
+            AND nc.data_ocorrencia >= '{data_inicio}' 
+            AND nc.data_ocorrencia <= {data_fim_sql}
+        CROSS JOIN comissoes_percentuais cp
+        WHERE c.ativo = 1
+        GROUP BY c.id, c.nome, cc.valor_maximo
+        ORDER BY c.nome
+    """
+    
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query,
+        params=(),
+        usuario="SISTEMA",
+        endpoint="/comissoes/relatorio"
+    )
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    return resultado if resultado else []

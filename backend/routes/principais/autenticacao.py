@@ -1,13 +1,13 @@
 """
 Rotas de Autenticação - Login e Token JWT
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
 
 from database import executar_query
 from models.schemas import LoginData, Token
-from auth.seguranca import verificar_senha, criar_token_acesso, SECRET_KEY, ALGORITHM, OAuth2PasswordBearer
+from auth.seguranca import verificar_senha, criar_token_acesso, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 

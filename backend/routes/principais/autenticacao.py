@@ -1,7 +1,8 @@
 """
 Rotas de Autenticação - Login e Token JWT
 """
-from fastapi import APIRouter, Depends, HTTPException, status, OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from pydantic import BaseModel
 

@@ -2,38 +2,20 @@
 # Build artifacts
 dist/
 build/
-*.o
-*.obj
-*.out
+*.pyc
+__pycache__/
 
 # Dependencies
 node_modules/
 venv/
 .venv/
-__pycache__/
-*.egg-info/
+.env
+.env.local
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# System files
-.DS_Store
-Thumbs.db
 ```

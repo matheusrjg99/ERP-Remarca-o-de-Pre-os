@@ -19,8 +19,8 @@ router = APIRouter(prefix="/comissoes", tags=["Comissões"])
 
 class ComissaoConfigBase(BaseModel):
     colaborador_id: int
-    salario_base: float  # Antigo valor_maximo
-    percentual_desconto: float  # Novo campo: percentual de desconto por NC (ex: 4.0 para 4%)
+    salario_base: float  # Salário base para cálculo da comissão
+    percentual_desconto: float  # Percentual de desconto por NC (ex: 4.0 para 4%)
 
 class ComissaoConfigCreate(ComissaoConfigBase):
     pass
@@ -30,18 +30,6 @@ class ComissaoConfig(ComissaoConfigBase):
     nome_colaborador: str
     criado_em: datetime
     atualizado_em: Optional[datetime] = None
-
-class PercentualPerdaBase(BaseModel):
-    descricao: str
-    percentual: float  # Ex: 5.0 para 5%
-
-class PercentualPerdaCreate(PercentualPerdaBase):
-    pass
-
-class PercentualPerda(PercentualPerdaBase):
-    id: int
-    ativo: bool = True
-    criado_em: datetime
 
 class ComissaoRelatorioItem(BaseModel):
     colaborador_id: int

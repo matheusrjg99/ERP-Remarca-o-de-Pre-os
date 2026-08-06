@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { LayoutDashboard, UserPlus, Users, DollarSign } from 'lucide-react';
+import { LayoutDashboard, UserPlus, Users, DollarSign, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Importando os componentes do módulo
@@ -8,6 +8,7 @@ import Consulta from './Consulta';
 import NovoRegistro from './NovoRegistro';
 import Equipe from './Equipe';
 import RelatorioComissoes from './RelatorioComissoes';
+import ConfiguracaoComissoes from './ConfiguracaoComissoes';
 
 // Componentes Universais do Sophon
 import LogoSophon from '../../components/LogoSophon'; 
@@ -105,6 +106,16 @@ export default function NaoConformidades() {
               <Users size={14} /> Operadores
             </button>
             <button 
+              onClick={() => setAbaAtiva('configurar')} 
+              className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
+                abaAtiva === 'configurar' 
+                  ? 'bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700' 
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              <Settings size={14} /> Configurar Comissões
+            </button>
+            <button 
               onClick={() => setAbaAtiva('comissoes')} 
               className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
                 abaAtiva === 'comissoes' 
@@ -112,7 +123,7 @@ export default function NaoConformidades() {
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
-              <DollarSign size={14} /> Comissões
+              <DollarSign size={14} /> Relatório
             </button>
           </div>
 
@@ -145,6 +156,12 @@ export default function NaoConformidades() {
           <Equipe 
             colaboradores={colaboradores} 
             buscarColabs={buscarColabs} 
+          />
+        )}
+        {abaAtiva === 'configurar' && (
+          <ConfiguracaoComissoes 
+            config={config}
+            API_URL={API_URL}
           />
         )}
         {abaAtiva === 'comissoes' && (

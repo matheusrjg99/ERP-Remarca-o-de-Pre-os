@@ -205,9 +205,9 @@ async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int
     """Gera relatório de comissões com base nas NCs do período
     
     Regra de negócio:
-    - NCs com veredito 'Deferido': NÃO debitam da comissão
-    - NCs com veredito 'Indeferido': Debitam da comissão
-    - NCs sem veredito (NULL): Debitam da comissão (mantidas sem análise)
+    - NCs com status 'Deferido': NÃO debitam da comissão
+    - NCs com status 'Indeferido': Debitam da comissão
+    - NCs com outros status (Pendente, Contestada, etc.): Debitam da comissão
     """
     
     hoje = date.today()
@@ -237,9 +237,9 @@ async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int
         LEFT JOIN nao_conformidades_v2 nc ON c.id = nc.colaborador_id 
             AND nc.data_ocorrencia >= '{data_inicio}' 
             AND nc.data_ocorrencia <= {data_fim_sql}
-            -- Debita apenas se: veredito for 'Indeferido' OU veredito for NULL (sem verdito)
-            -- NÃO debita se veredito for 'Deferido'
-            AND (nc.veredito = 'Indeferido' OR nc.veredito IS NULL)
+            -- Debita apenas se: status for 'Indeferido' OU status for NULL/pendente
+            -- NÃO debita se status for 'Deferido'
+            AND (nc.status = 'Indeferido' OR nc.status NOT IN ('Deferido'))
         WHERE c.ativo = 1
         GROUP BY c.id, c.nome, cc.salario_base, cc.percentual_desconto
         ORDER BY c.nome

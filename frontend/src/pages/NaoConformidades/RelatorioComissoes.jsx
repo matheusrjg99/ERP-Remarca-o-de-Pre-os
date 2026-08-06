@@ -60,7 +60,7 @@ export default function RelatorioComissoes({ config, API_URL }) {
   };
 
   const getTotalGeral = () => {
-    return relatorio.reduce((acc, item) => acc + (item.valor_comissao_final || 0), 0);
+    return relatorio.reduce((acc, item) => acc + (item.salario_final || 0), 0);
   };
 
   return (
@@ -124,10 +124,10 @@ export default function RelatorioComissoes({ config, API_URL }) {
               <tr className="border-b border-zinc-800/80">
                 <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest w-[100px]">ID</th>
                 <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest w-[240px]">Colaborador</th>
-                <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-right w-[150px]">Comissão Máx.</th>
+                <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-right w-[150px]">Salário Base</th>
                 <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-center w-[120px]">NCs</th>
-                <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-right w-[150px]">Perdas</th>
-                <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-right w-[180px]">Comissão Final</th>
+                <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-right w-[150px]">Desconto</th>
+                <th className="px-6 py-5 text-[11px] font-black text-zinc-500 uppercase tracking-widest text-right w-[180px]">Salário Final</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/50">
@@ -147,7 +147,7 @@ export default function RelatorioComissoes({ config, API_URL }) {
                       <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">{item.nome_colaborador}</span>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-right">
-                      <span className="text-xs font-bold text-zinc-400">{formatarMoeda(item.valor_maximo_comissao)}</span>
+                      <span className="text-xs font-bold text-zinc-400">{formatarMoeda(item.salario_base)}</span>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-center">
                       <span className={`inline-flex items-center justify-center text-[11px] font-bold px-2.5 py-1 rounded-md ${
@@ -160,18 +160,18 @@ export default function RelatorioComissoes({ config, API_URL }) {
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-right">
                       <span className={`text-xs font-bold ${
-                        item.total_perdas > 0 ? 'text-red-500' : 'text-zinc-600'
+                        item.valor_total_desconto > 0 ? 'text-red-500' : 'text-zinc-600'
                       }`}>
-                        {formatarPercentual(item.total_perdas)}
+                        {formatarMoeda(item.valor_total_desconto)}
                       </span>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-right">
                       <span className={`text-sm font-black ${
-                        item.valor_comissao_final < item.valor_maximo_comissao 
+                        item.salario_final < item.salario_base
                           ? 'text-amber-500' 
                           : 'text-emerald-500'
                       }`}>
-                        {formatarMoeda(item.valor_comissao_final)}
+                        {formatarMoeda(item.salario_final)}
                       </span>
                     </td>
                   </tr>

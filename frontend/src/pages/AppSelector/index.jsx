@@ -40,6 +40,16 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
       acao: () => navigate('/nao-conformidades'),
       borderColorHover: "group-hover:border-amber-500/50",
       glowColor: "bg-amber-500"
+    },
+    {
+      id: 'comissoes',
+      nome: 'Comissões',
+      icone: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-500 drop-shadow-[0_0_12px_rgba(139,92,246,0.7)]"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+      ),
+      acao: () => navigate('/comissoes'),
+      borderColorHover: "group-hover:border-violet-500/50",
+      glowColor: "bg-violet-500"
     }
   ];
 
@@ -64,7 +74,7 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
       </div>
 
         {/* GRID HORIZONTAL */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl">
           {apps.map((app) => (
             <button
               key={app.id}

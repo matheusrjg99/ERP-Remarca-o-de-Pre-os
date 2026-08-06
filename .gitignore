@@ -1,31 +1,3 @@
-```
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+(frontend/src/pages/AppSelector/index.jsx is a source file, and there are no build artifacts, dependencies, or temporary files in the changes - only source/config files are present)
 
-# Environment
-.env
-.env.local
-*.env.*
-
-# Dependencies
-venv/
-.venv/
-
-# Logs
-*.log
-
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Build artifacts
-dist/
-build/
-target/
-```
+(empty - output nothing)

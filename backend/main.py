@@ -8,7 +8,7 @@ import os
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
-from routes.nc_routes import router as nc_router
+from routes.nao_conformidades import router as nc_router
 
 # Nossas importações internas
 from database import executar_query

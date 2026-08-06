@@ -4,7 +4,6 @@ import Login from './pages/Login';
 import AppSelector from './pages/AppSelector';
 import Dashboard from './pages/Dashboard';
 import NaoConformidades from './pages/NaoConformidades';
-import Comissoes from './pages/Comissoes';
 import ProtectedRoute from './components/ProtectedRoute'; // Importando o guardião
 
 export default function App() {
@@ -64,12 +63,6 @@ export default function App() {
         <Route 
           path="/nao-conformidades/*" 
           element={<NaoConformidades />} 
-        />
-
-        {/* Rota de Comissões */}
-        <Route 
-          path="/comissoes/*" 
-          element={<Comissoes />} 
         />
 
       </Route>

@@ -95,6 +95,7 @@ CREATE TABLE dbo.nao_conformidades_v2 (
     descricao NVARCHAR(500) NOT NULL,
     data_ocorrencia DATETIME NOT NULL DEFAULT GETDATE(),
     status NVARCHAR(20) NOT NULL DEFAULT 'Pendente', -- Pendente, Contestada, Resolvida, Aceita
+    veredito NVARCHAR(20) NULL, -- 'Deferido' (não debita), 'Indeferido' (debita), NULL (sem verdito = debita)
     criado_em DATETIME NOT NULL DEFAULT GETDATE(),
     atualizado_em DATETIME NULL,
 
@@ -109,6 +110,7 @@ GO
 CREATE INDEX IX_NC_V2_Colaborador ON dbo.nao_conformidades_v2(colaborador_id);
 CREATE INDEX IX_NC_V2_Data ON dbo.nao_conformidades_v2(data_ocorrencia);
 CREATE INDEX IX_NC_V2_Status ON dbo.nao_conformidades_v2(status);
+CREATE INDEX IX_NC_V2_Veredito ON dbo.nao_conformidades_v2(veredito);
 GO
 
 -- ============================================================

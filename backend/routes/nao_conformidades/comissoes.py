@@ -202,7 +202,13 @@ async def deletar_configuracao_comissao(config_id: int):
 
 @router.get("/relatorio", response_model=List[ComissaoRelatorioItem])
 async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int] = None):
-    """Gera relatório de comissões com base nas NCs do período"""
+    """Gera relatório de comissões com base nas NCs do período
+    
+    Regra de negócio:
+    - NCs com veredito 'Deferido': NÃO debitam da comissão
+    - NCs com veredito 'Indeferido': Debitam da comissão
+    - NCs sem veredito (NULL): Debitam da comissão (mantidas sem análise)
+    """
     
     hoje = date.today()
     if mes is None:
@@ -231,7 +237,9 @@ async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int
         LEFT JOIN nao_conformidades_v2 nc ON c.id = nc.colaborador_id 
             AND nc.data_ocorrencia >= '{data_inicio}' 
             AND nc.data_ocorrencia <= {data_fim_sql}
-            AND nc.status IN ('Deferido', 'Indeferido')
+            -- Debita apenas se: veredito for 'Indeferido' OU veredito for NULL (sem verdito)
+            -- NÃO debita se veredito for 'Deferido'
+            AND (nc.veredito = 'Indeferido' OR nc.veredito IS NULL)
         WHERE c.ativo = 1
         GROUP BY c.id, c.nome, cc.salario_base, cc.percentual_desconto
         ORDER BY c.nome

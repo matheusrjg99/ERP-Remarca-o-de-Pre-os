@@ -77,6 +77,25 @@ BEGIN
         PRINT 'Coluna ''departamento'' adicionada à tabela colaboradores.';
     END
     
+    -- Adiciona coluna 'usuario_id' se não existir (vínculo com API_USUARIOS)
+    IF COL_LENGTH('dbo.colaboradores', 'usuario_id') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD usuario_id INT NULL;
+        PRINT 'Coluna ''usuario_id'' adicionada à tabela colaboradores.';
+        
+        -- Adiciona constraint de chave estrangeira
+        IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Colaboradores_Usuario')
+        BEGIN
+            ALTER TABLE dbo.colaboradores 
+            ADD CONSTRAINT FK_Colaboradores_Usuario 
+            FOREIGN KEY (usuario_id) REFERENCES API_USUARIOS(id) ON DELETE SET NULL;
+            PRINT 'Constraint FK_Colaboradores_Usuario criada com sucesso.';
+        END
+        
+        CREATE INDEX IX_Colaboradores_Usuario ON dbo.colaboradores(usuario_id);
+        PRINT 'Índice em usuario_id criado com sucesso.';
+    END
+    
     PRINT 'Tabela colaboradores verificada/atualizada com sucesso!';
 END
 GO

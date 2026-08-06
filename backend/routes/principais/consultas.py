@@ -2,6 +2,8 @@
 Rotas de Consultas Gerais - Produtos, Notas, Classificações, Fornecedores
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from typing import List, Optional
 
 from database import executar_query
@@ -15,8 +17,10 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-def obter_usuario_atual(token: str = Depends(__import__('fastapi').Depends(__import__('fastapi.security').OAuth2PasswordBearer(tokenUrl="login")))):
-    """Importação dinâmica para evitar circular dependency."""
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+def obter_usuario_atual(token: str = Depends(oauth2_scheme)):
+    """Extrai o usuário do token JWT."""
     from jose import jwt, JWTError
     from auth.seguranca import SECRET_KEY, ALGORITHM
     from fastapi import status, HTTPException

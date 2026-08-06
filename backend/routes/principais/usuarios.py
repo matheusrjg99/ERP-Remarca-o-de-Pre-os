@@ -2,11 +2,12 @@
 Rotas de Gestão de Usuários - CRUD e Status (Apenas ADMIN)
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from jose import jwt, JWTError
 
 from database import executar_query
-from auth.seguranca import gerar_hash_senha, SECRET_KEY, ALGORITHM, OAuth2PasswordBearer
+from auth.seguranca import gerar_hash_senha, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 

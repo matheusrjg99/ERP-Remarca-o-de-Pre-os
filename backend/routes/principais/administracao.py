@@ -2,6 +2,7 @@
 Rotas de Administração - Logs do Sistema
 """
 from fastapi import APIRouter, Depends, Query
+from fastapi.security import OAuth2PasswordBearer
 from typing import Optional
 
 from database import executar_query
@@ -14,7 +15,9 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-def exigir_admin(token: str = Depends(__import__('fastapi').Depends(__import__('fastapi.security').OAuth2PasswordBearer(tokenUrl="login")))):
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+def exigir_admin(token: str = Depends(oauth2_scheme)):
     """Dependência para validar se o usuário é Administrador."""
     from jose import jwt, JWTError
     from auth.seguranca import SECRET_KEY, ALGORITHM

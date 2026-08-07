@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 
 # Importação do router modular de Não Conformidades
-from routes.nao_conformidades import router as nc_router
+from routes.modules.nonconformities import router as nc_router
 
 # Importação do router modular das rotas principais
 from routes.principais import router as main_router

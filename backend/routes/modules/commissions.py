@@ -44,7 +44,7 @@ class ComissaoRelatorioItem(BaseModel):
 
 # --- Rotas de Configuração de Comissões ---
 
-@router.get("/configuracoes", response_model=List[ComissaoConfig], dependencies=[Depends(requer_permissao("com:listar"))])
+@router.get("/configuracoes", response_model=List[ComissaoConfig], dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
 async def listar_configuracoes_comissoes():
     """Lista todas as configurações de comissão dos colaboradores"""
     query = """
@@ -67,7 +67,7 @@ async def listar_configuracoes_comissoes():
     return resultado if resultado else []
 
 
-@router.post("/configuracoes", response_model=ComissaoConfig, dependencies=[Depends(requer_permissao("com:criar"))])
+@router.post("/configuracoes", response_model=ComissaoConfig, dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
 async def criar_configuracao_comissao(config: ComissaoConfigCreate):
     """Cria ou atualiza a configuração de comissão para um colaborador"""
     # Verifica se já existe configuração para este colaborador
@@ -135,7 +135,7 @@ async def criar_configuracao_comissao(config: ComissaoConfigCreate):
     return resultado[0] if resultado else {}
 
 
-@router.put("/configuracoes/{config_id}", response_model=ComissaoConfig, dependencies=[Depends(requer_permissao("com:editar"))])
+@router.put("/configuracoes/{config_id}", response_model=ComissaoConfig, dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
 async def atualizar_configuracao_comissao(config_id: int, config: ComissaoConfigCreate):
     """Atualiza uma configuração de comissão existente"""
     query_update = """
@@ -180,7 +180,7 @@ async def atualizar_configuracao_comissao(config_id: int, config: ComissaoConfig
     return resultado[0]
 
 
-@router.delete("/configuracoes/{config_id}", dependencies=[Depends(requer_permissao("com:excluir"))])
+@router.delete("/configuracoes/{config_id}", dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
 async def deletar_configuracao_comissao(config_id: int):
     """Exclui uma configuração de comissão"""
     query = "DELETE FROM comissoes_config WHERE id = ?"

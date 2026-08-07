@@ -85,7 +85,13 @@ async def listar_permissoes(modulo: Optional[str] = None, ativo: bool = True):
     
     query += " ORDER BY modulo, codigo"
     
-    resultado = await executar_query("microuni", query, tuple(params))
+    resultado = await executar_query(
+        banco="microuni",
+        query=query,
+        params=tuple(params),
+        usuario="admin",
+        endpoint="/rbac/permissoes"
+    )
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -98,7 +104,7 @@ async def criar_permissao(permissao: PermissaoCreate):
     """Cria uma nova permissão"""
     # Verifica se código já existe
     check_query = "SELECT id FROM dbo.permissoes WHERE codigo = ?"
-    check_result = await executar_query("microuni", check_query, (permissao.codigo,))
+    check_result = await executar_query(banco="microuni", query=check_query, params=(permissao.codigo,), usuario="admin", endpoint="/rbac")
     
     if check_result and len(check_result) > 0:
         raise HTTPException(status_code=400, detail="Código de permissão já existe")
@@ -115,14 +121,14 @@ async def criar_permissao(permissao: PermissaoCreate):
         permissao.ativo
     )
     
-    resultado = await executar_query("microuni", insert_query, params)
+    resultado = await executar_query(banco="microuni", query=insert_query, params=params, usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     # Busca a permissão criada
     nova_query = "SELECT * FROM dbo.permissoes WHERE id = ?"
-    nova_permissao = await executar_query("microuni", nova_query, (int(resultado[0]["id"]),))
+    nova_permissao = await executar_query(banco="microuni", query=nova_query, params=(int(resultado[0]["id"]),), usuario="admin", endpoint="/rbac")
     
     return nova_permissao[0]
 
@@ -158,7 +164,7 @@ async def atualizar_permissao(permissao_id: int, permissao: PermissaoUpdate):
         FROM dbo.permissoes WHERE id = ?
     """
     
-    resultado = await executar_query("microuni", update_query, tuple(params + [permissao_id]))
+    resultado = await executar_query(banco="microuni", query=update_query, params=tuple(params + [permissao_id]), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -173,7 +179,7 @@ async def excluir_permissao(permissao_id: int):
     check_query = """
         SELECT COUNT(*) as total FROM dbo.cargo_permissoes WHERE permissao_id = ?
     """
-    check_result = await executar_query("microuni", check_query, (permissao_id,))
+    check_result = await executar_query(banco="microuni", query=check_query, params=(permissao_id,), usuario="admin", endpoint="/rbac")
     
     if check_result and check_result[0]["total"] > 0:
         raise HTTPException(
@@ -182,7 +188,7 @@ async def excluir_permissao(permissao_id: int):
         )
     
     delete_query = "DELETE FROM dbo.permissoes WHERE id = ?"
-    resultado = await executar_query("microuni", delete_query, (permissao_id,))
+    resultado = await executar_query(banco="microuni", query=delete_query, params=(permissao_id,), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -202,7 +208,7 @@ async def listar_cargos(ativo: bool = True, incluir_permissoes: bool = True):
         ORDER BY c.nome
     """
     
-    resultado = await executar_query("microuni", query, (ativo,))
+    resultado = await executar_query(banco="microuni", query=query, params=(ativo,), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -217,7 +223,7 @@ async def listar_cargos(ativo: bool = True, incluir_permissoes: bool = True):
                 WHERE cp.cargo_id = ? AND p.ativo = 1
                 ORDER BY p.modulo, p.codigo
             """
-            perms = await executar_query("microuni", perm_query, (cargo["id"],))
+            perms = await executar_query(banco="microuni", query=perm_query, params=(cargo["id"],), usuario="admin", endpoint="/rbac")
             cargo["permissoes"] = perms if perms and not (isinstance(perms, dict) and "erro" in perms) else []
     
     return resultado
@@ -230,7 +236,7 @@ async def obter_cargo(cargo_id: int):
         SELECT id, nome, descricao, ativo, criado_em, atualizado_em
         FROM dbo.cargos WHERE id = ?
     """
-    cargo_result = await executar_query("microuni", cargo_query, (cargo_id,))
+    cargo_result = await executar_query(banco="microuni", query=cargo_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
     
     if not cargo_result or len(cargo_result) == 0:
         raise HTTPException(status_code=404, detail="Cargo não encontrado")
@@ -248,7 +254,7 @@ async def obter_cargo(cargo_id: int):
         WHERE cp.cargo_id = ?
         ORDER BY p.modulo, p.codigo
     """
-    perms = await executar_query("microuni", perm_query, (cargo_id,))
+    perms = await executar_query(banco="microuni", query=perm_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
     cargo["permissoes"] = perms if perms and not (isinstance(perms, dict) and "erro" in perms) else []
     
     return cargo
@@ -259,7 +265,7 @@ async def criar_cargo(cargo: CargoCreate):
     """Cria um novo cargo"""
     # Verifica se nome já existe
     check_query = "SELECT id FROM dbo.cargos WHERE nome = ?"
-    check_result = await executar_query("microuni", check_query, (cargo.nome,))
+    check_result = await executar_query(banco="microuni", query=check_query, params=(cargo.nome,), usuario="admin", endpoint="/rbac")
     
     if check_result and len(check_result) > 0:
         raise HTTPException(status_code=400, detail="Nome do cargo já existe")
@@ -271,14 +277,14 @@ async def criar_cargo(cargo: CargoCreate):
     """
     params = (cargo.nome, cargo.descricao, cargo.ativo)
     
-    resultado = await executar_query("microuni", insert_query, params)
+    resultado = await executar_query(banco="microuni", query=insert_query, params=params, usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     # Busca o cargo criado
     novo_cargo_query = "SELECT * FROM dbo.cargos WHERE id = ?"
-    novo_cargo = await executar_query("microuni", novo_cargo_query, (int(resultado[0]["id"]),))
+    novo_cargo = await executar_query(banco="microuni", query=novo_cargo_query, params=(int(resultado[0]["id"]),), usuario="admin", endpoint="/rbac")
     
     cargo_response = novo_cargo[0]
     cargo_response["permissoes"] = []
@@ -308,7 +314,7 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
         params.append(cargo_id)
         
         update_query = f"UPDATE dbo.cargos SET {', '.join(updates)} WHERE id = ?"
-        resultado = await executar_query("microuni", update_query, tuple(params))
+        resultado = await executar_query(banco="microuni", query=update_query, params=tuple(params), usuario="admin", endpoint="/rbac")
         
         if isinstance(resultado, dict) and "erro" in resultado:
             raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -317,7 +323,7 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
     if cargo.permissoes_ids is not None:
         # Remove permissões existentes
         delete_query = "DELETE FROM dbo.cargo_permissoes WHERE cargo_id = ?"
-        await executar_query("microuni", delete_query, (cargo_id,))
+        await executar_query(banco="microuni", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
         
         # Insere novas permissões
         if cargo.permissoes_ids:
@@ -326,7 +332,7 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
                 VALUES (?, ?, GETDATE())
             """
             for perm_id in cargo.permissoes_ids:
-                await executar_query("microuni", insert_query, (cargo_id, perm_id))
+                await executar_query(banco="microuni", query=insert_query, params=(cargo_id, perm_id), usuario="admin", endpoint="/rbac")
     
     # Retorna cargo atualizado
     return await obter_cargo(cargo_id)
@@ -339,7 +345,7 @@ async def excluir_cargo(cargo_id: int):
     check_query = """
         SELECT COUNT(*) as total FROM dbo.API_USUARIOS WHERE cargo_id = ? AND ativo = 1
     """
-    check_result = await executar_query("microuni", check_query, (cargo_id,))
+    check_result = await executar_query(banco="microuni", query=check_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
     
     if check_result and check_result[0]["total"] > 0:
         raise HTTPException(
@@ -348,7 +354,7 @@ async def excluir_cargo(cargo_id: int):
         )
     
     delete_query = "DELETE FROM dbo.cargos WHERE id = ?"
-    resultado = await executar_query("microuni", delete_query, (cargo_id,))
+    resultado = await executar_query(banco="microuni", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -367,14 +373,14 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
         WHERE id = ?
     """
     
-    resultado = await executar_query("microuni", update_query, (dados.cargo_id, usuario_id))
+    resultado = await executar_query(banco="microuni", query=update_query, params=(dados.cargo_id, usuario_id), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     if not resultado or resultado == True:
         # Verifica se o usuário existe
-        user_check = await executar_query("microuni", "SELECT id FROM dbo.API_USUARIOS WHERE id = ?", (usuario_id,))
+        user_check = await executar_query(banco="microuni", query="SELECT id FROM dbo.API_USUARIOS WHERE id = ?", params=(usuario_id,), usuario="admin", endpoint="/rbac")
         if not user_check or len(user_check) == 0:
             raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
@@ -396,7 +402,7 @@ async def listar_permissoes_usuario(usuario_id: int):
         ORDER BY p.modulo, p.codigo
     """
     
-    resultado = await executar_query("microuni", query, (usuario_id,))
+    resultado = await executar_query(banco="microuni", query=query, params=(usuario_id,), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -416,7 +422,7 @@ async def verificar_permissao_usuario(usuario_id: int, permissao_codigo: str):
         WHERE u.id = ? AND p.codigo = ? AND p.ativo = 1 AND c.ativo = 1 AND u.ativo = 1
     """
     
-    resultado = await executar_query("microuni", query, (usuario_id, permissao_codigo))
+    resultado = await executar_query(banco="microuni", query=query, params=(usuario_id, permissao_codigo), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])

@@ -71,17 +71,15 @@ async def obter_permissoes_usuario(login: str) -> list:
         if nivel_acesso == 'ADMIN':
             return ["admin_total"]
         
-        # Query otimizada: Usa LEFT JOIN, filtra NULLs explicitamente e garante unicidade
-        # COALESCE garante que mesmo sem cargo, a query retorne uma linha válida
+        # Query corrigida: Mantém LEFT JOINs e move filtros de permissão para o ON
+        # Isso garante que usuários sem cargo ainda retornem uma linha (com permissões vazias)
         query = """
             SELECT DISTINCT LTRIM(RTRIM(p.codigo)) as codigo
             FROM dbo.API_USUARIOS u
             LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
             LEFT JOIN dbo.cargo_permissoes cp ON c.id = cp.cargo_id
-            LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1
+            LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1 AND p.codigo IS NOT NULL AND LTRIM(RTRIM(p.codigo)) <> ''
             WHERE u.login = ? AND u.ativo = 1
-              AND p.codigo IS NOT NULL
-              AND LTRIM(RTRIM(p.codigo)) <> ''
             ORDER BY p.codigo
         """
         
@@ -96,7 +94,7 @@ async def obter_permissoes_usuario(login: str) -> list:
         if not resultado or isinstance(resultado, dict):
             return []
         
-        # Filtra rigorosamente: apenas strings não vazias
+        # Filtra rigorosamente: apenas strings não vazias (segurança extra)
         permissoes = []
         for row in resultado:
             codigo = row.get('codigo')

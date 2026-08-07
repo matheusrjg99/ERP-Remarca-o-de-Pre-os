@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Search, Edit3, Trash2, MessageSquare, User, Calendar, ChevronUp, ChevronDown, ChevronsUpDown, ShieldCheck, XCircle, BarChart3 } from 'lucide-react';
 import ModalEdicao from "./ModalEdicao";
 import ModalContestacao from "./ModalContestacao";
+import { Can } from '../../components/Can';
 
 const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colaboradores }) => {
   const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -202,9 +203,15 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
                     
                     <td className="px-6 py-5 whitespace-nowrap text-right">
                       <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setSelecionado(reg)} className="p-2 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all" title="Contestar"><MessageSquare size={16}/></button>
-                        <button onClick={() => setEditando(reg)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" title="Editar"><Edit3 size={16}/></button>
-                        <button onClick={() => acaoExcluir(reg.id)} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Excluir"><Trash2 size={16}/></button>
+                        <Can permission="nc:contestar">
+                          <button onClick={() => setSelecionado(reg)} className="p-2 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all" title="Contestar"><MessageSquare size={16}/></button>
+                        </Can>
+                        <Can permission="nc:editar">
+                          <button onClick={() => setEditando(reg)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" title="Editar"><Edit3 size={16}/></button>
+                        </Can>
+                        <Can permission="nc:excluir">
+                          <button onClick={() => acaoExcluir(reg.id)} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Excluir"><Trash2 size={16}/></button>
+                        </Can>
                       </div>
                     </td>
                     

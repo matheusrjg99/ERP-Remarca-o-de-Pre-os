@@ -38,7 +38,7 @@ class Colaborador(ColaboradorBase):
 
 # --- Rotas ---
 
-@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("cadastros:colaboradores"))])
+@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("cadastros:colaboradores:visualizar"))])
 async def listar_colaboradores():
     """Lista todos os colaboradores cadastrados"""
     query = """
@@ -63,7 +63,7 @@ async def listar_colaboradores():
         raise HTTPException(status_code=500, detail=resultado["erro"])
     return resultado if resultado else []
 
-@router.post("", response_model=Colaborador, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_permissao("cadastros:colaboradores"))])
+@router.post("", response_model=Colaborador, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_permissao("cadastros:colaboradores:criar"))])
 async def criar_colaborador(colab: ColaboradorCreate):
     """Adiciona novo colaborador"""
     query_insert = """
@@ -104,7 +104,7 @@ async def criar_colaborador(colab: ColaboradorCreate):
     
     return resultado[0] if resultado else {}
 
-@router.put("/{colaborador_id}", response_model=Colaborador, dependencies=[Depends(requer_permissao("cadastros:colaboradores"))])
+@router.put("/{colaborador_id}", response_model=Colaborador, dependencies=[Depends(requer_permissao("cadastros:colaboradores:editar"))])
 async def atualizar_colaborador(colaborador_id: int, colab: ColaboradorUpdate):
     """Atualiza dados de um colaborador existente"""
     # Constrói a query dinamicamente baseada nos campos fornecidos
@@ -161,7 +161,7 @@ async def atualizar_colaborador(colaborador_id: int, colab: ColaboradorUpdate):
     
     return resultado[0] if resultado else {}
 
-@router.delete("/{colaborador_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(requer_permissao("cadastros:colaboradores"))])
+@router.delete("/{colaborador_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(requer_permissao("cadastros:colaboradores:excluir"))])
 async def excluir_colaborador(colaborador_id: int):
     """Exclui (desativa) um colaborador"""
     query = "UPDATE colaboradores SET ativo = 0, atualizado_em = GETDATE() WHERE id = ?"

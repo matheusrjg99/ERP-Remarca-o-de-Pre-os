@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Save, User, FileText, Calendar } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 export default function NovoRegistro({ aoSalvar, colaboradores }) {
   const [colaborador_id, setColaboradorId] = useState('');
@@ -67,23 +68,25 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Colaborador */}
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
-                <User size={14} /> Colaborador
-              </label>
-              <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
-                <select 
-                  className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none cursor-pointer appearance-none"
-                  value={colaborador_id}
-                  onChange={e => setColaboradorId(e.target.value)}
-                >
-                  <option value="" className="bg-[#0f0f11]">Selecione...</option>
-                  {colaboradores.map(c => (
-                    <option key={c.id} value={c.id} className="bg-[#0f0f11]">{tratarNome(c.nome)}</option>
-                  ))}
-                </select>
+            <Can permission="cadastros:colaboradores:visualizar">
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
+                  <User size={14} /> Colaborador
+                </label>
+                <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
+                  <select 
+                    className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none cursor-pointer appearance-none"
+                    value={colaborador_id}
+                    onChange={e => setColaboradorId(e.target.value)}
+                  >
+                    <option value="" className="bg-[#0f0f11]">Selecione...</option>
+                    {colaboradores.map(c => (
+                      <option key={c.id} value={c.id} className="bg-[#0f0f11]">{tratarNome(c.nome)}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            </Can>
 
             {/* DATA DE OCORRÊNCIA */}
             <div className="flex flex-col gap-2">

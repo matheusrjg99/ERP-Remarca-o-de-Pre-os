@@ -2,7 +2,7 @@
 Rotas de Contestações
 Gerencia mensagens e contestações de Não Conformidades
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
@@ -12,6 +12,7 @@ import os
 # Adiciona o path do backend para importar database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
+from security import requer_permissao
 
 router = APIRouter(prefix="/contestacoes", tags=["Contestações"])
 
@@ -31,7 +32,7 @@ class NCContestacao(NCContestacaoBase):
 
 # --- Rotas ---
 
-@router.get("/{nc_id}", response_model=List[NCContestacao])
+@router.get("/{nc_id}", response_model=List[NCContestacao], dependencies=[Depends(requer_permissao("nc:visualizar"))])
 async def listar_contestacoes(nc_id: int):
     """Lista todas as mensagens de uma NC específica"""
     query = """
@@ -53,7 +54,7 @@ async def listar_contestacoes(nc_id: int):
     
     return resultado if resultado else []
 
-@router.post("", response_model=NCContestacao, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=NCContestacao, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_permissao("nc:contestar"))])
 async def adicionar_contestacao(contestacao: NCContestacaoCreate):
     """Adiciona mensagem ao chat da NC"""
     query_insert = """

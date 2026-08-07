@@ -14,6 +14,10 @@ export default function Login({ onLoginSuccess }) {
       localStorage.setItem('usuario', data.usuario);
       // 🚀 AQUI: Salvamos o nível que vem da sua API
       localStorage.setItem('nivel_acesso', data.nivel_acesso); 
+      // 🔐 SALVAR PERMISSÕES DO USUÁRIO (RBAC)
+      if (data.permissions && Array.isArray(data.permissions)) {
+        localStorage.setItem('permissoes', JSON.stringify(data.permissions));
+      }
       
       onLoginSuccess();
     } catch {

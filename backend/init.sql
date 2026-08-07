@@ -221,3 +221,201 @@ CREATE INDEX IX_COMISSOES_CONFIG_Colaborador ON dbo.comissoes_config(colaborador
 GO
 
 PRINT 'Tabela comissoes_config criada com sucesso!';
+
+-- ============================================================
+-- 5. TABELAS: Sistema RBAC (Role-Based Access Control)
+-- Descrição: Controle de acesso granular por permissões e cargos
+-- ============================================================
+
+-- 5.1 TABELA: permissoes
+-- Descrição: Catálogo de todas as permissões disponíveis no sistema
+IF OBJECT_ID('dbo.permissoes', 'U') IS NOT NULL
+    DROP TABLE dbo.permissoes;
+GO
+
+CREATE TABLE dbo.permissoes (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    codigo NVARCHAR(100) NOT NULL UNIQUE,      -- Ex: 'nc:criar', 'nc:editar', 'precificacao:visualizar'
+    descricao NVARCHAR(255) NOT NULL,          -- Ex: 'Criar não conformidade'
+    modulo NVARCHAR(50) NOT NULL,              -- Ex: 'nao_conformidades', 'precificacao', 'cadastros', 'admin'
+    ativo BIT NOT NULL DEFAULT 1,
+    criado_em DATETIME NOT NULL DEFAULT GETDATE()
+);
+GO
+
+CREATE INDEX IX_Permissoes_Modulo ON dbo.permissoes(modulo);
+CREATE INDEX IX_Permissoes_Codigo ON dbo.permissoes(codigo);
+GO
+
+-- 5.2 TABELA: cargos
+-- Descrição: Cargos/funções que podem ser atribuídos aos usuários
+IF OBJECT_ID('dbo.cargos', 'U') IS NOT NULL
+    DROP TABLE dbo.cargos;
+GO
+
+CREATE TABLE dbo.cargos (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    nome NVARCHAR(100) NOT NULL UNIQUE,        -- Ex: 'Administrador', 'Gestor', 'Operador'
+    descricao NVARCHAR(255) NULL,
+    ativo BIT NOT NULL DEFAULT 1,
+    criado_em DATETIME NOT NULL DEFAULT GETDATE(),
+    atualizado_em DATETIME NULL
+);
+GO
+
+CREATE INDEX IX_Cargos_Nome ON dbo.cargos(nome);
+CREATE INDEX IX_Cargos_Ativo ON dbo.cargos(ativo);
+GO
+
+-- 5.3 TABELA: cargo_permissoes (Associativa)
+-- Descrição: Relaciona cargos com suas permissões
+IF OBJECT_ID('dbo.cargo_permissoes', 'U') IS NOT NULL
+    DROP TABLE dbo.cargo_permissoes;
+GO
+
+CREATE TABLE dbo.cargo_permissoes (
+    cargo_id INT NOT NULL,
+    permissao_id INT NOT NULL,
+    criado_em DATETIME NOT NULL DEFAULT GETDATE(),
+
+    -- Chaves estrangeiras
+    CONSTRAINT FK_CARGO_PERM_Cargo FOREIGN KEY (cargo_id)
+        REFERENCES dbo.cargos(id) ON DELETE CASCADE,
+    CONSTRAINT FK_CARGO_PERM_Permissao FOREIGN KEY (permissao_id)
+        REFERENCES dbo.permissoes(id) ON DELETE CASCADE,
+    
+    -- Chave primária composta
+    CONSTRAINT PK_CARGO_PERM PRIMARY KEY (cargo_id, permissao_id)
+);
+GO
+
+CREATE INDEX IX_CARGO_PERM_Cargo ON dbo.cargo_permissoes(cargo_id);
+CREATE INDEX IX_CARGO_PERM_Permissao ON dbo.cargo_permissoes(permissao_id);
+GO
+
+-- 5.4 ALTERAÇÃO: Tabela API_USUARIOS
+-- Adiciona coluna cargo_id para vincular usuário ao cargo
+IF COL_LENGTH('dbo.API_USUARIOS', 'cargo_id') IS NULL
+BEGIN
+    ALTER TABLE dbo.API_USUARIOS ADD cargo_id INT NULL;
+    PRINT 'Coluna ''cargo_id'' adicionada à tabela API_USUARIOS.';
+
+    -- Adiciona constraint de chave estrangeira
+    IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_USUARIOS_Cargo')
+    BEGIN
+        ALTER TABLE dbo.API_USUARIOS
+        ADD CONSTRAINT FK_USUARIOS_Cargo
+        FOREIGN KEY (cargo_id) REFERENCES dbo.cargos(id) ON DELETE SET NULL;
+        PRINT 'Constraint FK_USUARIOS_Cargo criada com sucesso.';
+    END
+
+    CREATE INDEX IX_USUARIOS_Cargo ON dbo.API_USUARIOS(cargo_id);
+    PRINT 'Índice em cargo_id criado com sucesso.';
+END
+ELSE
+BEGIN
+    PRINT 'Coluna ''cargo_id'' já existe na tabela API_USUARIOS.';
+END
+GO
+
+-- ============================================================
+-- 6. SEED: Dados iniciais do sistema RBAC
+-- ============================================================
+
+-- 6.1 Inserir permissões padrão
+PRINT 'Inserindo permissões padrão...';
+
+INSERT INTO dbo.permissoes (codigo, descricao, modulo) VALUES
+-- Módulo Não Conformidades
+('nc:criar', 'Criar novas não conformidades', 'nao_conformidades'),
+('nc:visualizar', 'Visualizar lista de não conformidades', 'nao_conformidades'),
+('nc:editar', 'Editar não conformidades (apenas descrição)', 'nao_conformidades'),
+('nc:excluir', 'Excluir não conformidades', 'nao_conformidades'),
+('nc:contestar', 'Contestar não conformidades', 'nao_conformidades'),
+('nc:auditoria', 'Realizar auditoria e definir veredito', 'nao_conformidades'),
+('nc:relatorios', 'Acessar relatórios de não conformidades', 'nao_conformidades'),
+
+-- Módulo Precificação
+('precificacao:visualizar', 'Visualizar tela de precificação', 'precificacao'),
+('precificacao:alterar_preco', 'Alterar preço de venda', 'precificacao'),
+('precificacao:alterar_custo', 'Alterar custo do produto', 'precificacao'),
+('precificacao:alterar_markup', 'Alterar markup do produto', 'precificacao'),
+('precificacao:remarcacao', 'Executar remarcação de preços em lote', 'precificacao'),
+
+-- Módulo Cadastros
+('cadastros:colaboradores', 'Gerenciar colaboradores (CRUD completo)', 'cadastros'),
+('cadastros:comissoes', 'Configurar comissões de colaboradores', 'cadastros'),
+
+-- Módulo Admin
+('admin:usuarios', 'Gerenciar usuários do sistema', 'admin'),
+('admin:cargos', 'Gerenciar cargos e permissões', 'admin'),
+('admin:configuracoes', 'Acessar configurações do sistema', 'admin');
+
+PRINT 'Permissões inseridas com sucesso!';
+
+-- 6.2 Inserir cargos padrão
+PRINT 'Inserindo cargos padrão...';
+
+INSERT INTO dbo.cargos (nome, descricao) VALUES
+('Administrador', 'Acesso total a todas as funcionalidades do sistema'),
+('Gestor', 'Acesso gerencial com permissão para auditoria e relatórios'),
+('Operador', 'Acesso operacional básico para criação e visualização'),
+('Colaborador', 'Acesso restrito apenas para visualização e contestação de NCs');
+
+PRINT 'Cargos inseridos com sucesso!';
+
+-- 6.3 Atribuir permissões aos cargos
+PRINT 'Atribuindo permissões aos cargos...';
+
+-- Administrador: TODAS as permissões
+DECLARE @AdminId INT = (SELECT id FROM cargos WHERE nome = 'Administrador');
+INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
+SELECT @AdminId, id FROM dbo.permissoes;
+
+-- Gestor: Permissões gerenciais
+DECLARE @GestorId INT = (SELECT id FROM cargos WHERE nome = 'Gestor');
+INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
+SELECT @GestorId, id FROM dbo.permissoes 
+WHERE codigo IN (
+    'nc:visualizar', 'nc:auditoria', 'nc:relatorios',
+    'precificacao:visualizar', 'precificacao:alterar_preco', 'precificacao:alterar_custo', 'precificacao:alterar_markup', 'precificacao:remarcacao',
+    'cadastros:colaboradores', 'cadastros:comissoes',
+    'admin:configuracoes'
+);
+
+-- Operador: Permissões operacionais
+DECLARE @OperadorId INT = (SELECT id FROM cargos WHERE nome = 'Operador');
+INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
+SELECT @OperadorId, id FROM dbo.permissoes 
+WHERE codigo IN (
+    'nc:criar', 'nc:visualizar', 'nc:editar', 'nc:contestar',
+    'precificacao:visualizar', 'precificacao:alterar_preco', 'precificacao:alterar_custo', 'precificacao:alterar_markup',
+    'cadastros:colaboradores'
+);
+
+-- Colaborador: Apenas visualização e contestação
+DECLARE @ColaboradorId INT = (SELECT id FROM cargos WHERE nome = 'Colaborador');
+INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
+SELECT @ColaboradorId, id FROM dbo.permissoes 
+WHERE codigo IN (
+    'nc:visualizar', 'nc:contestar'
+);
+
+PRINT 'Permissões atribuídas aos cargos com sucesso!';
+
+PRINT '============================================================';
+PRINT 'SISTEMA RBAC CRIADO COM SUCESSO!';
+PRINT '============================================================';
+PRINT 'Tabelas criadas:';
+PRINT '  - dbo.permissoes';
+PRINT '  - dbo.cargos';
+PRINT '  - dbo.cargo_permissoes';
+PRINT '  - API_USUARIOS.cargo_id (coluna adicionada)';
+PRINT '';
+PRINT 'Dados seed inseridos:';
+PRINT '  - 20 permissões distribuídas em 4 módulos';
+PRINT '  - 4 cargos pré-definidos';
+PRINT '  - Matriz de permissões configurada';
+PRINT '';
+PRINT 'Próximo passo: Implementar backend Python para gestão de RBAC';
+PRINT '============================================================';

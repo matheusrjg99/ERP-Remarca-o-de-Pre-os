@@ -85,12 +85,13 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
               </div>
             </div>
 
-            {/* DATA RETROATIVA */}
+            {/* DATA DE OCORRÊNCIA */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
-                  <Calendar size={14} /> Data (Opcional)
+                  <Calendar size={14} /> Data da Ocorrência
                 </label>
+                <span className="text-[9px] text-zinc-500 font-bold">Opcional (usa data atual se vazio)</span>
               </div>
               <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
                 <input 
@@ -98,7 +99,7 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
                   className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none css-invert-calendar opacity-90 focus:opacity-100 transition-opacity"
                   value={dataOcorrencia}
                   onChange={e => setDataOcorrencia(e.target.value)}
-                  title="Deixe em branco para usar a data atual"
+                  max={new Date().toISOString().split('T')[0]}
                 />
               </div>
             </div>

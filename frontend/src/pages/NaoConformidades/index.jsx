@@ -30,7 +30,7 @@ export default function NaoConformidades() {
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
 
   const buscarRegistros = () => {
-    axios.get(`${API_URL}/nao-conformidades`, config)
+    axios.get(`${API_URL}/nao-conformidades?mes=${mes}&ano=${ano}`, config)
          .then(res => setRegistros(Array.isArray(res.data) ? res.data : []))
          .catch(() => setRegistros([]));
   };

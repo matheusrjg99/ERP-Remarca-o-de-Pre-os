@@ -15,6 +15,7 @@ from fastapi import APIRouter
 # ==========================================
 from .core.auth import router as auth_router
 from .core.auth import router_compat as auth_compat_router
+from .core.rbac import router as rbac_router
 
 # ==========================================
 # BUSINESS - Regras de Negócio
@@ -48,6 +49,7 @@ router.include_router(auth_compat_router)
 
 # Inclusão das rotas do CORE
 router.include_router(auth_router)
+router.include_router(rbac_router)
 
 # Inclusão das rotas de BUSINESS
 router.include_router(users_router)

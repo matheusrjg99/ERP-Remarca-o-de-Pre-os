@@ -23,9 +23,7 @@ class Sql:
             )
             # MUDANÇA 2: Usamos await e passamos a string no parâmetro dsn
             return await aioodbc.connect(dsn=conn_str)
-        except Exception as e:
-            # Mantive o print apenas para erros graves de conexão
-            print(f"Erro de conexão com o banco {self.banco_dados}: {e}")
+        except Exception:
             return None
 
 # MUDANÇA 3: A função inteira vira async
@@ -111,7 +109,6 @@ async def executar_query(
     except Exception as e:
         # MUDANÇA 9: Aguardar o rollback
         await conn.rollback()
-        print(f"Erro na operação do banco: {e}")
         return {"erro": str(e)}
     finally:
         # MUDANÇA 10: Aguardar o fechamento das portas

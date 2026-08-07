@@ -1,14 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import LogoSophon from '../../components/LogoSophon';
 import UserAvatar from '../../components/UserAvatar';
 import { useNavigate } from 'react-router-dom';
 
 export default function AppSelector({ onSelectRemarcacao, onLogout }) {
-  const usuarioLogado = localStorage.getItem('usuario') || 'Usuário';
-  
-  // 1. INICIALIZAMOS O NAVIGATE AQUI
   const navigate = useNavigate(); 
+  const usuarioLogado = localStorage.getItem('usuario') || 'Usuário';
+  const [userPermissions, setUserPermissions] = useState([]);
 
+  useEffect(() => {
+    // Carregar permissões do usuário ao montar o componente
+    const carregarPermissoes = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const permsStr = localStorage.getItem('permissoes');
+        console.log('📥 AppSelector: Lendo permissões do localStorage:', permsStr);
+        if (permsStr) {
+          let perms = JSON.parse(permsStr);
+          console.log('📦 Permissões parseadas:', perms);
+          // Normaliza para array de strings no formato "modulo.permissao"
+          if (Array.isArray(perms)) {
+            const normalized = perms.map(p => {
+              if (typeof p === 'string') return p;
+              if (p.codigo) return p.codigo;
+              if (p.modulo && p.nome) return `${p.modulo}.${p.nome}`;
+              return '';
+            }).filter(Boolean);
+            console.log('✅ Permissões normalizadas:', normalized);
+            setUserPermissions(normalized);
+          } else {
+            console.warn('⚠️ Permissões não são um array:', perms);
+          }
+        } else {
+          console.warn('⚠️ Nenhuma permissão encontrada no localStorage');
+        }
+      } catch (err) {
+        console.error('❌ Erro ao carregar permissões:', err);
+      }
+    };
+    carregarPermissoes();
+  }, []);
+  
   const apps = [
     {
       id: 'remarcacao',
@@ -36,7 +68,6 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
       icone: (
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.7)]"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
       ),
-      // 2. MUDAMOS A AÇÃO DE WINDOW.OPEN PARA UMA NAVEGAÇÃO INTERNA
       acao: () => navigate('/nao-conformidades'),
       borderColorHover: "group-hover:border-amber-500/50",
       glowColor: "bg-amber-500"
@@ -52,7 +83,12 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
 
       {/* NAVBAR - Minimalista e Alinhada à Direita */}
       <nav className="absolute top-0 right-0 z-20 flex items-center justify-end px-10 py-8">
-        <UserAvatar usuarioLogado={usuarioLogado} onLogout={onLogout} showName={true} />
+        <UserAvatar 
+          usuarioLogado={usuarioLogado} 
+          onLogout={onLogout} 
+          showName={true} 
+          userPermissions={userPermissions}
+        />
       </nav>
 
       {/* MAIN - Centralizado */}

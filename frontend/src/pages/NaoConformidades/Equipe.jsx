@@ -1,16 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, UserPlus, Users } from 'lucide-react';
+import { Trash2, UserPlus, Users, Edit3, Save, UserCheck } from 'lucide-react';
 
 export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoNome, setNovoNome] = useState("");
   const [novoCargo, setNovoCargo] = useState("");
   const [novoDepartamento, setNovoDepartamento] = useState("");
+  const [novoUsuarioId, setNovoUsuarioId] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const [editandoId, setEditandoId] = useState(null);
+  const [formEdicao, setFormEdicao] = useState({ nome: "", cargo: "", departamento: "", usuario_id: null });
+  const [usuariosSistema, setUsuariosSistema] = useState([]);
+  
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  
+  // Busca usuários do sistema ao montar o componente
+  useEffect(() => {
+    const buscarUsuarios = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/auth/usuarios`, config);
+        if (Array.isArray(response.data)) {
+          setUsuariosSistema(response.data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar usuários:", err);
+      }
+    };
+    buscarUsuarios();
+  }, []);
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -24,12 +43,14 @@ export default function Equipe({ colaboradores, buscarColabs }) {
     axios.post(`${API_URL}/colaboradores`, { 
       nome: novoNome, 
       cargo: novoCargo || null, 
-      departamento: novoDepartamento || null 
+      departamento: novoDepartamento || null,
+      usuario_id: novoUsuarioId ? parseInt(novoUsuarioId) : null
     }, config)
       .then(() => {
         setNovoNome("");
         setNovoCargo("");
         setNovoDepartamento("");
+        setNovoUsuarioId("");
         buscarColabs();
       })
       .catch(err => {
@@ -37,6 +58,51 @@ export default function Equipe({ colaboradores, buscarColabs }) {
         alert("Falha ao adicionar Colaborador.");
       })
       .finally(() => setLoading(false));
+  };
+
+  const iniciarEdicao = (colab) => {
+    setEditandoId(colab.id);
+    setFormEdicao({
+      nome: colab.nome,
+      cargo: colab.cargo || "",
+      departamento: colab.departamento || "",
+      usuario_id: colab.usuario_id || null
+    });
+  };
+
+  const salvarEdicao = () => {
+    if (!formEdicao.nome.trim()) return;
+    setLoading(true);
+    
+    axios.put(`${API_URL}/colaboradores/${editandoId}`, formEdicao, config)
+      .then(() => {
+        setEditandoId(null);
+        setFormEdicao({ nome: "", cargo: "", departamento: "", usuario_id: null });
+        buscarColabs();
+      })
+      .catch(err => {
+        console.error("Erro ao editar:", err);
+        alert("Falha ao editar colaborador.");
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setFormEdicao({ nome: "", cargo: "", departamento: "", usuario_id: null });
+  };
+
+  const excluir = (id, nome) => {
+    if (window.confirm(`Tem certeza que deseja excluir "${nome}"?`)) {
+      setLoading(true);
+      axios.delete(`${API_URL}/colaboradores/${id}`, config)
+        .then(() => buscarColabs())
+        .catch(err => {
+          console.error("Erro ao excluir:", err);
+          alert("Falha ao excluir colaborador.");
+        })
+        .finally(() => setLoading(false));
+    }
   };
 
   return (
@@ -87,6 +153,16 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                 value={novoDepartamento}
                 onChange={e => setNovoDepartamento(e.target.value)}
               />
+              <select 
+                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl appearance-none cursor-pointer [&>option]:text-black"
+                value={novoUsuarioId}
+                onChange={e => setNovoUsuarioId(e.target.value)}
+              >
+                <option value="">Vincular usuário do sistema (opcional)</option>
+                {usuariosSistema.map(u => (
+                  <option key={u.id} value={u.id}>{u.nome || u.username}</option>
+                ))}
+              </select>
               <button 
                 onClick={adicionar} 
                 disabled={!novoNome.trim() || loading}
@@ -110,20 +186,95 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                 </div>
               ) : (
                 colaboradores.map(c => (
-                  <div 
-                    key={c.id} 
-                    className="flex flex-col gap-1 bg-white/[0.02] border border-white/5 p-4 rounded-2xl group hover:border-[#3B8ED0]/30 transition-all border-l-4 border-l-transparent hover:border-l-[#3B8ED0]"
-                  >
-                    <span className="font-black text-sm text-white uppercase tracking-tight">
-                      {tratarNome(c.nome)}
-                    </span>
-                    {c.cargo && (
-                      <span className="text-[10px] text-zinc-500 font-medium">{c.cargo}</span>
-                    )}
-                    {c.departamento && (
-                      <span className="text-[10px] text-zinc-500 font-medium">{c.departamento}</span>
-                    )}
-                  </div>
+                  editandoId === c.id ? (
+                    // MODO EDIÇÃO
+                    <div 
+                      key={c.id} 
+                      className="flex flex-col gap-2 bg-[#161618] border border-[#3B8ED0]/30 p-4 rounded-2xl"
+                    >
+                      <input 
+                        className="bg-[#0f0f11] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3B8ED0]"
+                        value={formEdicao.nome}
+                        onChange={e => setFormEdicao({...formEdicao, nome: e.target.value})}
+                        placeholder="Nome"
+                      />
+                      <input 
+                        className="bg-[#0f0f11] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3B8ED0]"
+                        value={formEdicao.cargo}
+                        onChange={e => setFormEdicao({...formEdicao, cargo: e.target.value})}
+                        placeholder="Cargo"
+                      />
+                      <input 
+                        className="bg-[#0f0f11] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3B8ED0]"
+                        value={formEdicao.departamento}
+                        onChange={e => setFormEdicao({...formEdicao, departamento: e.target.value})}
+                        placeholder="Departamento"
+                      />
+                      <select 
+                        className="bg-[#0f0f11] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3B8ED0] appearance-none cursor-pointer [&>option]:text-black"
+                        value={formEdicao.usuario_id || ""}
+                        onChange={e => setFormEdicao({...formEdicao, usuario_id: e.target.value ? parseInt(e.target.value) : null})}
+                      >
+                        <option value="">Vincular usuário do sistema (opcional)</option>
+                        {usuariosSistema.map(u => (
+                          <option key={u.id} value={u.id}>{u.nome || u.username}</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2 mt-2">
+                        <button 
+                          onClick={salvarEdicao}
+                          disabled={loading}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                        >
+                          <Save size={14} /> Salvar
+                        </button>
+                        <button 
+                          onClick={cancelarEdicao}
+                          className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-2 rounded-lg text-xs font-black uppercase tracking-widest"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // MODO VISUALIZAÇÃO
+                    <div 
+                      key={c.id} 
+                      className="flex flex-col gap-1 bg-white/[0.02] border border-white/5 p-4 rounded-2xl group hover:border-[#3B8ED0]/30 transition-all border-l-4 border-l-transparent hover:border-l-[#3B8ED0] relative"
+                    >
+                      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => iniciarEdicao(c)}
+                          className="p-1.5 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all"
+                          title="Editar"
+                        >
+                          <Edit3 size={14}/>
+                        </button>
+                        <button 
+                          onClick={() => excluir(c.id, c.nome)}
+                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      </div>
+                      <span className="font-black text-sm text-white uppercase tracking-tight pr-16">
+                        {tratarNome(c.nome)}
+                      </span>
+                      {c.cargo && (
+                        <span className="text-[10px] text-zinc-500 font-medium">{c.cargo}</span>
+                      )}
+                      {c.departamento && (
+                        <span className="text-[10px] text-zinc-500 font-medium">{c.departamento}</span>
+                      )}
+                      {c.usuario_id && (
+                        <div className="flex items-center gap-1 mt-1 text-[10px] text-[#3B8ED0] font-medium">
+                          <UserCheck size={12} />
+                          <span>Usuário vinculado</span>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ))
               )}
             </div>

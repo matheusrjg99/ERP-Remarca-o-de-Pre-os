@@ -14,8 +14,7 @@ def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
     """Compara a senha digitada com o hash salvo no banco."""
     try:
         return pwd_context.verify(senha_plana, senha_hash)
-    except Exception as e:
-        print(f"Erro na verificação: {e}")
+    except Exception:
         return False
 
 def gerar_hash_senha(senha: str) -> str:
@@ -30,3 +29,39 @@ def criar_token_acesso(dados: dict) -> str:
     
     token_codificado = jwt.encode(dados_token, SECRET_KEY, algorithm=ALGORITHM)
     return token_codificado
+
+async def obter_permissoes_usuario(login: str) -> list:
+    """
+    Busca as permissões do usuário no banco de dados baseado no seu cargo.
+    Retorna lista de códigos de permissão (ex: ['nc_criar', 'nc_listar', ...]).
+    """
+    from database import executar_query
+    
+    # Se for admin/sistema, retorna todas as permissões
+    if login.upper() == "SISTEMA":
+        return ["admin_total"]
+    
+    query = """
+        SELECT DISTINCT p.codigo
+        FROM API_USUARIOS u
+        INNER JOIN cargos c ON u.cargo_id = c.id
+        INNER JOIN cargo_permissoes cp ON c.id = cp.cargo_id
+        INNER JOIN permissoes p ON cp.permissao_id = p.id
+        WHERE u.login = ? AND u.ativo = 1
+    """
+    
+    try:
+        resultado = await executar_query(
+            banco="Bddemo",
+            query=query,
+            params=(login,),
+            usuario="SISTEMA",
+            endpoint="/auth/permissoes"
+        )
+        
+        if not resultado or isinstance(resultado, dict):
+            return []
+        
+        return [row['codigo'] for row in resultado]
+    except Exception:
+        return []

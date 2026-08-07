@@ -26,7 +26,9 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    aoSalvar(form); 
+    // Envia apenas a descrição, status é gerenciado pelo fluxo de auditoria
+    const dadosParaSalvar = { descricao: form.descricao };
+    aoSalvar(dadosParaSalvar); 
   };
 
   return (
@@ -84,23 +86,19 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
             </div>
           </div>
 
-          {/* STATUS */}
+          {/* STATUS (SOMENTE LEITURA) */}
           <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
-              Status
+            <label className="flex items-center gap-2 text-[10px] text-zinc-500 font-black uppercase tracking-widest">
+              Status (somente leitura)
             </label>
-            <div className="bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-1">
-              <select 
-                className="w-full bg-transparent p-3 text-sm font-medium text-white outline-none cursor-pointer appearance-none"
-                value={form.status}
-                onChange={e => setForm({ ...form, status: e.target.value })}
-              >
-                <option value="Pendente" className="bg-[#0f0f11]">Pendente</option>
-                <option value="Contestada" className="bg-[#0f0f11]">Contestada</option>
-                <option value="Resolvida" className="bg-[#0f0f11]">Resolvida</option>
-                <option value="Aceita" className="bg-[#0f0f11]">Aceita</option>
-              </select>
+            <div className="bg-[#161618] rounded-2xl border border-white/10 p-3 opacity-60 cursor-not-allowed">
+              <span className="text-sm font-medium text-zinc-400">
+                {form.status}
+              </span>
             </div>
+            <p className="text-[9px] text-zinc-600 font-bold mt-1">
+              * O status só pode ser alterado através do fluxo de contestação/auditoria
+            </p>
           </div>
 
         </div>

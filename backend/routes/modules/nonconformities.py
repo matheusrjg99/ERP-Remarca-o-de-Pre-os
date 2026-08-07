@@ -41,7 +41,7 @@ class NaoConformidade(NaoConformidadeBase):
 # --- Rotas ---
 
 @router.get("", response_model=List[NaoConformidade])
-async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str] = None):
+async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str] = None, mes: Optional[int] = None, ano: Optional[int] = None):
     """Lista NCs com dados do colaborador (JOIN)"""
     query = """
         SELECT 
@@ -61,6 +61,17 @@ async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str]
     if status:
         query += " AND nc.status = ?"
         params.append(status)
+    
+    # Filtro por mês e ano
+    if mes and ano:
+        query += " AND MONTH(nc.data_ocorrencia) = ? AND YEAR(nc.data_ocorrencia) = ?"
+        params.extend([mes, ano])
+    elif mes:
+        query += " AND MONTH(nc.data_ocorrencia) = ?"
+        params.append(mes)
+    elif ano:
+        query += " AND YEAR(nc.data_ocorrencia) = ?"
+        params.append(ano)
 
     query += " ORDER BY nc.data_ocorrencia DESC"
 

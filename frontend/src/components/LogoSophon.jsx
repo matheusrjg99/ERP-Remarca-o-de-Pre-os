@@ -6,7 +6,7 @@ import React from 'react';
  * @param {string} className - Classes CSS adicionais.
  * @param {string|number} width - Largura do logo (padrão: 300).
  */
-const LogoSophon = ({ className = '', width = '600', height = 'auto' }) => {
+const LogoSophon = ({ className = '', width = '600', height = '315' }) => {
   return (
     <svg 
       className={`logo-sophon ${className}`}

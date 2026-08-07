@@ -7,6 +7,8 @@ export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoCargo, setNovoCargo] = useState("");
   const [novoDepartamento, setNovoDepartamento] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
+  const [formEdicao, setFormEdicao] = useState({ nome: "", cargo: "", departamento: "" });
 
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };

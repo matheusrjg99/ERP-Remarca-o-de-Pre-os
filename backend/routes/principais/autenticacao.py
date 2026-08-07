@@ -21,7 +21,7 @@ async def login(dados: LoginData):
     """
     query = "SELECT login, senha_hash, nivel_acesso FROM API_USUARIOS WHERE login = ? AND ativo = 1"
     resultado = await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=(dados.login,), 
         usuario="SISTEMA", 

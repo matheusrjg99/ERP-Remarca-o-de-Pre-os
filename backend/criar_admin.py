@@ -14,7 +14,7 @@ def setup_admin():
     print("Iniciando criação do usuário Administrador...")
     
     sucesso = executar_query(
-        banco="Bdenter", # Banco central de usuários
+        banco="Bddemo", # Banco de demonstração
         query=query,
         params=(login_admin, hash_seguro, "Administrador Sistema"),
         usuario="SETUP",

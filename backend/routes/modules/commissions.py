@@ -201,7 +201,7 @@ async def deletar_configuracao_comissao(config_id: int):
 
 # --- Rotas de Relatório de Comissões ---
 
-@router.get("/relatorio", response_model=List[ComissaoRelatorioItem])
+@router.get("/relatorio", response_model=List[ComissaoRelatorioItem], dependencies=[Depends(requer_permissao("comissoes:ver"))])
 async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int] = None):
     """Gera relatório de comissões com base nas NCs do período
     

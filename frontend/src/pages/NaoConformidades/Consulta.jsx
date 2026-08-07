@@ -59,9 +59,13 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
   };
 
   const acaoExcluir = (id) => {
-    const senha = prompt("SENHA DE ADMIN PARA EXCLUIR:");
-    if (senha === "66197700") {
-      axios.delete(`${API_URL}/nao-conformidades/${id}`, config).then(() => buscarRegistros());
+    if (window.confirm("Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.")) {
+      axios.delete(`${API_URL}/nao-conformidades/${id}`, config)
+        .then(() => buscarRegistros())
+        .catch(err => {
+          console.error("Erro ao excluir:", err);
+          alert("Falha ao excluir registro.");
+        });
     }
   };
 

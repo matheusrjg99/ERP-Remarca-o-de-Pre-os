@@ -59,3 +59,23 @@ async def login_compat(dados: LoginData):
     Mantido para suportar frontends que ainda usam a rota antiga.
     """
     return await login(dados)
+
+@router.get("/usuarios")
+async def listar_usuarios_sistema():
+    """
+    Lista todos usuários do sistema para vinculação com colaboradores.
+    Endpoint: /auth/usuarios
+    """
+    query = "SELECT id, login as username, nome FROM API_USUARIOS WHERE ativo = 1 ORDER BY nome"
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query,
+        params=(),
+        usuario="SISTEMA",
+        endpoint="/auth/usuarios"
+    )
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    return resultado if resultado else []

@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, UserPlus, Users, Edit3, Save } from 'lucide-react';
+import { Trash2, UserPlus, Users, Edit3, Save, UserCheck } from 'lucide-react';
 
 export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoNome, setNovoNome] = useState("");
   const [novoCargo, setNovoCargo] = useState("");
   const [novoDepartamento, setNovoDepartamento] = useState("");
+  const [novoUsuarioId, setNovoUsuarioId] = useState("");
   const [loading, setLoading] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
-  const [formEdicao, setFormEdicao] = useState({ nome: "", cargo: "", departamento: "" });
-
+  const [formEdicao, setFormEdicao] = useState({ nome: "", cargo: "", departamento: "", usuario_id: null });
+  const [usuariosSistema, setUsuariosSistema] = useState([]);
+  
   const token = localStorage.getItem('access_token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  
+  // Busca usuários do sistema ao montar o componente
+  useEffect(() => {
+    const buscarUsuarios = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/auth/usuarios`, config);
+        if (Array.isArray(response.data)) {
+          setUsuariosSistema(response.data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar usuários:", err);
+      }
+    };
+    buscarUsuarios();
+  }, []);
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -26,12 +43,14 @@ export default function Equipe({ colaboradores, buscarColabs }) {
     axios.post(`${API_URL}/colaboradores`, { 
       nome: novoNome, 
       cargo: novoCargo || null, 
-      departamento: novoDepartamento || null 
+      departamento: novoDepartamento || null,
+      usuario_id: novoUsuarioId ? parseInt(novoUsuarioId) : null
     }, config)
       .then(() => {
         setNovoNome("");
         setNovoCargo("");
         setNovoDepartamento("");
+        setNovoUsuarioId("");
         buscarColabs();
       })
       .catch(err => {
@@ -46,7 +65,8 @@ export default function Equipe({ colaboradores, buscarColabs }) {
     setFormEdicao({
       nome: colab.nome,
       cargo: colab.cargo || "",
-      departamento: colab.departamento || ""
+      departamento: colab.departamento || "",
+      usuario_id: colab.usuario_id || null
     });
   };
 
@@ -57,7 +77,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
     axios.put(`${API_URL}/colaboradores/${editandoId}`, formEdicao, config)
       .then(() => {
         setEditandoId(null);
-        setFormEdicao({ nome: "", cargo: "", departamento: "" });
+        setFormEdicao({ nome: "", cargo: "", departamento: "", usuario_id: null });
         buscarColabs();
       })
       .catch(err => {
@@ -69,7 +89,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
 
   const cancelarEdicao = () => {
     setEditandoId(null);
-    setFormEdicao({ nome: "", cargo: "", departamento: "" });
+    setFormEdicao({ nome: "", cargo: "", departamento: "", usuario_id: null });
   };
 
   const excluir = (id, nome) => {
@@ -133,6 +153,16 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                 value={novoDepartamento}
                 onChange={e => setNovoDepartamento(e.target.value)}
               />
+              <select 
+                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl appearance-none cursor-pointer [&>option]:text-black"
+                value={novoUsuarioId}
+                onChange={e => setNovoUsuarioId(e.target.value)}
+              >
+                <option value="">Vincular usuário do sistema (opcional)</option>
+                {usuariosSistema.map(u => (
+                  <option key={u.id} value={u.id}>{u.nome || u.username}</option>
+                ))}
+              </select>
               <button 
                 onClick={adicionar} 
                 disabled={!novoNome.trim() || loading}
@@ -180,6 +210,16 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                         onChange={e => setFormEdicao({...formEdicao, departamento: e.target.value})}
                         placeholder="Departamento"
                       />
+                      <select 
+                        className="bg-[#0f0f11] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#3B8ED0] appearance-none cursor-pointer [&>option]:text-black"
+                        value={formEdicao.usuario_id || ""}
+                        onChange={e => setFormEdicao({...formEdicao, usuario_id: e.target.value ? parseInt(e.target.value) : null})}
+                      >
+                        <option value="">Vincular usuário do sistema (opcional)</option>
+                        {usuariosSistema.map(u => (
+                          <option key={u.id} value={u.id}>{u.nome || u.username}</option>
+                        ))}
+                      </select>
                       <div className="flex gap-2 mt-2">
                         <button 
                           onClick={salvarEdicao}
@@ -226,6 +266,12 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                       )}
                       {c.departamento && (
                         <span className="text-[10px] text-zinc-500 font-medium">{c.departamento}</span>
+                      )}
+                      {c.usuario_id && (
+                        <div className="flex items-center gap-1 mt-1 text-[10px] text-[#3B8ED0] font-medium">
+                          <UserCheck size={12} />
+                          <span>Usuário vinculado</span>
+                        </div>
                       )}
                     </div>
                   )

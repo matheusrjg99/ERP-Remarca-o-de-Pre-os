@@ -103,7 +103,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
   const handleFiltrar = async () => {
     setLoading(true); setSelecaoAtivaEsquerda([]); setShowFornDropdown(false); setShowClassDropdown(false);
     try {
-      const res = await api.get('/api/pesquisar', {
+      const res = await api.get('/queries/pesquisar', {
         params: { termo: filtros.descricao, codigo: filtros.codigo, fornecedor: filtros.fornecedor, classificacao: filtros.classificacao, disponibilidade: filtros.disponibilidade.join(','), ambiente }
       });
       const novosResultados = Array.isArray(res.data) ? res.data : [res.data];
@@ -116,7 +116,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
 
   const buscarFornecedores = async (termo = "") => {
     try {
-      const res = await api.get(`/api/fornecedores?termo=${termo}&ambiente=${ambiente}`);
+      const res = await api.get(`/queries/fornecedores?termo=${termo}&ambiente=${ambiente}`);
       setFornecedoresList(Array.isArray(res.data) ? res.data : [res.data]);
       setShowFornDropdown(true);
     } catch (error) { console.error(error); }
@@ -137,7 +137,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
 
   const buscarClassificacoes = async () => {
     try {
-      const res = await api.get(`/api/classificacoes?ambiente=${ambiente}`);
+      const res = await api.get(`/queries/classificacoes?ambiente=${ambiente}`);
       setClassificacoesList(Array.isArray(res.data) ? res.data : [res.data]);
       setShowClassDropdown(true);
     } catch (error) { console.error(error); }

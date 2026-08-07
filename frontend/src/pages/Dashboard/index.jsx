@@ -64,7 +64,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
   useEffect(() => {
     const carregarPrefsDoBanco = async () => {
       try {
-        const res = await api.get('/api/usuario/preferencias');
+        const res = await api.get('/settings/usuario/preferencias');
         if (res.data && Object.keys(res.data).length > 0) {
           setPreferencias(res.data);
           localStorage.setItem(`prefs_${usuarioLogadoId}`, JSON.stringify(res.data));
@@ -87,7 +87,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     localStorage.setItem(`prefs_${usuarioLogadoId}`, JSON.stringify(novasPreferencias));
     
     try {
-      await api.put('/api/usuario/preferencias', { preferencias: novasPreferencias });
+      await api.put('/settings/usuario/preferencias', { preferencias: novasPreferencias });
     } catch (error) {
       console.error("Erro ao sincronizar preferências com o banco de dados.", error);
     }
@@ -111,7 +111,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
       const termoBusca = overrideRegistro || registro;
       if (!termoBusca) return;
 
-      const url = `/api/produto/${termoBusca}?ambiente=${ambiente}${isNumOrd ? '&is_numord=true' : ''}`;
+      const url = `/queries/produto/${termoBusca}?ambiente=${ambiente}${isNumOrd ? '&is_numord=true' : ''}`;
       const res = await api.get(url);
 
       if (res.data && res.data.action === "select_note") {
@@ -137,7 +137,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
   const handleProdutosSelecionadosDoModal = useCallback(async (codigos) => {
     setLoadingAcao(true);
     try {
-      const res = await api.post(`/api/produtos-lote?ambiente=${ambiente}`, { 
+      const res = await api.post(`/queries/produtos-lote?ambiente=${ambiente}`, { 
         codigos: codigos 
       });
       
@@ -161,7 +161,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     try {
       const token = localStorage.getItem('access_token');
       
-      const response = await api.get('/api/divergencias-markup', {
+      const response = await api.get('/queries/divergencias-markup', {
         params: { ambiente: ambiente },
         headers: {
           'Authorization': `Bearer ${token}`
@@ -334,14 +334,14 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
         }
 
         if (opcoes.mkp) {
-          await api.put(`/api/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
+          await api.put(`/operations/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
         }
         
         if (opcoes.custo) {
-          await api.put(`/api/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
+          await api.put(`/operations/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
         }
         
-        await api.put(`/api/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
+        await api.put(`/operations/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
       } catch (error) { 
         console.error(`Erro ao processar o produto ${p.id}:`, error);
@@ -354,7 +354,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     if (erros === 0 || produtosMarcados.length > erros) {
       try {
         const codigosAtualizados = produtosMarcados.map(p => p.id);
-        const promises = codigosAtualizados.map(codigo => api.get(`/api/produto/${codigo}?ambiente=${ambiente}`));
+        const promises = codigosAtualizados.map(codigo => api.get(`/queries/produto/${codigo}?ambiente=${ambiente}`));
         const responses = await Promise.all(promises);
         
         const produtosFresquinhos = responses.map(res => {

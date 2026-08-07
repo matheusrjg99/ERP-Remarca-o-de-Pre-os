@@ -1,50 +1,30 @@
-from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+"""
+Rotas de Não Conformidades (NCs)
+Gerencia CRUD de registros de não conformidade
+"""
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+from typing import List, Optional
 from datetime import datetime
 import sys
 import os
 
 # Adiciona o path do backend para importar database
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
 
-router = APIRouter()
+router = APIRouter(prefix="/nao-conformidades", tags=["Não Conformidades"])
 
-# --- Schemas Pydantic (V2 - Com IDs) ---
-
-class ColaboradorBase(BaseModel):
-    nome: str
-    cargo: Optional[str] = None
-    departamento: Optional[str] = None
-
-class ColaboradorCreate(ColaboradorBase):
-    pass
-
-class Colaborador(ColaboradorBase):
-    id: int
-
-class NCContestacaoBase(BaseModel):
-    mensagem: str
-    usuario: str # Quem escreveu (admin ou colaborador)
-
-class NCContestacaoCreate(NCContestacaoBase):
-    nao_conformidade_id: int
-
-class NCContestacao(NCContestacaoBase):
-    id: int
-    nao_conformidade_id: int
-    data_hora: datetime
+# --- Schemas Pydantic ---
 
 class NaoConformidadeBase(BaseModel):
     descricao: str
     data_ocorrencia: datetime
-    status: str = 'Pendente' # Pendente, Contestado, Deferido, Indeferido, Resolvido
+    status: str = 'Pendente'  # Pendente, Contestado, Deferido, Indeferido, Resolvido
 
 class NaoConformidadeCreate(NaoConformidadeBase):
-    colaborador_id: int  # AGORA É ID INTEIRO
+    colaborador_id: int
 
-# Modelo específico para atualização (todos os campos opcionais)
 class NaoConformidadeUpdate(BaseModel):
     descricao: Optional[str] = None
     data_ocorrencia: Optional[datetime] = None
@@ -54,61 +34,13 @@ class NaoConformidadeUpdate(BaseModel):
 class NaoConformidade(NaoConformidadeBase):
     id: int
     colaborador_id: int
-    nome_colaborador: str # Campo calculado via JOIN
+    nome_colaborador: str
     criado_em: datetime
     atualizado_em: Optional[datetime] = None
 
 # --- Rotas ---
 
-@router.get("/colaboradores", response_model=List[Colaborador])
-async def listar_colaboradores():
-    """Lista todos os colaboradores cadastrados"""
-    query = "SELECT id, nome, cargo, departamento FROM colaboradores WHERE ativo = 1 OR ativo IS NULL"
-    resultado = await executar_query(
-        banco="Bddemo",
-        query=query,
-        params=(),
-        usuario="SISTEMA",
-        endpoint="/colaboradores"
-    )
-    if isinstance(resultado, dict) and "erro" in resultado:
-        raise HTTPException(status_code=500, detail=resultado["erro"])
-    return resultado if resultado else []
-
-@router.post("/colaboradores", response_model=Colaborador, status_code=status.HTTP_201_CREATED)
-async def criar_colaborador(colab: ColaboradorCreate):
-    """Adiciona novo colaborador"""
-    query_insert = "INSERT INTO colaboradores (nome, cargo, departamento, ativo) VALUES (?, ?, ?, 1)"
-    params_insert = (colab.nome, colab.cargo, colab.departamento)
-    
-    sucesso = await executar_query(
-        banco="Bddemo",
-        query=query_insert,
-        params=params_insert,
-        usuario="SISTEMA",
-        endpoint="/colaboradores",
-        is_select=False
-    )
-    
-    if sucesso is not True:
-        raise HTTPException(status_code=500, detail="Erro ao criar colaborador")
-    
-    # Busca o ID recém-criado
-    query_select = "SELECT TOP 1 id, nome, cargo, departamento FROM colaboradores WHERE nome = ? ORDER BY id DESC"
-    resultado = await executar_query(
-        banco="Bddemo",
-        query=query_select,
-        params=(colab.nome,),
-        usuario="SISTEMA",
-        endpoint="/colaboradores"
-    )
-    
-    if isinstance(resultado, dict) and "erro" in resultado:
-        raise HTTPException(status_code=500, detail=resultado["erro"])
-    
-    return resultado[0] if resultado else {}
-
-@router.get("/nao-conformidades", response_model=List[NaoConformidade])
+@router.get("", response_model=List[NaoConformidade])
 async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str] = None):
     """Lista NCs com dados do colaborador (JOIN)"""
     query = """
@@ -144,7 +76,7 @@ async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str]
         raise HTTPException(status_code=500, detail=resultado["erro"])
     return resultado if resultado else []
 
-@router.post("/nao-conformidades", response_model=NaoConformidade, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=NaoConformidade, status_code=status.HTTP_201_CREATED)
 async def criar_nc(nc: NaoConformidadeCreate):
     """Cria nova Não Conformidade vinculada a um ID de colaborador"""
     # Valida se o colaborador existe
@@ -186,7 +118,7 @@ async def criar_nc(nc: NaoConformidadeCreate):
                nc.criado_em, nc.atualizado_em
         FROM nao_conformidades_v2 nc
         JOIN colaboradores c ON nc.colaborador_id = c.id
-        WHERE nc.id = (SELECT TOP 1 id FROM nao_conformidades_v2 ORDER BY id DESC)
+        WHERE nc.id = (SELECT TOP 1 id FROM nao_conformidades_v2 ORDER BY ID DESC)
     """
     resultado = await executar_query(
         banco="Bddemo",
@@ -201,10 +133,9 @@ async def criar_nc(nc: NaoConformidadeCreate):
     
     return resultado[0] if resultado else {}
 
-@router.put("/nao-conformidades/{nc_id}", response_model=NaoConformidade)
+@router.put("/{nc_id}", response_model=NaoConformidade)
 async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeUpdate):
     """Atualiza campos de uma NC (apenas os fornecidos)"""
-    # Constrói a query dinamicamente baseada nos campos fornecidos
     updates = []
     params = []
     
@@ -273,17 +204,17 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeUpdate):
     
     return resultado[0]
 
-@router.post("/nao-conformidades/{nc_id}/deferir", response_model=NaoConformidade)
+@router.post("/{nc_id}/deferir", response_model=NaoConformidade)
 async def deferir_nc(nc_id: int):
     """Marca NC como Deferida"""
     return await _atualizar_status_nc(nc_id, "Deferido")
 
-@router.post("/nao-conformidades/{nc_id}/indeferir", response_model=NaoConformidade)
+@router.post("/{nc_id}/indeferir", response_model=NaoConformidade)
 async def indeferir_nc(nc_id: int):
     """Marca NC como Indeferida"""
     return await _atualizar_status_nc(nc_id, "Indeferido")
 
-@router.post("/nao-conformidades/{nc_id}/resolver", response_model=NaoConformidade)
+@router.post("/{nc_id}/resolver", response_model=NaoConformidade)
 async def resolver_nc(nc_id: int):
     """Marca NC como Resolvida"""
     return await _atualizar_status_nc(nc_id, "Resolvido")
@@ -332,7 +263,7 @@ async def _atualizar_status_nc(nc_id: int, novo_status: str):
     
     return resultado[0]
 
-@router.delete("/nao-conformidades/{nc_id}")
+@router.delete("/{nc_id}")
 async def deletar_nc(nc_id: int):
     """Exclui uma NC (e suas contestações em cascade)"""
     query = "DELETE FROM nao_conformidades_v2 WHERE id = ?"
@@ -349,68 +280,3 @@ async def deletar_nc(nc_id: int):
         raise HTTPException(status_code=500, detail="Erro ao excluir NC")
     
     return {"message": "NC excluída com sucesso"}
-
-# --- Contestações ---
-
-@router.get("/contestacoes/{nc_id}", response_model=List[NCContestacao])
-async def listar_contestacoes(nc_id: int):
-    """Lista todas as mensagens de uma NC específica"""
-    query = """
-        SELECT id, nao_conformidade_id, mensagem, usuario, data_hora 
-        FROM contestacoes_v2 
-        WHERE nao_conformidade_id = ? 
-        ORDER BY data_hora ASC
-    """
-    resultado = await executar_query(
-        banco="Bddemo",
-        query=query,
-        params=(nc_id,),
-        usuario="SISTEMA",
-        endpoint="/contestacoes"
-    )
-    
-    if isinstance(resultado, dict) and "erro" in resultado:
-        raise HTTPException(status_code=500, detail=resultado["erro"])
-    
-    return resultado if resultado else []
-
-@router.post("/contestacoes", response_model=NCContestacao, status_code=status.HTTP_201_CREATED)
-async def adicionar_contestacao(contestacao: NCContestacaoCreate):
-    """Adiciona mensagem ao chat da NC"""
-    query_insert = """
-        INSERT INTO contestacoes_v2 (nao_conformidade_id, mensagem, usuario, data_hora) 
-        VALUES (?, ?, ?, GETDATE())
-    """
-    params_insert = (contestacao.nao_conformidade_id, contestacao.mensagem, contestacao.usuario)
-    
-    sucesso = await executar_query(
-        banco="Bddemo",
-        query=query_insert,
-        params=params_insert,
-        usuario="SISTEMA",
-        endpoint="/contestacoes",
-        is_select=False
-    )
-    
-    if sucesso is not True:
-        raise HTTPException(status_code=500, detail="Erro ao adicionar contestação")
-    
-    # Retorna a mensagem criada
-    query_select = """
-        SELECT id, nao_conformidade_id, mensagem, usuario, data_hora 
-        FROM contestacoes_v2 
-        WHERE nao_conformidade_id = ? 
-        ORDER BY data_hora DESC
-    """
-    resultado = await executar_query(
-        banco="Bddemo",
-        query=query_select,
-        params=(contestacao.nao_conformidade_id,),
-        usuario="SISTEMA",
-        endpoint="/contestacoes"
-    )
-    
-    if isinstance(resultado, dict) and "erro" in resultado:
-        raise HTTPException(status_code=500, detail=resultado["erro"])
-    
-    return resultado[0] if resultado else {}

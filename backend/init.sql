@@ -77,6 +77,25 @@ BEGIN
         PRINT 'Coluna ''departamento'' adicionada à tabela colaboradores.';
     END
     
+    -- Adiciona coluna 'usuario_id' se não existir (vínculo com API_USUARIOS)
+    IF COL_LENGTH('dbo.colaboradores', 'usuario_id') IS NULL
+    BEGIN
+        ALTER TABLE dbo.colaboradores ADD usuario_id INT NULL;
+        PRINT 'Coluna ''usuario_id'' adicionada à tabela colaboradores.';
+        
+        -- Adiciona constraint de chave estrangeira
+        IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Colaboradores_Usuario')
+        BEGIN
+            ALTER TABLE dbo.colaboradores 
+            ADD CONSTRAINT FK_Colaboradores_Usuario 
+            FOREIGN KEY (usuario_id) REFERENCES API_USUARIOS(id) ON DELETE SET NULL;
+            PRINT 'Constraint FK_Colaboradores_Usuario criada com sucesso.';
+        END
+        
+        CREATE INDEX IX_Colaboradores_Usuario ON dbo.colaboradores(usuario_id);
+        PRINT 'Índice em usuario_id criado com sucesso.';
+    END
+    
     PRINT 'Tabela colaboradores verificada/atualizada com sucesso!';
 END
 GO
@@ -95,6 +114,7 @@ CREATE TABLE dbo.nao_conformidades_v2 (
     descricao NVARCHAR(500) NOT NULL,
     data_ocorrencia DATETIME NOT NULL DEFAULT GETDATE(),
     status NVARCHAR(20) NOT NULL DEFAULT 'Pendente', -- Pendente, Contestada, Resolvida, Aceita
+    veredito NVARCHAR(20) NULL, -- 'Deferido' (não debita), 'Indeferido' (debita), NULL (sem verdito = debita)
     criado_em DATETIME NOT NULL DEFAULT GETDATE(),
     atualizado_em DATETIME NULL,
 
@@ -109,6 +129,7 @@ GO
 CREATE INDEX IX_NC_V2_Colaborador ON dbo.nao_conformidades_v2(colaborador_id);
 CREATE INDEX IX_NC_V2_Data ON dbo.nao_conformidades_v2(data_ocorrencia);
 CREATE INDEX IX_NC_V2_Status ON dbo.nao_conformidades_v2(status);
+CREATE INDEX IX_NC_V2_Veredito ON dbo.nao_conformidades_v2(veredito);
 GO
 
 -- ============================================================
@@ -174,3 +195,29 @@ PRINT '  - dbo.historico_nc_v2';
 PRINT '';
 PRINT 'Próximo passo: Ajustar o backend Python para usar as tabelas _v2.';
 PRINT '============================================================';
+-- ============================================================
+-- 4. TABELA: comissoes_config
+-- Descrição: Configuração do salário base e percentual de desconto por colaborador
+-- ============================================================
+IF OBJECT_ID('dbo.comissoes_config', 'U') IS NOT NULL
+    DROP TABLE dbo.comissoes_config;
+GO
+
+CREATE TABLE dbo.comissoes_config (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    colaborador_id INT NOT NULL,
+    salario_base DECIMAL(10,2) NOT NULL DEFAULT 0,
+    percentual_desconto DECIMAL(5,2) NOT NULL DEFAULT 0, -- Ex: 4.00 para 4%
+    criado_em DATETIME NOT NULL DEFAULT GETDATE(),
+    atualizado_em DATETIME NULL,
+
+    CONSTRAINT FK_COMISSOES_CONFIG_Colaborador FOREIGN KEY (colaborador_id)
+        REFERENCES dbo.colaboradores(id)
+        ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX IX_COMISSOES_CONFIG_Colaborador ON dbo.comissoes_config(colaborador_id);
+GO
+
+PRINT 'Tabela comissoes_config criada com sucesso!';

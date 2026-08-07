@@ -83,6 +83,24 @@ async def obter_permissoes_usuario(login: str) -> list:
             ORDER BY p.codigo
         """
         
+        print(f"DEBUG: Buscando permissões para usuário '{login}' com cargo_id")
+        
+        # Query auxiliar para debug: verificar cargo do usuário
+        query_debug_cargo = """
+            SELECT u.cargo_id, c.nome as cargo_nome, c.ativo as cargo_ativo
+            FROM dbo.API_USUARIOS u
+            LEFT JOIN dbo.cargos c ON u.cargo_id = c.id
+            WHERE u.login = ?
+        """
+        resultado_cargo = await executar_query(
+            banco="Bddemo",
+            query=query_debug_cargo,
+            params=(login,),
+            usuario="SISTEMA",
+            endpoint="/auth/permissoes-debug"
+        )
+        print(f"DEBUG Cargo do usuário {login}: {resultado_cargo}")
+        
         resultado = await executar_query(
             banco="Bddemo",
             query=query,
@@ -90,6 +108,8 @@ async def obter_permissoes_usuario(login: str) -> list:
             usuario="SISTEMA",
             endpoint="/auth/permissoes"
         )
+        
+        print(f"DEBUG Permissões brutas do banco para {login}: {resultado}")
         
         if not resultado or isinstance(resultado, dict):
             return []

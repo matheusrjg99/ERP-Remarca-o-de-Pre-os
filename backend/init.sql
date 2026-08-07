@@ -403,6 +403,21 @@ WHERE codigo IN (
 
 PRINT 'Permissões atribuídas aos cargos com sucesso!';
 
+-- 6.4 Atribuir cargo de Administrador ao usuário ADMIN (se existir)
+PRINT 'Atribuindo cargo de Administrador ao usuário ADMIN...';
+IF EXISTS (SELECT 1 FROM dbo.API_USUARIOS WHERE login = 'ADMIN')
+BEGIN
+    UPDATE dbo.API_USUARIOS 
+    SET cargo_id = (SELECT id FROM cargos WHERE nome = 'Administrador')
+    WHERE login = 'ADMIN' AND cargo_id IS NULL;
+    
+    PRINT 'Cargo de Administrador atribuído ao usuário ADMIN.';
+END
+ELSE
+BEGIN
+    PRINT 'Usuário ADMIN não encontrado. Crie um usuário ADMIN manualmente.';
+END
+
 PRINT '============================================================';
 PRINT 'SISTEMA RBAC CRIADO COM SUCESSO!';
 PRINT '============================================================';

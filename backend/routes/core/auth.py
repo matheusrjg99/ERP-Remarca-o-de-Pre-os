@@ -76,8 +76,22 @@ async def listar_usuarios_sistema():
     """
     Lista todos usuários do sistema para vinculação com colaboradores.
     Endpoint: /auth/usuarios
+    
+    IMPORTANTE: Retorna também o cargo_id e cargo_nome de cada usuário
+    para que o frontend possa exibir as informações corretamente no RBACManager.
     """
-    query = "SELECT id, login as username, nome FROM API_USUARIOS WHERE ativo = 1 ORDER BY nome"
+    query = """
+        SELECT 
+            u.id, 
+            u.login as username, 
+            u.nome,
+            u.cargo_id,
+            c.nome as cargo_nome
+        FROM dbo.API_USUARIOS u
+        LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
+        WHERE u.ativo = 1 
+        ORDER BY u.nome
+    """
     resultado = await executar_query(
         banco="Bddemo",
         query=query,

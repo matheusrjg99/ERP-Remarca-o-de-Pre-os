@@ -33,7 +33,11 @@ def criar_token_acesso(dados: dict) -> str:
 async def obter_permissoes_usuario(login: str) -> list:
     """
     Busca as permissões do usuário no banco de dados baseado no seu cargo.
-    Retorna lista de códigos de permissão (ex: ['nc_criar', 'nc_listar', ...]).
+    Retorna lista de códigos de permissão (ex: ['nc:criar', 'nc:listar', ...]).
+    
+    IMPORTANTE: A query usa LEFT JOIN para retornar permissões vazias se o usuário
+    não tiver cargo atribuído, evitando que usuários sem cargo recebam permissões
+    indevidas por INNER JOINs falharem.
     """
     from database import executar_query
     
@@ -41,12 +45,14 @@ async def obter_permissoes_usuario(login: str) -> list:
     if login.upper() == "SISTEMA":
         return ["admin_total"]
     
+    # Query corrigida: Usa LEFT JOIN e COALESCE para garantir que usuários sem cargo
+    # recebam lista vazia de permissões, e filtra apenas cargos e permissões ativos
     query = """
         SELECT DISTINCT p.codigo
-        FROM API_USUARIOS u
-        INNER JOIN cargos c ON u.cargo_id = c.id
-        INNER JOIN cargo_permissoes cp ON c.id = cp.cargo_id
-        INNER JOIN permissoes p ON cp.permissao_id = p.id
+        FROM dbo.API_USUARIOS u
+        LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
+        LEFT JOIN dbo.cargo_permissoes cp ON c.id = cp.cargo_id
+        LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1
         WHERE u.login = ? AND u.ativo = 1
     """
     
@@ -62,6 +68,9 @@ async def obter_permissoes_usuario(login: str) -> list:
         if not resultado or isinstance(resultado, dict):
             return []
         
-        return [row['codigo'] for row in resultado]
-    except Exception:
+        # Filtra valores None ou vazios
+        permissoes = [row['codigo'] for row in resultado if row.get('codigo')]
+        return permissoes
+    except Exception as e:
+        print(f"Erro ao buscar permissões para {login}: {e}")
         return []

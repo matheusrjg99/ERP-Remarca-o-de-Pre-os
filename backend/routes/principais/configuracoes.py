@@ -41,7 +41,7 @@ async def obter_preferencias(usuario_logado: str = Depends(obter_usuario_atual))
     
     query = "SELECT preferencias_json FROM API_USUARIOS WHERE login = ?"
     res = await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=(usuario_logado,), 
         usuario=usuario_logado, 
@@ -60,7 +60,7 @@ async def salvar_preferencias(dados: PreferenciasUpdate, usuario_logado: str = D
     json_str = json.dumps(dados.preferencias)
     query = "UPDATE API_USUARIOS SET preferencias_json = ? WHERE login = ?"
     sucesso = await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=(json_str, usuario_logado), 
         is_select=False, 

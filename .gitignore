@@ -1,1 +1,81 @@
-Nothing should be ignored since the changes only include Python source files (.py) which are not build artifacts, dependencies, or temporary files.
+```
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# PyTest
+.pytest_cache/
+
+# SQLite
+*.sqlite
+*.db
+
+# Temporary files
+*.tmp
+*~
+```
+
+Wait, let me reconsider this. Looking at the actual changes provided:
+
+### Added files:
+['backend/RESUMO_CENTRALIZADO_USUARIOS.md', 'backend/configurar_bddemo.sql']
+
+### Modified files:
+['backend/routes/principais/configuracoes.py', 'backend/routes/principais/usuarios.py']
+
+These are all source files (.py, .md, .sql) with no build artifacts, dependencies, or temp files in the changes. According to rule #6, if the change list contains ONLY source or config files and NO build artifacts, dependencies, or temp files, I should output an EMPTY .gitignore.
+
+(empty — output nothing)

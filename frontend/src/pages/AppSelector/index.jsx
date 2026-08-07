@@ -14,8 +14,10 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
       try {
         const token = localStorage.getItem('token');
         const permsStr = localStorage.getItem('permissoes');
+        console.log('📥 AppSelector: Lendo permissões do localStorage:', permsStr);
         if (permsStr) {
           let perms = JSON.parse(permsStr);
+          console.log('📦 Permissões parseadas:', perms);
           // Normaliza para array de strings no formato "modulo.permissao"
           if (Array.isArray(perms)) {
             const normalized = perms.map(p => {
@@ -24,11 +26,16 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
               if (p.modulo && p.nome) return `${p.modulo}.${p.nome}`;
               return '';
             }).filter(Boolean);
+            console.log('✅ Permissões normalizadas:', normalized);
             setUserPermissions(normalized);
+          } else {
+            console.warn('⚠️ Permissões não são um array:', perms);
           }
+        } else {
+          console.warn('⚠️ Nenhuma permissão encontrada no localStorage');
         }
       } catch (err) {
-        console.error('Erro ao carregar permissões:', err);
+        console.error('❌ Erro ao carregar permissões:', err);
       }
     };
     carregarPermissoes();

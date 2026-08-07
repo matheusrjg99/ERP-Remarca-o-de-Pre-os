@@ -15,12 +15,17 @@ export default function Login({ onLoginSuccess }) {
       // 🚀 AQUI: Salvamos o nível que vem da sua API
       localStorage.setItem('nivel_acesso', data.nivel_acesso); 
       // 🔐 SALVAR PERMISSÕES DO USUÁRIO (RBAC)
+      console.log('🔐 Permissões recebidas do login:', data.permissions);
       if (data.permissions && Array.isArray(data.permissions)) {
         localStorage.setItem('permissoes', JSON.stringify(data.permissions));
+        console.log('✅ Permissões salvas no localStorage:', JSON.parse(localStorage.getItem('permissoes')));
+      } else {
+        console.warn('⚠️ Nenhuma permissão recebida ou formato inválido:', data.permissions);
       }
       
       onLoginSuccess();
-    } catch {
+    } catch (err) {
+      console.error('Erro no login:', err);
       setErro('Credenciais inválidas.');
     }
   };

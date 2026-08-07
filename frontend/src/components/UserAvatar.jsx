@@ -15,6 +15,11 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, use
                           userPermissions.some(p => p === 'admin.gestao_cargos' || (p.codigo && p.codigo === 'admin.gestao_cargos'));
   
   useEffect(() => {
+    console.log('🔍 UserAvatar: Permissões recebidas:', userPermissions);
+    console.log('🔍 UserAvatar: Tem gestão de cargos?', hasGestaoCargos);
+  }, [userPermissions, hasGestaoCargos]);
+  
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         dropdownRef.current && !dropdownRef.current.contains(event.target) &&

@@ -384,7 +384,8 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
         WHERE id = ?
     """
     
-    resultado = await executar_query(banco="Bddemo", query=update_query, params=(dados.cargo_id, usuario_id), usuario="admin", endpoint="/rbac")
+    cargo_id_valor = dados.cargo_id if dados.cargo_id is not None else None
+    resultado = await executar_query(banco="Bddemo", query=update_query, params=(cargo_id_valor, usuario_id), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])

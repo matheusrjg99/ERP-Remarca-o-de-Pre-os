@@ -1,5 +1,6 @@
 """
 Rotas de Autenticação - Login e Token JWT
+Módulo Core: Responsável pela segurança e autenticação do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -10,9 +11,9 @@ from database import executar_query
 from models.schemas import LoginData, Token
 from auth.seguranca import verificar_senha, criar_token_acesso, SECRET_KEY, ALGORITHM
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 @router.post("/login", response_model=Token)
 async def login(dados: LoginData):

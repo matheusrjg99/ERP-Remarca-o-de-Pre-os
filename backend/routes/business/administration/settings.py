@@ -1,5 +1,6 @@
 """
 Rotas de Configurações do Usuário - Preferências
+Módulo Business/Administration: Responsável pelas configurações e preferências dos usuários.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
@@ -7,9 +8,9 @@ from pydantic import BaseModel
 
 from database import executar_query
 
-router = APIRouter()
+router = APIRouter(prefix="/settings", tags=["Configurações"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def obter_usuario_atual(token: str = Depends(oauth2_scheme)):
     """Extrai o usuário do token JWT."""

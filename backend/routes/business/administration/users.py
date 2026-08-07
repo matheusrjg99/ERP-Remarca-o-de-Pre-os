@@ -1,5 +1,6 @@
 """
 Rotas de Gestão de Usuários - CRUD e Status (Apenas ADMIN)
+Módulo Business/Administration: Responsável pela administração de usuários do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,9 +10,9 @@ from jose import jwt, JWTError
 from database import executar_query
 from auth.seguranca import gerar_hash_senha, SECRET_KEY, ALGORITHM
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["Administração de Usuários"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 class UsuarioNovo(BaseModel):
     login: str

@@ -1,5 +1,6 @@
 """
 Rotas de Administração - Logs do Sistema
+Módulo Business/Administration: Responsável pela gestão administrativa e logs do sistema.
 """
 from fastapi import APIRouter, Depends, Query
 from fastapi.security import OAuth2PasswordBearer
@@ -7,7 +8,7 @@ from typing import Optional
 
 from database import executar_query
 
-router = APIRouter()
+router = APIRouter(prefix="/admin", tags=["Administração Geral"])
 
 AMBIENTES = {
     "producao": "Bdenter",
@@ -15,7 +16,7 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def exigir_admin(token: str = Depends(oauth2_scheme)):
     """Dependência para validar se o usuário é Administrador."""

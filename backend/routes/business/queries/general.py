@@ -1,5 +1,6 @@
 """
 Rotas de Consultas Gerais - Produtos, Notas, Classificações, Fornecedores
+Módulo Business/Queries: Responsável por consultas e leitura de dados do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer
@@ -9,7 +10,7 @@ from typing import List, Optional
 from database import executar_query
 from sql_repo import Scripts
 
-router = APIRouter()
+router = APIRouter(prefix="/queries", tags=["Consultas Gerais"])
 
 AMBIENTES = {
     "producao": "Bdenter",
@@ -17,7 +18,7 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def obter_usuario_atual(token: str = Depends(oauth2_scheme)):
     """Extrai o usuário do token JWT."""

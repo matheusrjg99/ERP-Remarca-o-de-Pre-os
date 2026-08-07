@@ -364,7 +364,7 @@ async def excluir_cargo(cargo_id: int):
 
 # ==================== ROTAS DE USUÁRIO-CARGO ====================
 
-@router.put("/usuarios/{usuario_id}/cargo", methods=["PUT"])
+@router.put("/usuarios/{usuario_id}/cargo")
 async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
     """Atribui ou remove cargo de um usuário"""
     update_query = """

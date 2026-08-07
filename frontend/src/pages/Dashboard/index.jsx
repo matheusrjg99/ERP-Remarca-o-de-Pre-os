@@ -64,7 +64,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
   useEffect(() => {
     const carregarPrefsDoBanco = async () => {
       try {
-        const res = await api.get('/settings/usuario/preferencias');
+        const res = await api.get('/settings/preferencias');
         if (res.data && Object.keys(res.data).length > 0) {
           setPreferencias(res.data);
           localStorage.setItem(`prefs_${usuarioLogadoId}`, JSON.stringify(res.data));
@@ -87,7 +87,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     localStorage.setItem(`prefs_${usuarioLogadoId}`, JSON.stringify(novasPreferencias));
     
     try {
-      await api.put('/settings/usuario/preferencias', { preferencias: novasPreferencias });
+      await api.put('/settings/preferencias', { preferencias: novasPreferencias });
     } catch (error) {
       console.error("Erro ao sincronizar preferências com o banco de dados.", error);
     }

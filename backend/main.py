@@ -9,11 +9,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 
-# Importação do router modular de Não Conformidades
-from routes.nao_conformidades import router as nc_router
-
-# Importação do router modular das rotas principais
-from routes.principais import router as main_router
+# Importação do router consolidado com todas as rotas organizadas
+# Este já inclui: auth, users, settings, management, queries, operations, collaborators, nonconformities, disputes, commissions
+from routes import router as main_router
 
 # Nossas importações internas
 from database import executar_query
@@ -44,13 +42,8 @@ AMBIENTES = {
 # 🔌 ROTAS PRINCIPAIS DO SISTEMA
 # ==========================================
 # Inclui todas as rotas modulares organizadas por responsabilidade
-app.include_router(main_router, tags=["Rotas Principais"])
-
-# ==========================================
-# 🔌 ROTAS DO MÓDULO: NÃO CONFORMIDADES
-# ==========================================
-# IMPORTANTE: Tem que ficar ANTES do catch-all do React!
-app.include_router(nc_router, prefix="", tags=["Não Conformidades"])
+# Este router já contém: auth, users, settings, management, queries, operations, collaborators, nonconformities, disputes, commissions
+app.include_router(main_router)
 
 # ==========================================
 # HOSPEDAGEM DO FRONTEND REACT (Pasta Dist)

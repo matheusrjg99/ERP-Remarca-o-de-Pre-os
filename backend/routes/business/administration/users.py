@@ -1,5 +1,6 @@
 """
 Rotas de Gestão de Usuários - CRUD e Status (Apenas ADMIN)
+Módulo Business/Administration: Responsável pela administração de usuários do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,9 +10,9 @@ from jose import jwt, JWTError
 from database import executar_query
 from auth.seguranca import gerar_hash_senha, SECRET_KEY, ALGORITHM
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["Administração de Usuários"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 class UsuarioNovo(BaseModel):
     login: str
@@ -38,7 +39,7 @@ async def listar_usuarios(admin_slug: str = Depends(exigir_admin)):
     """Lista todos os usuários do sistema (Apenas ADMIN)."""
     query = "SELECT login, nome, nivel_acesso, ativo FROM API_USUARIOS ORDER BY nome"
     return await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=(), 
         usuario=admin_slug, 
@@ -56,7 +57,7 @@ async def cadastrar_usuario(dados: UsuarioNovo, admin_slug: str = Depends(exigir
     params = (dados.login.lower().strip(), hash_senha, dados.nome.upper(), dados.nivel_acesso.upper())
     
     sucesso = await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=params, 
         is_select=False, 
@@ -73,7 +74,7 @@ async def alternar_status_usuario(login_user: str, ativo: int, admin_slug: str =
     """Ativa ou desativa um usuário (Apenas ADMIN)."""
     query = "UPDATE API_USUARIOS SET ativo = ? WHERE login = ?"
     sucesso = await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=(ativo, login_user), 
         is_select=False, 

@@ -1,5 +1,6 @@
 """
 Rotas de Operações - Atualizações de Preço, Custo e Markup
+Módulo Business/Operations: Responsável por operações de escrita e atualização de dados.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer
@@ -7,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from database import executar_query
 from sql_repo import Scripts
 
-router = APIRouter()
+router = APIRouter(prefix="/operations", tags=["Operações"])
 
 AMBIENTES = {
     "producao": "Bdenter",
@@ -15,7 +16,7 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def obter_usuario_atual(token: str = Depends(oauth2_scheme)):
     """Extrai o usuário do token JWT."""

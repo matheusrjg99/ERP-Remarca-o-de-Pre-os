@@ -1,7 +1,8 @@
+import asyncio
 from auth.seguranca import gerar_hash_senha
 from database import executar_query
 
-def setup_admin():
+async def setup_admin():
     login_admin = "admin"
     senha_plana = "admin123" # Você poderá alterar depois
     hash_seguro = gerar_hash_senha(senha_plana)
@@ -13,8 +14,8 @@ def setup_admin():
     
     print("Iniciando criação do usuário Administrador...")
     
-    sucesso = executar_query(
-        banco="Bdenter", # Banco central de usuários
+    sucesso = await executar_query(
+        banco="Bddemo", # Banco de demonstração
         query=query,
         params=(login_admin, hash_seguro, "Administrador Sistema"),
         usuario="SETUP",
@@ -28,4 +29,4 @@ def setup_admin():
         print(f"Falha ao criar usuário. Detalhes: {sucesso}")
 
 if __name__ == "__main__":
-    setup_admin()
+    asyncio.run(setup_admin())

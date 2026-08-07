@@ -1,5 +1,6 @@
 """
 Rotas de Autenticação - Login e Token JWT
+Módulo Core: Responsável pela segurança e autenticação do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -10,18 +11,20 @@ from database import executar_query
 from models.schemas import LoginData, Token
 from auth.seguranca import verificar_senha, criar_token_acesso, SECRET_KEY, ALGORITHM
 
-router = APIRouter()
+# Router principal com prefixo /auth (novo padrão)
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 @router.post("/login", response_model=Token)
 async def login(dados: LoginData):
     """
     Realiza o login do usuário e retorna token JWT.
+    Endpoint: /auth/login
     """
     query = "SELECT login, senha_hash, nivel_acesso FROM API_USUARIOS WHERE login = ? AND ativo = 1"
     resultado = await executar_query(
-        banco="Bdenter", 
+        banco="Bddemo", 
         query=query, 
         params=(dados.login,), 
         usuario="SISTEMA", 
@@ -44,3 +47,15 @@ async def login(dados: LoginData):
         "nivel_acesso": usuario_db["nivel_acesso"],
         "usuario": usuario_db["login"]
     }
+
+# Router de compatibilidade para frontend antigo (sem prefixo)
+# Isso permite que requisições POST /login continuem funcionando
+router_compat = APIRouter(tags=["Autenticação"])
+
+@router_compat.post("/login", response_model=Token)
+async def login_compat(dados: LoginData):
+    """
+    Endpoint de compatibilidade: /login (mesma função que /auth/login)
+    Mantido para suportar frontends que ainda usam a rota antiga.
+    """
+    return await login(dados)

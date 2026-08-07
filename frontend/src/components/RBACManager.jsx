@@ -55,12 +55,15 @@ const RBACManager = ({ onClose }) => {
       const token = localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
+      // Extrair apenas os IDs das permissões
+      const permissoesIds = permissoesSelecionadas.map(p => typeof p === 'object' ? p.id : p);
+      
       await axios.put(
         `${API_URL}/rbac/cargos/${cargoSelecionado.id}`, 
         { 
           nome: cargoSelecionado.nome, 
           descricao: cargoSelecionado.descricao,
-          permissoes: permissoesSelecionadas 
+          permissoes_ids: permissoesIds
         }, 
         config
       );

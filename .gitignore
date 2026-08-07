@@ -1,15 +1,1 @@
-```
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Dependencies
-.venv/
-venv/
-env/
-.env
-.env.local
-.env.*
-```
+(frontend/src/components/UserAvatar.jsx is a source file, and there are no build artifacts, dependencies, or temporary files in the changes)

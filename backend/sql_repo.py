@@ -17,7 +17,7 @@ class Scripts:
                 PC.faconv
             FROM ProdutoCad PC
             INNER JOIN ComplementoProduto CP ON CP.CodPro = PC.CodPro
-            WHERE PC.CodPro IN (?)
+            WHERE PC.CodPro IN ({codigos})
         ),
 
         -- 2. Cálculos (uma vez só)

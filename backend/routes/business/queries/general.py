@@ -86,10 +86,7 @@ async def buscar_registro_inteligente(
         codigos_formatados = ",".join(f"'{c.strip()}'" for c in codigos)
         query_base = Scripts.query['consulta_codigo']
         
-        if "IN (?)" in query_base:
-            query = query_base.replace("IN (?)", f"IN ({codigos_formatados})")
-        else:
-            query = query_base.replace("= ?", f"IN ({codigos_formatados})")
+        query = query_base.format(codigos=codigos_formatados)
             
         dados = await executar_query(
             banco=db_name, 
@@ -130,11 +127,12 @@ async def buscar_registro_inteligente(
     # 4. Código Individual
     else:
         registro_formatado = str(registro).zfill(5)
-        query = Scripts.query['consulta_codigo']
+        query_base = Scripts.query['consulta_codigo']
+        query = query_base.format(codigos=f"'{registro_formatado}'")
         dados = await executar_query(
             banco=db_name, 
             query=query, 
-            params=(registro_formatado,), 
+            params=(), 
             usuario=usuario, 
             endpoint=f"/api/produto/{registro}"
         )
@@ -163,11 +161,7 @@ async def buscar_produtos_em_lote(
     codigos_formatados = ",".join(f"'{str(c).strip()}'" for c in lote.codigos)
     
     query_base = Scripts.query['consulta_codigo']
-    
-    if "IN (?)" in query_base:
-        query = query_base.replace("IN (?)", f"IN ({codigos_formatados})")
-    else:
-        query = query_base.replace("= ?", f"IN ({codigos_formatados})")
+    query = query_base.format(codigos=codigos_formatados)
         
     dados = await executar_query(
         banco=db_name, 

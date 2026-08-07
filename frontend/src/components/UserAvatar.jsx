@@ -10,9 +10,23 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, use
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const [showRBAC, setShowRBAC] = useState(false);
   
-  // Verifica se tem permissão de gestor de cargos
-  const hasGestaoCargos = userPermissions.includes('admin.gestao_cargos') || 
-                          userPermissions.some(p => p === 'admin.gestao_cargos' || (p.codigo && p.codigo === 'admin.gestao_cargos'));
+  // Verifica se tem permissão de gestor de cargos (aceita múltiplos formatos)
+  const temPermissao = (permissaoNecessaria) => {
+    return userPermissions.some(p => {
+      const pStr = typeof p === 'string' ? p : (p.codigo || '');
+      // Normaliza para comparar (troca . por : e vice-versa)
+      const normalizado = pStr.replace(/\./g, ':');
+      const necessario = permissaoNecessaria.replace(/\./g, ':');
+      
+      return normalizado === necessario || 
+             normalizado === 'admin:todos' ||
+             pStr === 'admin.todos';
+    });
+  };
+  
+  const hasGestaoCargos = temPermissao('admin:cargos') || 
+                          temPermissao('admin.gestao_cargos') ||
+                          temPermissao('admin:configuracoes');
   
   useEffect(() => {
     console.log('🔍 UserAvatar: Permissões recebidas:', userPermissions);

@@ -14,6 +14,10 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, use
   const temPermissao = (permissaoNecessaria) => {
     return userPermissions.some(p => {
       const pStr = typeof p === 'string' ? p : (p.codigo || '');
+      
+      // Se tiver admin_total, tem todas as permissões
+      if (pStr === 'admin_total') return true;
+      
       // Normaliza para comparar (troca . por : e vice-versa)
       const normalizado = pStr.replace(/\./g, ':');
       const necessario = permissaoNecessaria.replace(/\./g, ':');
@@ -24,7 +28,9 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, use
     });
   };
   
-  const hasGestaoCargos = temPermissao('admin:cargos') || 
+  // Usuários com admin_total têm acesso total, incluindo gestão de cargos
+  const hasGestaoCargos = userPermissions.includes('admin_total') ||
+                          temPermissao('admin:cargos') || 
                           temPermissao('admin.gestao_cargos') ||
                           temPermissao('admin:configuracoes');
   

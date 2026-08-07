@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Trash2, UserPlus, Users, Edit3, Save, UserCheck } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoNome, setNovoNome] = useState("");
@@ -129,52 +130,55 @@ export default function Equipe({ colaboradores, buscarColabs }) {
         <div className="p-8 flex flex-col gap-8 bg-black/20">
           
           {/* INPUT DE ADICIONAR */}
-          <div className="flex flex-col gap-4">
-            <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
-              <UserPlus size={14} /> Novo Colaborador
-            </label>
-            <div className="flex flex-col gap-3 bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-4 shadow-inner">
-              <input 
-                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
-                placeholder="Nome completo..."
-                value={novoNome}
-                onChange={e => setNovoNome(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && adicionar()}
-              />
-              <input 
-                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
-                placeholder="Cargo (opcional)"
-                value={novoCargo}
-                onChange={e => setNovoCargo(e.target.value)}
-              />
-              <input 
-                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
-                placeholder="Departamento (opcional)"
-                value={novoDepartamento}
-                onChange={e => setNovoDepartamento(e.target.value)}
-              />
-              <select 
-                className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl appearance-none cursor-pointer [&>option]:text-black"
-                value={novoUsuarioId}
-                onChange={e => setNovoUsuarioId(e.target.value)}
-              >
-                <option value="">Vincular usuário do sistema (opcional)</option>
-                {usuariosSistema.map(u => (
-                  <option key={u.id} value={u.id}>{u.nome || u.username}</option>
-                ))}
-              </select>
-              <button 
-                onClick={adicionar} 
-                disabled={!novoNome.trim() || loading}
-                className="bg-[#3B8ED0] text-white px-6 py-3 rounded-xl hover:bg-[#2d74ab] active:scale-95 transition-all flex items-center justify-center font-black text-[11px] uppercase tracking-widest disabled:opacity-20 shadow-lg shadow-[#3B8ED0]/20"
-              >
-                {loading ? "..." : "Adicionar"}
-              </button>
+          <Can permission="cadastros:colaboradores:criar">
+            <div className="flex flex-col gap-4">
+              <label className="flex items-center gap-2 text-[10px] text-[#3B8ED0] font-black uppercase tracking-widest">
+                <UserPlus size={14} /> Novo Colaborador
+              </label>
+              <div className="flex flex-col gap-3 bg-[#161618] rounded-2xl border border-white/10 focus-within:border-[#3B8ED0]/40 transition-all p-4 shadow-inner">
+                <input 
+                  className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
+                  placeholder="Nome completo..."
+                  value={novoNome}
+                  onChange={e => setNovoNome(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && adicionar()}
+                />
+                <input 
+                  className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
+                  placeholder="Cargo (opcional)"
+                  value={novoCargo}
+                  onChange={e => setNovoCargo(e.target.value)}
+                />
+                <input 
+                  className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl"
+                  placeholder="Departamento (opcional)"
+                  value={novoDepartamento}
+                  onChange={e => setNovoDepartamento(e.target.value)}
+                />
+                <select 
+                  className="bg-transparent p-3 text-sm text-white outline-none placeholder:text-zinc-500 font-medium border border-zinc-700 rounded-xl appearance-none cursor-pointer [&>option]:text-black"
+                  value={novoUsuarioId}
+                  onChange={e => setNovoUsuarioId(e.target.value)}
+                >
+                  <option value="">Vincular usuário do sistema (opcional)</option>
+                  {usuariosSistema.map(u => (
+                    <option key={u.id} value={u.id}>{u.nome || u.username}</option>
+                  ))}
+                </select>
+                <button 
+                  onClick={adicionar} 
+                  disabled={!novoNome.trim() || loading}
+                  className="bg-[#3B8ED0] text-white px-6 py-3 rounded-xl hover:bg-[#2d74ab] active:scale-95 transition-all flex items-center justify-center font-black text-[11px] uppercase tracking-widest disabled:opacity-20 shadow-lg shadow-[#3B8ED0]/20"
+                >
+                  {loading ? "..." : "Adicionar"}
+                </button>
+              </div>
             </div>
-          </div>
+          </Can>
 
           {/* LISTA DE EQUIPE */}
-          <div className="flex flex-col gap-3">
+          <Can permission="cadastros:colaboradores:visualizar" fallback={null}>
+            <div className="flex flex-col gap-3">
             <h4 className="text-[10px] font-black text-zinc-300 uppercase tracking-widest border-b border-white/5 pb-2 mb-2">
               Quadro de Funcionários
             </h4>
@@ -243,20 +247,24 @@ export default function Equipe({ colaboradores, buscarColabs }) {
                       className="flex flex-col gap-1 bg-white/[0.02] border border-white/5 p-4 rounded-2xl group hover:border-[#3B8ED0]/30 transition-all border-l-4 border-l-transparent hover:border-l-[#3B8ED0] relative"
                     >
                       <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => iniciarEdicao(c)}
-                          className="p-1.5 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all"
-                          title="Editar"
-                        >
-                          <Edit3 size={14}/>
-                        </button>
-                        <button 
-                          onClick={() => excluir(c.id, c.nome)}
-                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                          title="Excluir"
-                        >
-                          <Trash2 size={14}/>
-                        </button>
+                        <Can permission="cadastros:colaboradores:editar">
+                          <button 
+                            onClick={() => iniciarEdicao(c)}
+                            className="p-1.5 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all"
+                            title="Editar"
+                          >
+                            <Edit3 size={14}/>
+                          </button>
+                        </Can>
+                        <Can permission="cadastros:colaboradores:excluir">
+                          <button 
+                            onClick={() => excluir(c.id, c.nome)}
+                            className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14}/>
+                          </button>
+                        </Can>
                       </div>
                       <span className="font-black text-sm text-white uppercase tracking-tight pr-16">
                         {tratarNome(c.nome)}
@@ -279,6 +287,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
               )}
             </div>
           </div>
+          </Can>
 
         </div>
       </div>

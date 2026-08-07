@@ -2,7 +2,7 @@
 Rotas de Não Conformidades (NCs)
 Gerencia CRUD de registros de não conformidade
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -12,6 +12,7 @@ import os
 # Adiciona o path do backend para importar database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
+from security import requer_permissao
 
 router = APIRouter(prefix="/nao-conformidades", tags=["Não Conformidades"])
 
@@ -40,7 +41,7 @@ class NaoConformidade(NaoConformidadeBase):
 
 # --- Rotas ---
 
-@router.get("", response_model=List[NaoConformidade])
+@router.get("", response_model=List[NaoConformidade], dependencies=[Depends(requer_permissao("nc:visualizar"))])
 async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str] = None, mes: Optional[int] = None, ano: Optional[int] = None):
     """Lista NCs com dados do colaborador (JOIN)"""
     query = """
@@ -87,7 +88,7 @@ async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str]
         raise HTTPException(status_code=500, detail=resultado["erro"])
     return resultado if resultado else []
 
-@router.post("", response_model=NaoConformidade, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=NaoConformidade, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_permissao("nc:criar"))])
 async def criar_nc(nc: NaoConformidadeCreate):
     """Cria nova Não Conformidade vinculada a um ID de colaborador"""
     # Valida se o colaborador existe
@@ -144,7 +145,7 @@ async def criar_nc(nc: NaoConformidadeCreate):
     
     return resultado[0] if resultado else {}
 
-@router.put("/{nc_id}", response_model=NaoConformidade)
+@router.put("/{nc_id}", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:editar"))])
 async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeUpdate):
     """Atualiza campos de uma NC (apenas os fornecidos)"""
     updates = []
@@ -215,17 +216,17 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeUpdate):
     
     return resultado[0]
 
-@router.post("/{nc_id}/deferir", response_model=NaoConformidade)
+@router.post("/{nc_id}/deferir", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:deferir"))])
 async def deferir_nc(nc_id: int):
     """Marca NC como Deferida"""
     return await _atualizar_status_nc(nc_id, "Deferido")
 
-@router.post("/{nc_id}/indeferir", response_model=NaoConformidade)
+@router.post("/{nc_id}/indeferir", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:indeferir"))])
 async def indeferir_nc(nc_id: int):
     """Marca NC como Indeferida"""
     return await _atualizar_status_nc(nc_id, "Indeferido")
 
-@router.post("/{nc_id}/resolver", response_model=NaoConformidade)
+@router.post("/{nc_id}/resolver", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:resolver"))])
 async def resolver_nc(nc_id: int):
     """Marca NC como Resolvida"""
     return await _atualizar_status_nc(nc_id, "Resolvido")
@@ -274,7 +275,7 @@ async def _atualizar_status_nc(nc_id: int, novo_status: str):
     
     return resultado[0]
 
-@router.delete("/{nc_id}")
+@router.delete("/{nc_id}", dependencies=[Depends(requer_permissao("nc:excluir"))])
 async def deletar_nc(nc_id: int):
     """Exclui uma NC (e suas contestações em cascade)"""
     query = "DELETE FROM nao_conformidades_v2 WHERE id = ?"

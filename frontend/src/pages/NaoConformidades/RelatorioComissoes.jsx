@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { DollarSign, Users, TrendingDown, Calendar, Search, Download } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 export default function RelatorioComissoes({ config, API_URL }) {
   const [relatorio, setRelatorio] = useState([]);
@@ -76,10 +77,17 @@ export default function RelatorioComissoes({ config, API_URL }) {
               <DollarSign size={14} className="text-emerald-500"/> Resumo do Mês
             </span>
             <div className="flex items-center gap-3">
-              <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
-                <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>
-              </div>
+              <Can permission="comissoes:ver_resumo_total" fallback={
+                <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
+                  <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>
+                </div>
+              }>
+                <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
+                  <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>
+                </div>
+              </Can>
               <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
                 <span className="text-[11px] font-bold text-zinc-400">Colaboradores:</span>
                 <span className="text-xs font-black text-white">{relatorio.length}</span>

@@ -410,7 +410,9 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
-    return {"mensagem": "Cargo atualizado com sucesso"}
+    return {
+        "mensagem": "Cargo atualizado com sucesso. O usuário precisa fazer logout e login novamente para aplicar as novas permissões."
+    }
 
 
 # ==================== ROTAS AUXILIARES ====================

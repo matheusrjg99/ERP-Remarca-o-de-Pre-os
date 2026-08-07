@@ -14,8 +14,7 @@ def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
     """Compara a senha digitada com o hash salvo no banco."""
     try:
         return pwd_context.verify(senha_plana, senha_hash)
-    except Exception as e:
-        print(f"Erro na verificação: {e}")
+    except Exception:
         return False
 
 def gerar_hash_senha(senha: str) -> str:
@@ -64,6 +63,5 @@ async def obter_permissoes_usuario(login: str) -> list:
             return []
         
         return [row['codigo'] for row in resultado]
-    except Exception as e:
-        print(f"Erro ao buscar permissões: {e}")
+    except Exception:
         return []

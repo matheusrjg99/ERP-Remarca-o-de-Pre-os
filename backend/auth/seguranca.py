@@ -38,6 +38,8 @@ async def obter_permissoes_usuario(login: str) -> list:
     IMPORTANTE: A query usa LEFT JOIN para retornar permissões vazias se o usuário
     não tiver cargo atribuído, evitando que usuários sem cargo recebam permissões
     indevidas por INNER JOINs falharem.
+    
+    Usuários com nivel_acesso = 'ADMIN' recebem automaticamente a permissão 'admin_total'.
     """
     from database import executar_query
     
@@ -45,18 +47,41 @@ async def obter_permissoes_usuario(login: str) -> list:
     if login.upper() == "SISTEMA":
         return ["admin_total"]
     
-    # Query corrigida: Usa LEFT JOIN e COALESCE para garantir que usuários sem cargo
-    # recebam lista vazia de permissões, e filtra apenas cargos e permissões ativos
-    query = """
-        SELECT DISTINCT p.codigo
-        FROM dbo.API_USUARIOS u
-        LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
-        LEFT JOIN dbo.cargo_permissoes cp ON c.id = cp.cargo_id
-        LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1
-        WHERE u.login = ? AND u.ativo = 1
+    # Primeiro, verifica o nível de acesso do usuário
+    query_nivel = """
+        SELECT nivel_acesso FROM dbo.API_USUARIOS 
+        WHERE login = ? AND ativo = 1
     """
     
     try:
+        resultado_nivel = await executar_query(
+            banco="Bddemo",
+            query=query_nivel,
+            params=(login,),
+            usuario="SISTEMA",
+            endpoint="/auth/permissoes"
+        )
+        
+        if not resultado_nivel or isinstance(resultado_nivel, dict):
+            return []
+        
+        nivel_acesso = resultado_nivel[0].get('nivel_acesso', '').upper()
+        
+        # Se for ADMIN, concede todas as permissões
+        if nivel_acesso == 'ADMIN':
+            return ["admin_total"]
+        
+        # Query corrigida: Usa LEFT JOIN e COALESCE para garantir que usuários sem cargo
+        # recebam lista vazia de permissões, e filtra apenas cargos e permissões ativos
+        query = """
+            SELECT DISTINCT p.codigo
+            FROM dbo.API_USUARIOS u
+            LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
+            LEFT JOIN dbo.cargo_permissoes cp ON c.id = cp.cargo_id
+            LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1
+            WHERE u.login = ? AND u.ativo = 1
+        """
+        
         resultado = await executar_query(
             banco="Bddemo",
             query=query,

@@ -83,7 +83,7 @@ const RBACManager = ({ onClose }) => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       await axios.put(
-        `${API_URL}/auth/usuarios/${usuarioEdicao.id}/cargo`, 
+        `${API_URL}/rbac/cargos/usuarios/${usuarioEdicao.id}`, 
         { cargo_id: cargoUsuarioSelecionado === '' ? null : parseInt(cargoUsuarioSelecionado) }, 
         config
       );

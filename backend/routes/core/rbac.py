@@ -364,12 +364,23 @@ async def excluir_cargo(cargo_id: int):
 
 # ==================== ROTAS DE USUÁRIO-CARGO ====================
 
-@router.put("/usuarios/{usuario_id}/cargo")
+@router.put("/cargos/usuarios/{usuario_id}")
 async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
     """Atribui ou remove cargo de um usuário"""
+    # Verifica se o usuário existe
+    user_check = await executar_query(
+        banco="Bddemo", 
+        query="SELECT id FROM dbo.API_USUARIOS WHERE id = ?", 
+        params=(usuario_id,), 
+        usuario="admin", 
+        endpoint="/rbac"
+    )
+    if not user_check or len(user_check) == 0:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
     update_query = """
         UPDATE dbo.API_USUARIOS
-        SET cargo_id = ?, atualizado_em = GETDATE()
+        SET cargo_id = ?
         WHERE id = ?
     """
     
@@ -377,12 +388,6 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
-    
-    if not resultado or resultado == True:
-        # Verifica se o usuário existe
-        user_check = await executar_query(banco="Bddemo", query="SELECT id FROM dbo.API_USUARIOS WHERE id = ?", params=(usuario_id,), usuario="admin", endpoint="/rbac")
-        if not user_check or len(user_check) == 0:
-            raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     return {"mensagem": "Cargo atualizado com sucesso"}
 

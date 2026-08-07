@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class LoginData(BaseModel):
@@ -11,6 +11,8 @@ class Token(BaseModel):
     token_type: str
     nivel_acesso: str
     usuario: str
+    nome: Optional[str] = None
+    permissions: Optional[List[str]] = []
 
 # --- Schemas de Comissão ---
 
@@ -46,3 +48,35 @@ class ComissaoRelatorioItem(BaseModel):
     total_perdas: float
     valor_comissao_final: float
     detalhe_perdas: list
+
+# --- Schemas de RBAC (Controle de Acesso) ---
+
+class PermissaoBase(BaseModel):
+    codigo: str
+    descricao: str
+    modulo: str
+
+class PermissaoCreate(PermissaoBase):
+    pass
+
+class Permissao(PermissaoBase):
+    id: int
+
+class CargoBase(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+
+class CargoCreate(CargoBase):
+    permissao_ids: Optional[List[int]] = []
+
+class Cargo(CargoBase):
+    id: int
+    permissoes: Optional[List[Permissao]] = []
+
+class UsuarioInfo(BaseModel):
+    id: int
+    login: str
+    nome: Optional[str] = None
+    email: Optional[str] = None
+    cargo_id: Optional[int] = None
+    permissions: List[str] = []

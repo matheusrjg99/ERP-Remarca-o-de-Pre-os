@@ -121,7 +121,7 @@ async def criar_permissao(permissao: PermissaoCreate):
         permissao.ativo
     )
     
-    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario="admin", endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -155,19 +155,30 @@ async def atualizar_permissao(permissao_id: int, permissao: PermissaoUpdate):
     if not updates:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
     
+    # Adiciona o ID na lista de parâmetros para o WHERE
     params.append(permissao_id)
+    
     update_query = f"""
         UPDATE dbo.permissoes
         SET {', '.join(updates)}
         WHERE id = ?
-        SELECT id, codigo, descricao, modulo, ativo, criado_em
-        FROM dbo.permissoes WHERE id = ?
     """
     
-    resultado = await executar_query(banco="Bddemo", query=update_query, params=tuple(params + [permissao_id]), usuario="admin", endpoint="/rbac")
+    # Executa o update
+    resultado_update = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario="admin", endpoint="/rbac", is_select=False)
+    
+    if isinstance(resultado_update, dict) and "erro" in resultado_update:
+        raise HTTPException(status_code=500, detail=resultado_update["erro"])
+    
+    # Busca a permissão atualizada
+    select_query = "SELECT id, codigo, descricao, modulo, ativo, criado_em FROM dbo.permissoes WHERE id = ?"
+    resultado = await executar_query(banco="Bddemo", query=select_query, params=(permissao_id,), usuario="admin", endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    if not resultado or len(resultado) == 0:
+        raise HTTPException(status_code=404, detail="Permissão não encontrada")
     
     return resultado[0]
 
@@ -188,7 +199,7 @@ async def excluir_permissao(permissao_id: int):
         )
     
     delete_query = "DELETE FROM dbo.permissoes WHERE id = ?"
-    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(permissao_id,), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(permissao_id,), usuario="admin", endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -277,7 +288,7 @@ async def criar_cargo(cargo: CargoCreate):
     """
     params = (cargo.nome, cargo.descricao, cargo.ativo)
     
-    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario="admin", endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -310,11 +321,14 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
         params.append(cargo.ativo)
     
     if updates:
+        # Adiciona timestamp de atualização
         updates.append("atualizado_em = GETDATE()")
+        
+        # Constrói a query de update
+        update_query = f"UPDATE dbo.cargos SET {', '.join(updates)} WHERE id = ?"
         params.append(cargo_id)
         
-        update_query = f"UPDATE dbo.cargos SET {', '.join(updates)} WHERE id = ?"
-        resultado = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario="admin", endpoint="/rbac")
+        resultado = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario="admin", endpoint="/rbac", is_select=False)
         
         if isinstance(resultado, dict) and "erro" in resultado:
             raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -323,7 +337,10 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
     if cargo.permissoes_ids is not None:
         # Remove permissões existentes
         delete_query = "DELETE FROM dbo.cargo_permissoes WHERE cargo_id = ?"
-        await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
+        resultado_delete = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac", is_select=False)
+        
+        if isinstance(resultado_delete, dict) and "erro" in resultado_delete:
+            raise HTTPException(status_code=500, detail=resultado_delete["erro"])
         
         # Insere novas permissões
         if cargo.permissoes_ids:
@@ -332,7 +349,10 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
                 VALUES (?, ?, GETDATE())
             """
             for perm_id in cargo.permissoes_ids:
-                await executar_query(banco="Bddemo", query=insert_query, params=(cargo_id, perm_id), usuario="admin", endpoint="/rbac")
+                resultado_insert = await executar_query(banco="Bddemo", query=insert_query, params=(cargo_id, perm_id), usuario="admin", endpoint="/rbac", is_select=False)
+                
+                if isinstance(resultado_insert, dict) and "erro" in resultado_insert:
+                    raise HTTPException(status_code=500, detail=resultado_insert["erro"])
     
     # Retorna cargo atualizado
     return await obter_cargo(cargo_id)
@@ -354,7 +374,7 @@ async def excluir_cargo(cargo_id: int):
         )
     
     delete_query = "DELETE FROM dbo.cargos WHERE id = ?"
-    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -385,7 +405,7 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
     """
     
     cargo_id_valor = dados.cargo_id if dados.cargo_id is not None else None
-    resultado = await executar_query(banco="Bddemo", query=update_query, params=(cargo_id_valor, usuario_id), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=update_query, params=(cargo_id_valor, usuario_id), usuario="admin", endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])

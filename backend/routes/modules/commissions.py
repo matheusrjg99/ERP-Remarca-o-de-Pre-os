@@ -2,7 +2,7 @@
 Rotas de Comissões
 Gerencia configurações de comissão, percentuais de perda e relatórios
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, date
@@ -12,6 +12,7 @@ import os
 # Adiciona o path do backend para importar database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
+from security import requer_permissao
 
 router = APIRouter(prefix="/comissoes", tags=["Comissões"])
 
@@ -43,7 +44,7 @@ class ComissaoRelatorioItem(BaseModel):
 
 # --- Rotas de Configuração de Comissões ---
 
-@router.get("/configuracoes", response_model=List[ComissaoConfig])
+@router.get("/configuracoes", response_model=List[ComissaoConfig], dependencies=[Depends(requer_permissao("com:listar"))])
 async def listar_configuracoes_comissoes():
     """Lista todas as configurações de comissão dos colaboradores"""
     query = """
@@ -66,7 +67,7 @@ async def listar_configuracoes_comissoes():
     return resultado if resultado else []
 
 
-@router.post("/configuracoes", response_model=ComissaoConfig)
+@router.post("/configuracoes", response_model=ComissaoConfig, dependencies=[Depends(requer_permissao("com:criar"))])
 async def criar_configuracao_comissao(config: ComissaoConfigCreate):
     """Cria ou atualiza a configuração de comissão para um colaborador"""
     # Verifica se já existe configuração para este colaborador
@@ -134,7 +135,7 @@ async def criar_configuracao_comissao(config: ComissaoConfigCreate):
     return resultado[0] if resultado else {}
 
 
-@router.put("/configuracoes/{config_id}", response_model=ComissaoConfig)
+@router.put("/configuracoes/{config_id}", response_model=ComissaoConfig, dependencies=[Depends(requer_permissao("com:editar"))])
 async def atualizar_configuracao_comissao(config_id: int, config: ComissaoConfigCreate):
     """Atualiza uma configuração de comissão existente"""
     query_update = """
@@ -179,7 +180,7 @@ async def atualizar_configuracao_comissao(config_id: int, config: ComissaoConfig
     return resultado[0]
 
 
-@router.delete("/configuracoes/{config_id}")
+@router.delete("/configuracoes/{config_id}", dependencies=[Depends(requer_permissao("com:excluir"))])
 async def deletar_configuracao_comissao(config_id: int):
     """Exclui uma configuração de comissão"""
     query = "DELETE FROM comissoes_config WHERE id = ?"

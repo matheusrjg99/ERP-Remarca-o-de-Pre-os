@@ -2,7 +2,7 @@
 Rotas de Colaboradores
 Gerencia CRUD de colaboradores do sistema
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 import sys
@@ -11,6 +11,7 @@ import os
 # Adiciona o path do backend para importar database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
+from security import requer_permissao
 
 router = APIRouter(prefix="/colaboradores", tags=["Colaboradores"])
 
@@ -37,7 +38,7 @@ class Colaborador(ColaboradorBase):
 
 # --- Rotas ---
 
-@router.get("", response_model=List[Colaborador])
+@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("col:listar"))])
 async def listar_colaboradores():
     """Lista todos os colaboradores cadastrados"""
     query = """
@@ -62,7 +63,7 @@ async def listar_colaboradores():
         raise HTTPException(status_code=500, detail=resultado["erro"])
     return resultado if resultado else []
 
-@router.post("", response_model=Colaborador, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Colaborador, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_permissao("col:criar"))])
 async def criar_colaborador(colab: ColaboradorCreate):
     """Adiciona novo colaborador"""
     query_insert = """
@@ -103,7 +104,7 @@ async def criar_colaborador(colab: ColaboradorCreate):
     
     return resultado[0] if resultado else {}
 
-@router.put("/{colaborador_id}", response_model=Colaborador)
+@router.put("/{colaborador_id}", response_model=Colaborador, dependencies=[Depends(requer_permissao("col:editar"))])
 async def atualizar_colaborador(colaborador_id: int, colab: ColaboradorUpdate):
     """Atualiza dados de um colaborador existente"""
     # Constrói a query dinamicamente baseada nos campos fornecidos
@@ -160,7 +161,7 @@ async def atualizar_colaborador(colaborador_id: int, colab: ColaboradorUpdate):
     
     return resultado[0] if resultado else {}
 
-@router.delete("/{colaborador_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{colaborador_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(requer_permissao("col:excluir"))])
 async def excluir_colaborador(colaborador_id: int):
     """Exclui (desativa) um colaborador"""
     query = "UPDATE colaboradores SET ativo = 0, atualizado_em = GETDATE() WHERE id = ?"

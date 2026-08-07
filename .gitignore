@@ -1,10 +1,62 @@
-```
-# Compiled Python files
-*.pyc
+```python
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Environment files
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Environment
 .env
 .env.local
 *.env.*
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Temporary files
+*.tmp
+.DS_Store
+Thumbs.db
+```
+
+Wait, let me reconsider this. The modified files are only Python source files (`backend/routes/__init__.py`, `backend/routes/core/auth.py`), which are not build artifacts, dependencies, or temporary files. According to rule #6, if the changes contain only source/config files and no build artifacts, dependencies, or temp files, I should output an empty .gitignore.
+
+Since only Python source files were modified, no .gitignore content is needed.
+
+```python
+
 ```

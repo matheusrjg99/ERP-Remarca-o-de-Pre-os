@@ -14,6 +14,7 @@ from fastapi import APIRouter
 # CORE - Funcionalidades Essenciais
 # ==========================================
 from .core.auth import router as auth_router
+from .core.auth import router_compat as auth_compat_router
 
 # ==========================================
 # BUSINESS - Regras de Negócio
@@ -41,6 +42,9 @@ from .modules.commissions import router as commissions_router
 # Router Consolidado
 # ==========================================
 router = APIRouter()
+
+# Inclusão das rotas de compatibilidade (devem vir primeiro para capturar /login)
+router.include_router(auth_compat_router)
 
 # Inclusão das rotas do CORE
 router.include_router(auth_router)

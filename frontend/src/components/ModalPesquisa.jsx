@@ -212,7 +212,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
         const minIdx = Math.min(dragInfoEsquerda.start, dragInfoEsquerda.current); const maxIdx = Math.max(dragInfoEsquerda.start, dragInfoEsquerda.current);
         if (i >= minIdx && i <= maxIdx) isSelected = dragInfoEsquerda.selecting; else if (!dragInfoEsquerda.ctrl) isSelected = false;
       }
-      return <ListaRow key={cod} cod={cod} descricao={getDescricao(p)} index={i} isSelected={isSelected} onMouseDown={handleMouseDownEsq} onMouseEnter={handleMouseEnterEsq} onDoubleClick={moverParaDireita} />;
+      return <ListaRow key={`${cod}-esq-${i}`} cod={cod} descricao={getDescricao(p)} index={i} isSelected={isSelected} onMouseDown={handleMouseDownEsq} onMouseEnter={handleMouseEnterEsq} onDoubleClick={moverParaDireita} />;
     });
   }, [resultados, selecaoAtivaEsquerda, dragInfoEsquerda, loading, handleMouseDownEsq, handleMouseEnterEsq, moverParaDireita]);
 
@@ -224,7 +224,7 @@ export default function ModalPesquisa({ isOpen, onClose, onSelect, ambiente }) {
         const minIdx = Math.min(dragInfoDireita.start, dragInfoDireita.current); const maxIdx = Math.max(dragInfoDireita.start, dragInfoDireita.current);
         if (i >= minIdx && i <= maxIdx) isSelected = dragInfoDireita.selecting; else if (!dragInfoDireita.ctrl) isSelected = false;
       }
-      return <ListaRow key={cod} cod={cod} descricao={getDescricao(p)} index={i} isSelected={isSelected} onMouseDown={handleMouseDownDir} onMouseEnter={handleMouseEnterDir} onDoubleClick={moverParaEsquerda} />;
+      return <ListaRow key={`${cod}-dir-${i}`} cod={cod} descricao={getDescricao(p)} index={i} isSelected={isSelected} onMouseDown={handleMouseDownDir} onMouseEnter={handleMouseEnterDir} onDoubleClick={moverParaEsquerda} />;
     });
   }, [selecionadosDireita, selecaoAtivaDireita, dragInfoDireita, handleMouseDownDir, handleMouseEnterDir, moverParaEsquerda]);
 

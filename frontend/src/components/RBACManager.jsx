@@ -90,7 +90,7 @@ const RBACManager = ({ onClose }) => {
         { cargo_id: cargoUsuarioSelecionado === '' ? null : parseInt(cargoUsuarioSelecionado) }, 
         config
       );
-      alert('Usuário atualizado com sucesso!');
+      alert('Usuário atualizado com sucesso!\n\n⚠️ IMPORTANTE: O usuário afetado precisa fazer LOGOUT e LOGIN novamente para que as novas permissões do cargo sejam aplicadas.');
       carregarDados();
       setUsuarioEdicao(null);
     } catch (err) {

@@ -39,7 +39,7 @@ async def obter_permissoes_usuario(login: str) -> list:
     não tiver cargo atribuído, evitando que usuários sem cargo recebam permissões
     indevidas por INNER JOINs falharem.
     
-    Usuários com nivel_acesso = 'ADMIN' recebem automaticamente a permissão 'admin_total'.
+    Usuários com nivel_acesso = 'ADMIN' recebem automaticamente a permissão admin_total.
     """
     from database import executar_query
     
@@ -71,15 +71,18 @@ async def obter_permissoes_usuario(login: str) -> list:
         if nivel_acesso == 'ADMIN':
             return ["admin_total"]
         
-        # Query corrigida: Usa LEFT JOIN e COALESCE para garantir que usuários sem cargo
-        # recebam lista vazia de permissões, e filtra apenas cargos e permissões ativos
+        # Query otimizada: Usa LEFT JOIN, filtra NULLs explicitamente e garante unicidade
+        # COALESCE garante que mesmo sem cargo, a query retorne uma linha válida
         query = """
-            SELECT DISTINCT p.codigo
+            SELECT DISTINCT LTRIM(RTRIM(p.codigo)) as codigo
             FROM dbo.API_USUARIOS u
             LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
             LEFT JOIN dbo.cargo_permissoes cp ON c.id = cp.cargo_id
             LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1
             WHERE u.login = ? AND u.ativo = 1
+              AND p.codigo IS NOT NULL
+              AND LTRIM(RTRIM(p.codigo)) <> ''
+            ORDER BY p.codigo
         """
         
         resultado = await executar_query(
@@ -93,9 +96,14 @@ async def obter_permissoes_usuario(login: str) -> list:
         if not resultado or isinstance(resultado, dict):
             return []
         
-        # Filtra valores None ou vazios
-        permissoes = [row['codigo'] for row in resultado if row.get('codigo')]
-        return permissoes
+        # Filtra rigorosamente: apenas strings não vazias
+        permissoes = []
+        for row in resultado:
+            codigo = row.get('codigo')
+            if codigo and isinstance(codigo, str) and codigo.strip():
+                permissoes.append(codigo.strip())
+        
+        return list(set(permissoes))  # Remove duplicatas extras
     except Exception as e:
         print(f"Erro ao buscar permissões para {login}: {e}")
         return []

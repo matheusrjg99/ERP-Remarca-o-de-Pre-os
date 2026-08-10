@@ -1,13 +1,13 @@
 -- ============================================================
--- SCRIPT DE CRIAÇÃO - NOVA ESTRUTURA NORMALIZADA (V2)
--- Ambiente: DESENVOLVIMENTO
+-- SCRIPT DE CRIAÇÃO - ESTRUTURA NORMALIZADA COM RBAC
+-- Ambiente: PRODUÇÃO/DESENVOLVIMENTO
 -- Data: 2024
 -- ============================================================
 -- OBSERVAÇÕES:
--- 1. A tabela 'colaboradores' será criada se não existir.
--- 2. As novas tabelas usam o sufixo '_v2' para coexistir com a antiga.
--- 3. Não há migração automática de dados neste script.
--- 4. Logs de aplicação NÃO são gerados aqui (reservado para Remarcação).
+-- 1. Script idempotente - pode ser executado múltiplas vezes
+-- 2. Tabelas _v2 são recriadas (DROP + CREATE)
+-- 3. Estrutura RBAC é atualizada incrementalmente
+-- 4. Logs de auditoria agora incluem usuario_id para rastreabilidade
 -- ============================================================
 
 SET ANSI_NULLS ON;
@@ -145,17 +145,22 @@ CREATE TABLE dbo.contestacoes_v2 (
     nao_conformidade_id INT NOT NULL,
     mensagem NVARCHAR(MAX) NOT NULL,
     usuario NVARCHAR(100) NOT NULL, -- 'COLABORADOR' ou 'ADMIN' ou nome do usuário
+    usuario_id INT NULL, -- Vínculo com API_USUARIOS para auditoria precisa
     data_hora DATETIME NOT NULL DEFAULT GETDATE(),
     lida BIT NOT NULL DEFAULT 0,
 
     -- Chave estrangeira
     CONSTRAINT FK_CONTEST_V2_NC FOREIGN KEY (nao_conformidade_id)
         REFERENCES dbo.nao_conformidades_v2(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT FK_CONTEST_V2_Usuario FOREIGN KEY (usuario_id)
+        REFERENCES dbo.API_USUARIOS(id)
+        ON DELETE SET NULL
 );
 GO
 
 CREATE INDEX IX_CONTEST_V2_NC ON dbo.contestacoes_v2(nao_conformidade_id);
+CREATE INDEX IX_CONTEST_V2_Usuario ON dbo.contestacoes_v2(usuario_id);
 GO
 
 -- ============================================================
@@ -173,15 +178,20 @@ CREATE TABLE dbo.historico_nc_v2 (
     status_novo NVARCHAR(20) NOT NULL,
     justificativa NVARCHAR(500) NULL,
     usuario_alteracao NVARCHAR(100) NULL, -- Nome ou ID de quem alterou
+    usuario_id INT NULL, -- Vínculo com API_USUARIOS para auditoria precisa
     data_alteracao DATETIME NOT NULL DEFAULT GETDATE(),
 
     CONSTRAINT FK_HIST_V2_NC FOREIGN KEY (nao_conformidade_id)
         REFERENCES dbo.nao_conformidades_v2(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT FK_HIST_V2_Usuario FOREIGN KEY (usuario_id)
+        REFERENCES dbo.API_USUARIOS(id)
+        ON DELETE SET NULL
 );
 GO
 
 CREATE INDEX IX_HIST_V2_NC ON dbo.historico_nc_v2(nao_conformidade_id);
+CREATE INDEX IX_HIST_V2_Usuario ON dbo.historico_nc_v2(usuario_id);
 GO
 
 PRINT '============================================================';
@@ -322,10 +332,11 @@ GO
 -- 6. SEED: Dados iniciais do sistema RBAC
 -- ============================================================
 
--- 6.1 Inserir permissões padrão
+-- 6.1 Inserir permissões padrão (apenas se não existirem)
 PRINT 'Inserindo permissões padrão...';
 
-INSERT INTO dbo.permissoes (codigo, descricao, modulo) VALUES
+INSERT INTO dbo.permissoes (codigo, descricao, modulo)
+SELECT codigo, descricao, modulo FROM (VALUES
 -- Módulo Não Conformidades
 ('nc:criar', 'Criar novas não conformidades', 'nao_conformidades'),
 ('nc:visualizar', 'Visualizar lista de não conformidades', 'nao_conformidades'),
@@ -349,56 +360,93 @@ INSERT INTO dbo.permissoes (codigo, descricao, modulo) VALUES
 -- Módulo Admin
 ('admin:usuarios', 'Gerenciar usuários do sistema', 'admin'),
 ('admin:cargos', 'Gerenciar cargos e permissões', 'admin'),
-('admin:configuracoes', 'Acessar configurações do sistema', 'admin');
+('admin:configuracoes', 'Acessar configurações do sistema', 'admin'),
 
-PRINT 'Permissões inseridas com sucesso!';
+-- Módulo RBAC (Gestão de Cargos e Permissões)
+('rbac:cargo_criar', 'Criar novos cargos', 'rbac'),
+('rbac:cargo_visualizar', 'Visualizar cargos', 'rbac'),
+('rbac:cargo_editar', 'Editar cargos', 'rbac'),
+('rbac:cargo_excluir', 'Excluir cargos', 'rbac'),
+('rbac:permissao_criar', 'Criar novas permissões', 'rbac'),
+('rbac:permissao_visualizar', 'Visualizar permissões', 'rbac'),
+('rbac:permissao_editar', 'Editar permissões', 'rbac'),
+('rbac:permissao_excluir', 'Excluir permissões', 'rbac')
+) AS novas_permissoes(codigo, descricao, modulo)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.permissoes p 
+    WHERE p.codigo = novas_permissoes.codigo
+);
 
--- 6.2 Inserir cargos padrão
+PRINT 'Permissões inseridas/atualizadas com sucesso!';
+
+-- 6.2 Inserir cargos padrão (apenas se não existirem)
 PRINT 'Inserindo cargos padrão...';
 
-INSERT INTO dbo.cargos (nome, descricao) VALUES
+INSERT INTO dbo.cargos (nome, descricao)
+SELECT nome, descricao FROM (VALUES
 ('Administrador', 'Acesso total a todas as funcionalidades do sistema'),
 ('Gestor', 'Acesso gerencial com permissão para auditoria e relatórios'),
 ('Operador', 'Acesso operacional básico para criação e visualização'),
-('Colaborador', 'Acesso restrito apenas para visualização e contestação de NCs');
+('Colaborador', 'Acesso restrito apenas para visualização e contestação de NCs')
+) AS novos_cargos(nome, descricao)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.cargos c 
+    WHERE c.nome = novos_cargos.nome
+);
 
-PRINT 'Cargos inseridos com sucesso!';
+PRINT 'Cargos inseridos/atualizados com sucesso!';
 
--- 6.3 Atribuir permissões aos cargos
+-- 6.3 Atribuir permissões aos cargos (apenas se não existirem)
 PRINT 'Atribuindo permissões aos cargos...';
 
--- Administrador: TODAS as permissões
+-- Administrador: TODAS as permissões (incluindo RBAC)
 DECLARE @AdminId INT = (SELECT id FROM cargos WHERE nome = 'Administrador');
 INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
-SELECT @AdminId, id FROM dbo.permissoes;
+SELECT @AdminId, p.id FROM dbo.permissoes p
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.cargo_permissoes cp 
+    WHERE cp.cargo_id = @AdminId AND cp.permissao_id = p.id
+);
 
--- Gestor: Permissões gerenciais
+-- Gestor: Permissões gerenciais (sem gestão de RBAC)
 DECLARE @GestorId INT = (SELECT id FROM cargos WHERE nome = 'Gestor');
 INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
-SELECT @GestorId, id FROM dbo.permissoes 
-WHERE codigo IN (
+SELECT @GestorId, p.id FROM dbo.permissoes p
+WHERE p.codigo IN (
     'nc:visualizar', 'nc:auditoria', 'nc:relatorios',
     'precificacao:visualizar', 'precificacao:alterar_preco', 'precificacao:alterar_custo', 'precificacao:alterar_markup', 'precificacao:remarcacao',
     'cadastros:colaboradores', 'cadastros:comissoes',
     'admin:configuracoes'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM dbo.cargo_permissoes cp 
+    WHERE cp.cargo_id = @GestorId AND cp.permissao_id = p.id
 );
 
--- Operador: Permissões operacionais
+-- Operador: Permissões operacionais (sem gestão de RBAC)
 DECLARE @OperadorId INT = (SELECT id FROM cargos WHERE nome = 'Operador');
 INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
-SELECT @OperadorId, id FROM dbo.permissoes 
-WHERE codigo IN (
+SELECT @OperadorId, p.id FROM dbo.permissoes p
+WHERE p.codigo IN (
     'nc:criar', 'nc:visualizar', 'nc:editar', 'nc:contestar',
     'precificacao:visualizar', 'precificacao:alterar_preco', 'precificacao:alterar_custo', 'precificacao:alterar_markup',
     'cadastros:colaboradores'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM dbo.cargo_permissoes cp 
+    WHERE cp.cargo_id = @OperadorId AND cp.permissao_id = p.id
 );
 
 -- Colaborador: Apenas visualização e contestação
 DECLARE @ColaboradorId INT = (SELECT id FROM cargos WHERE nome = 'Colaborador');
 INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
-SELECT @ColaboradorId, id FROM dbo.permissoes 
-WHERE codigo IN (
+SELECT @ColaboradorId, p.id FROM dbo.permissoes p
+WHERE p.codigo IN (
     'nc:visualizar', 'nc:contestar'
+)
+AND NOT EXISTS (
+    SELECT 1 FROM dbo.cargo_permissoes cp 
+    WHERE cp.cargo_id = @ColaboradorId AND cp.permissao_id = p.id
 );
 
 PRINT 'Permissões atribuídas aos cargos com sucesso!';
@@ -426,11 +474,16 @@ PRINT '  - dbo.permissoes';
 PRINT '  - dbo.cargos';
 PRINT '  - dbo.cargo_permissoes';
 PRINT '  - API_USUARIOS.cargo_id (coluna adicionada)';
+PRINT '  - contestacoes_v2.usuario_id (coluna adicionada para auditoria)';
+PRINT '  - historico_nc_v2.usuario_id (coluna adicionada para auditoria)';
 PRINT '';
 PRINT 'Dados seed inseridos:';
-PRINT '  - 20 permissões distribuídas em 4 módulos';
-PRINT '  - 4 cargos pré-definidos';
-PRINT '  - Matriz de permissões configurada';
+PRINT '  - 28 permissões distribuídas em 5 módulos (nc, precificacao, cadastros, admin, rbac)';
+PRINT '  - 4 cargos pré-definidos com matriz de permissões configurada';
+PRINT '  - Cargo Administrador atribuído ao usuário ADMIN (se existir)';
 PRINT '';
-PRINT 'Próximo passo: Implementar backend Python para gestão de RBAC';
+PRINT 'Próximos passos:';
+PRINT '  1. Implementar autenticação JWT no backend Python';
+PRINT '  2. Refatorar rotas para usar Depends(get_current_user)';
+PRINT '  3. Aplicar verificações de permissão com check_permission';
 PRINT '============================================================';

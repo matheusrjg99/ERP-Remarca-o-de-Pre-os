@@ -3,7 +3,7 @@ Módulo de Gestão RBAC (Role-Based Access Control)
 Rotas para administração de cargos e permissões
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
@@ -12,8 +12,20 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from database import executar_query
+from security import get_current_user_permissions, requer_permissao
 
 router = APIRouter(prefix="/rbac", tags=["RBAC - Controle de Acesso"])
+
+
+# ==================== DEPENDÊNCIAS DE AUTENTICAÇÃO ====================
+
+async def get_usuario_autenticado(request: Request) -> str:
+    """
+    Extrai o login do usuário autenticado a partir do token JWT.
+    Retorna o login do usuário para ser usado na auditoria.
+    """
+    user_data = await get_current_user_permissions(request)
+    return user_data["user_login"]
 
 
 # ==================== MODELOS PYDANTIC ====================
@@ -69,9 +81,11 @@ class UsuarioCargoUpdate(BaseModel):
 
 # ==================== ROTAS DE PERMISSÕES ====================
 
-@router.get("/permissoes", response_model=List[PermissaoResponse])
-async def listar_permissoes(modulo: Optional[str] = None, ativo: bool = True):
+@router.get("/permissoes", response_model=List[PermissaoResponse], dependencies=[Depends(requer_permissao("rbac:listar_permissoes"))])
+async def listar_permissoes(request: Request, modulo: Optional[str] = None, ativo: bool = True):
     """Lista todas as permissões, opcionalmente filtradas por módulo"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     query = """
         SELECT id, codigo, descricao, modulo, ativo, criado_em
         FROM dbo.permissoes
@@ -89,7 +103,7 @@ async def listar_permissoes(modulo: Optional[str] = None, ativo: bool = True):
         banco="Bddemo",
         query=query,
         params=tuple(params),
-        usuario="admin",
+        usuario=usuario_logado,
         endpoint="/rbac/permissoes"
     )
     
@@ -99,12 +113,14 @@ async def listar_permissoes(modulo: Optional[str] = None, ativo: bool = True):
     return resultado
 
 
-@router.post("/permissoes", response_model=PermissaoResponse)
-async def criar_permissao(permissao: PermissaoCreate):
+@router.post("/permissoes", response_model=PermissaoResponse, dependencies=[Depends(requer_permissao("rbac:criar_permissao"))])
+async def criar_permissao(request: Request, permissao: PermissaoCreate):
     """Cria uma nova permissão"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     # Verifica se código já existe
     check_query = "SELECT id FROM dbo.permissoes WHERE codigo = ?"
-    check_result = await executar_query(banco="Bddemo", query=check_query, params=(permissao.codigo,), usuario="admin", endpoint="/rbac")
+    check_result = await executar_query(banco="Bddemo", query=check_query, params=(permissao.codigo,), usuario=usuario_logado, endpoint="/rbac")
     
     if check_result and len(check_result) > 0:
         raise HTTPException(status_code=400, detail="Código de permissão já existe")
@@ -121,21 +137,23 @@ async def criar_permissao(permissao: PermissaoCreate):
         permissao.ativo
     )
     
-    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario="admin", endpoint="/rbac", is_select=False)
+    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario=usuario_logado, endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     # Busca a permissão criada
     nova_query = "SELECT * FROM dbo.permissoes WHERE id = ?"
-    nova_permissao = await executar_query(banco="Bddemo", query=nova_query, params=(int(resultado[0]["id"]),), usuario="admin", endpoint="/rbac")
+    nova_permissao = await executar_query(banco="Bddemo", query=nova_query, params=(int(resultado[0]["id"]),), usuario=usuario_logado, endpoint="/rbac")
     
     return nova_permissao[0]
 
 
-@router.put("/permissoes/{permissao_id}", response_model=PermissaoResponse)
-async def atualizar_permissao(permissao_id: int, permissao: PermissaoUpdate):
+@router.put("/permissoes/{permissao_id}", response_model=PermissaoResponse, dependencies=[Depends(requer_permissao("rbac:atualizar_permissao"))])
+async def atualizar_permissao(request: Request, permissao_id: int, permissao: PermissaoUpdate):
     """Atualiza uma permissão existente"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     updates = []
     params = []
     
@@ -165,14 +183,14 @@ async def atualizar_permissao(permissao_id: int, permissao: PermissaoUpdate):
     """
     
     # Executa o update
-    resultado_update = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario="admin", endpoint="/rbac", is_select=False)
+    resultado_update = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario=usuario_logado, endpoint="/rbac", is_select=False)
     
     if isinstance(resultado_update, dict) and "erro" in resultado_update:
         raise HTTPException(status_code=500, detail=resultado_update["erro"])
     
     # Busca a permissão atualizada
     select_query = "SELECT id, codigo, descricao, modulo, ativo, criado_em FROM dbo.permissoes WHERE id = ?"
-    resultado = await executar_query(banco="Bddemo", query=select_query, params=(permissao_id,), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=select_query, params=(permissao_id,), usuario=usuario_logado, endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -183,14 +201,16 @@ async def atualizar_permissao(permissao_id: int, permissao: PermissaoUpdate):
     return resultado[0]
 
 
-@router.delete("/permissoes/{permissao_id}")
-async def excluir_permissao(permissao_id: int):
+@router.delete("/permissoes/{permissao_id}", dependencies=[Depends(requer_permissao("rbac:excluir_permissao"))])
+async def excluir_permissao(request: Request, permissao_id: int):
     """Exclui uma permissão (apenas se não estiver em uso)"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     # Verifica se está em uso
     check_query = """
         SELECT COUNT(*) as total FROM dbo.cargo_permissoes WHERE permissao_id = ?
     """
-    check_result = await executar_query(banco="Bddemo", query=check_query, params=(permissao_id,), usuario="admin", endpoint="/rbac")
+    check_result = await executar_query(banco="Bddemo", query=check_query, params=(permissao_id,), usuario=usuario_logado, endpoint="/rbac")
     
     if check_result and check_result[0]["total"] > 0:
         raise HTTPException(
@@ -199,7 +219,7 @@ async def excluir_permissao(permissao_id: int):
         )
     
     delete_query = "DELETE FROM dbo.permissoes WHERE id = ?"
-    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(permissao_id,), usuario="admin", endpoint="/rbac", is_select=False)
+    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(permissao_id,), usuario=usuario_logado, endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -209,9 +229,11 @@ async def excluir_permissao(permissao_id: int):
 
 # ==================== ROTAS DE CARGOS ====================
 
-@router.get("/cargos", response_model=List[CargoResponse])
-async def listar_cargos(ativo: bool = True, incluir_permissoes: bool = True):
+@router.get("/cargos", response_model=List[CargoResponse], dependencies=[Depends(requer_permissao("rbac:listar_cargos"))])
+async def listar_cargos(request: Request, ativo: bool = True, incluir_permissoes: bool = True):
     """Lista todos os cargos com suas permissões"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     query = """
         SELECT c.id, c.nome, c.descricao, c.ativo, c.criado_em, c.atualizado_em
         FROM dbo.cargos c
@@ -219,7 +241,7 @@ async def listar_cargos(ativo: bool = True, incluir_permissoes: bool = True):
         ORDER BY c.nome
     """
     
-    resultado = await executar_query(banco="Bddemo", query=query, params=(ativo,), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=query, params=(ativo,), usuario=usuario_logado, endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -234,20 +256,22 @@ async def listar_cargos(ativo: bool = True, incluir_permissoes: bool = True):
                 WHERE cp.cargo_id = ? AND p.ativo = 1
                 ORDER BY p.modulo, p.codigo
             """
-            perms = await executar_query(banco="Bddemo", query=perm_query, params=(cargo["id"],), usuario="admin", endpoint="/rbac")
+            perms = await executar_query(banco="Bddemo", query=perm_query, params=(cargo["id"],), usuario=usuario_logado, endpoint="/rbac")
             cargo["permissoes"] = perms if perms and not (isinstance(perms, dict) and "erro" in perms) else []
     
     return resultado
 
 
-@router.get("/cargos/{cargo_id}", response_model=CargoResponse)
-async def obter_cargo(cargo_id: int):
+@router.get("/cargos/{cargo_id}", response_model=CargoResponse, dependencies=[Depends(requer_permissao("rbac:obter_cargo"))])
+async def obter_cargo(request: Request, cargo_id: int):
     """Obtém detalhes de um cargo específico com suas permissões"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     cargo_query = """
         SELECT id, nome, descricao, ativo, criado_em, atualizado_em
         FROM dbo.cargos WHERE id = ?
     """
-    cargo_result = await executar_query(banco="Bddemo", query=cargo_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
+    cargo_result = await executar_query(banco="Bddemo", query=cargo_query, params=(cargo_id,), usuario=usuario_logado, endpoint="/rbac")
     
     if not cargo_result or len(cargo_result) == 0:
         raise HTTPException(status_code=404, detail="Cargo não encontrado")
@@ -265,18 +289,20 @@ async def obter_cargo(cargo_id: int):
         WHERE cp.cargo_id = ?
         ORDER BY p.modulo, p.codigo
     """
-    perms = await executar_query(banco="Bddemo", query=perm_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
+    perms = await executar_query(banco="Bddemo", query=perm_query, params=(cargo_id,), usuario=usuario_logado, endpoint="/rbac")
     cargo["permissoes"] = perms if perms and not (isinstance(perms, dict) and "erro" in perms) else []
     
     return cargo
 
 
-@router.post("/cargos", response_model=CargoResponse)
-async def criar_cargo(cargo: CargoCreate):
+@router.post("/cargos", response_model=CargoResponse, dependencies=[Depends(requer_permissao("rbac:criar_cargo"))])
+async def criar_cargo(request: Request, cargo: CargoCreate):
     """Cria um novo cargo"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     # Verifica se nome já existe
     check_query = "SELECT id FROM dbo.cargos WHERE nome = ?"
-    check_result = await executar_query(banco="Bddemo", query=check_query, params=(cargo.nome,), usuario="admin", endpoint="/rbac")
+    check_result = await executar_query(banco="Bddemo", query=check_query, params=(cargo.nome,), usuario=usuario_logado, endpoint="/rbac")
     
     if check_result and len(check_result) > 0:
         raise HTTPException(status_code=400, detail="Nome do cargo já existe")
@@ -288,14 +314,14 @@ async def criar_cargo(cargo: CargoCreate):
     """
     params = (cargo.nome, cargo.descricao, cargo.ativo)
     
-    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario="admin", endpoint="/rbac", is_select=False)
+    resultado = await executar_query(banco="Bddemo", query=insert_query, params=params, usuario=usuario_logado, endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     # Busca o cargo criado
     novo_cargo_query = "SELECT * FROM dbo.cargos WHERE id = ?"
-    novo_cargo = await executar_query(banco="Bddemo", query=novo_cargo_query, params=(int(resultado[0]["id"]),), usuario="admin", endpoint="/rbac")
+    novo_cargo = await executar_query(banco="Bddemo", query=novo_cargo_query, params=(int(resultado[0]["id"]),), usuario=usuario_logado, endpoint="/rbac")
     
     cargo_response = novo_cargo[0]
     cargo_response["permissoes"] = []
@@ -303,9 +329,11 @@ async def criar_cargo(cargo: CargoCreate):
     return cargo_response
 
 
-@router.put("/cargos/{cargo_id}", response_model=CargoResponse)
-async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
+@router.put("/cargos/{cargo_id}", response_model=CargoResponse, dependencies=[Depends(requer_permissao("rbac:atualizar_cargo"))])
+async def atualizar_cargo(request: Request, cargo_id: int, cargo: CargoUpdate):
     """Atualiza um cargo e suas permissões"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     # Atualiza dados do cargo
     updates = []
     params = []
@@ -328,7 +356,7 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
         update_query = f"UPDATE dbo.cargos SET {', '.join(updates)} WHERE id = ?"
         params.append(cargo_id)
         
-        resultado = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario="admin", endpoint="/rbac", is_select=False)
+        resultado = await executar_query(banco="Bddemo", query=update_query, params=tuple(params), usuario=usuario_logado, endpoint="/rbac", is_select=False)
         
         if isinstance(resultado, dict) and "erro" in resultado:
             raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -337,7 +365,7 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
     if cargo.permissoes_ids is not None:
         # Remove permissões existentes
         delete_query = "DELETE FROM dbo.cargo_permissoes WHERE cargo_id = ?"
-        resultado_delete = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac", is_select=False)
+        resultado_delete = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario=usuario_logado, endpoint="/rbac", is_select=False)
         
         if isinstance(resultado_delete, dict) and "erro" in resultado_delete:
             raise HTTPException(status_code=500, detail=resultado_delete["erro"])
@@ -349,23 +377,25 @@ async def atualizar_cargo(cargo_id: int, cargo: CargoUpdate):
                 VALUES (?, ?, GETDATE())
             """
             for perm_id in cargo.permissoes_ids:
-                resultado_insert = await executar_query(banco="Bddemo", query=insert_query, params=(cargo_id, perm_id), usuario="admin", endpoint="/rbac", is_select=False)
+                resultado_insert = await executar_query(banco="Bddemo", query=insert_query, params=(cargo_id, perm_id), usuario=usuario_logado, endpoint="/rbac", is_select=False)
                 
                 if isinstance(resultado_insert, dict) and "erro" in resultado_insert:
                     raise HTTPException(status_code=500, detail=resultado_insert["erro"])
     
     # Retorna cargo atualizado
-    return await obter_cargo(cargo_id)
+    return await obter_cargo(request, cargo_id)
 
 
-@router.delete("/cargos/{cargo_id}")
-async def excluir_cargo(cargo_id: int):
+@router.delete("/cargos/{cargo_id}", dependencies=[Depends(requer_permissao("rbac:excluir_cargo"))])
+async def excluir_cargo(request: Request, cargo_id: int):
     """Exclui um cargo (apenas se não estiver em uso por usuários)"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     # Verifica se há usuários com este cargo
     check_query = """
         SELECT COUNT(*) as total FROM dbo.API_USUARIOS WHERE cargo_id = ? AND ativo = 1
     """
-    check_result = await executar_query(banco="Bddemo", query=check_query, params=(cargo_id,), usuario="admin", endpoint="/rbac")
+    check_result = await executar_query(banco="Bddemo", query=check_query, params=(cargo_id,), usuario=usuario_logado, endpoint="/rbac")
     
     if check_result and check_result[0]["total"] > 0:
         raise HTTPException(
@@ -374,7 +404,7 @@ async def excluir_cargo(cargo_id: int):
         )
     
     delete_query = "DELETE FROM dbo.cargos WHERE id = ?"
-    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario="admin", endpoint="/rbac", is_select=False)
+    resultado = await executar_query(banco="Bddemo", query=delete_query, params=(cargo_id,), usuario=usuario_logado, endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -384,15 +414,17 @@ async def excluir_cargo(cargo_id: int):
 
 # ==================== ROTAS DE USUÁRIO-CARGO ====================
 
-@router.put("/cargos/usuarios/{usuario_id}")
-async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
+@router.put("/cargos/usuarios/{usuario_id}", dependencies=[Depends(requer_permissao("rbac:atribuir_cargo_usuario"))])
+async def atribuir_cargo_usuario(request: Request, usuario_id: int, dados: UsuarioCargoUpdate):
     """Atribui ou remove cargo de um usuário"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     # Verifica se o usuário existe
     user_check = await executar_query(
         banco="Bddemo", 
         query="SELECT id FROM dbo.API_USUARIOS WHERE id = ?", 
         params=(usuario_id,), 
-        usuario="admin", 
+        usuario=usuario_logado, 
         endpoint="/rbac"
     )
     if not user_check or len(user_check) == 0:
@@ -405,7 +437,7 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
     """
     
     cargo_id_valor = dados.cargo_id if dados.cargo_id is not None else None
-    resultado = await executar_query(banco="Bddemo", query=update_query, params=(cargo_id_valor, usuario_id), usuario="admin", endpoint="/rbac", is_select=False)
+    resultado = await executar_query(banco="Bddemo", query=update_query, params=(cargo_id_valor, usuario_id), usuario=usuario_logado, endpoint="/rbac", is_select=False)
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -417,9 +449,11 @@ async def atribuir_cargo_usuario(usuario_id: int, dados: UsuarioCargoUpdate):
 
 # ==================== ROTAS AUXILIARES ====================
 
-@router.get("/usuarios/{usuario_id}/permissoes")
-async def listar_permissoes_usuario(usuario_id: int):
+@router.get("/usuarios/{usuario_id}/permissoes", dependencies=[Depends(requer_permissao("rbac:listar_permissoes_usuario"))])
+async def listar_permissoes_usuario(request: Request, usuario_id: int):
     """Lista todas as permissões de um usuário baseado no seu cargo"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     query = """
         SELECT DISTINCT p.id, p.codigo, p.descricao, p.modulo, p.ativo
         FROM dbo.permissoes p
@@ -430,7 +464,7 @@ async def listar_permissoes_usuario(usuario_id: int):
         ORDER BY p.modulo, p.codigo
     """
     
-    resultado = await executar_query(banco="Bddemo", query=query, params=(usuario_id,), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=query, params=(usuario_id,), usuario=usuario_logado, endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])
@@ -438,9 +472,11 @@ async def listar_permissoes_usuario(usuario_id: int):
     return resultado
 
 
-@router.get("/usuarios/{usuario_id}/verificar-permissao")
-async def verificar_permissao_usuario(usuario_id: int, permissao_codigo: str):
+@router.get("/usuarios/{usuario_id}/verificar-permissao", dependencies=[Depends(requer_permissao("rbac:verificar_permissao_usuario"))])
+async def verificar_permissao_usuario(request: Request, usuario_id: int, permissao_codigo: str):
     """Verifica se um usuário possui uma permissão específica"""
+    usuario_logado = await get_usuario_autenticado(request)
+    
     query = """
         SELECT COUNT(*) as tem_permissao
         FROM dbo.permissoes p
@@ -450,7 +486,7 @@ async def verificar_permissao_usuario(usuario_id: int, permissao_codigo: str):
         WHERE u.id = ? AND p.codigo = ? AND p.ativo = 1 AND c.ativo = 1 AND u.ativo = 1
     """
     
-    resultado = await executar_query(banco="Bddemo", query=query, params=(usuario_id, permissao_codigo), usuario="admin", endpoint="/rbac")
+    resultado = await executar_query(banco="Bddemo", query=query, params=(usuario_id, permissao_codigo), usuario=usuario_logado, endpoint="/rbac")
     
     if isinstance(resultado, dict) and "erro" in resultado:
         raise HTTPException(status_code=500, detail=resultado["erro"])

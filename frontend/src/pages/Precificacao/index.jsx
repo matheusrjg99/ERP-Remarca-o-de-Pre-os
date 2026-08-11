@@ -543,7 +543,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
             usuarioLogado={usuarioLogado} 
             onLogout={onLogout} 
             showName={false}
-            userPermissions={permissions || []}
+            userPermissions={[]}
             extraAction={!podePersonalizarVisual ? null : {
               label: 'Personalização',
               title: !podePersonalizarVisual ? 'Você não tem permissão para personalizar' : 'Personalizar colunas',

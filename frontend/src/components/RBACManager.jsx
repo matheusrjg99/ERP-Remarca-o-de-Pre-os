@@ -28,7 +28,7 @@ const RBACManager = ({ onClose }) => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');  // ✅ Chave correta
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       const [resCargos, resPermissoes, resUsuarios] = await Promise.all([
@@ -52,7 +52,7 @@ const RBACManager = ({ onClose }) => {
     if (!cargoSelecionado) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');  // ✅ Chave correta
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       // Extrair apenas os IDs das permissões
@@ -82,7 +82,7 @@ const RBACManager = ({ onClose }) => {
     if (!usuarioEdicao) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');  // ✅ Chave correta
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       await axios.put(
@@ -186,28 +186,33 @@ const RBACManager = ({ onClose }) => {
                   </div>
 
                   <div className="border rounded-lg divide-y">
-                    {['admin', 'nc', 'precificacao', 'cadastros'].map(modulo => {
-                      const permsModulo = permissoes.filter(p => p.modulo === modulo);
-                      if (permsModulo.length === 0) return null;
-                      return (
-                        <div key={modulo} className="p-4">
-                          <h4 className="font-semibold capitalize mb-3 text-blue-700">{modulo}</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {permsModulo.map(perm => (
-                              <label key={perm.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input 
-                                  type="checkbox" 
-                                  checked={permissoesSelecionadas.includes(perm.id)}
-                                  onChange={() => togglePermissao(perm.id)}
-                                  className="rounded text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-gray-700">{perm.descricao}</span>
-                              </label>
-                            ))}
+                    {(() => {
+                      // Extrai todos os módulos únicos das permissões
+                      const modulosUnicos = [...new Set(permissoes.map(p => p.modulo))].sort();
+                      
+                      return modulosUnicos.map(modulo => {
+                        const permsModulo = permissoes.filter(p => p.modulo === modulo);
+                        if (permsModulo.length === 0) return null;
+                        return (
+                          <div key={modulo} className="p-4">
+                            <h4 className="font-semibold capitalize mb-3 text-blue-700">{modulo}</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {permsModulo.map(perm => (
+                                <label key={perm.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={permissoesSelecionadas.includes(perm.id)}
+                                    onChange={() => togglePermissao(perm.id)}
+                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">{perm.descricao}</span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                   </div>
 
                   <div className="flex justify-end pt-4 border-t">

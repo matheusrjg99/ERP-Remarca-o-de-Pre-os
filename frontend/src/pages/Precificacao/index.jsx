@@ -6,6 +6,7 @@ import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
 import { ArrowLeftRight, UserCog, Scale,Loader2 } from 'lucide-react';
+import { usePrecificacaoPermissions } from '../../hooks/usePrecificacaoPermissions';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -19,10 +20,19 @@ const ModalSelecaoNota = lazy(() => import('./components/ModalSelecaoNota'));
 const ModalUsuarios = lazy(() => import('../../components/ModalUsuarios'));
 const ModalLogs = lazy(() => import('../../components/ModalLogs'));
 
-export default function Dashboard({ onLogout, onVoltarMenu }) {
+export default function Precificacao({ onLogout, onVoltarMenu }) {
   const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
   const btnRecalculoRef = useRef(null);
+  
+  // Hook de permissões do dashboard
+  const {
+    podeRecalcular,
+    podePersonalizarVisual,
+    podeSelecionarNota,
+    podeVerCustos,
+    isLoading: loadingPermissoes
+  } = usePrecificacaoPermissions();
   
   const [modalRecalculoOpen, setModalRecalculoOpen] = useState(false);
   const [registro, setRegistro] = useState('');
@@ -130,6 +140,10 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
   };
 
   const handleSelectNota = (numord) => {
+    if (!podeSelecionarNota) {
+      alert('Você não tem permissão para selecionar notas fiscais.');
+      return;
+    }
     setModalNotaOpen(false);  
     buscar(true, numord); 
   };
@@ -395,9 +409,11 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
         onToggleCheck={toggleCheck} 
         onCellEdit={handleCellEdit} 
         preferencias={preferencias} 
+        podeEditarCelulas={podeRecalcular}
+        podeVerCustos={podeVerCustos}
       />
     ));
-  }, [produtosExibidos, selecionados, preferencias, handleCellEdit, toggleCheck]);
+  }, [produtosExibidos, selecionados, preferencias, handleCellEdit, toggleCheck, podeRecalcular, podeVerCustos]);
 
 
   return (
@@ -527,9 +543,10 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
             usuarioLogado={usuarioLogado} 
             onLogout={onLogout} 
             showName={false}
-            extraAction={{
+            userPermissions={[]}
+            extraAction={!podePersonalizarVisual ? null : {
               label: 'Personalização',
-              title: 'Personalizar colunas',
+              title: !podePersonalizarVisual ? 'Você não tem permissão para personalizar' : 'Personalizar colunas',
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
                   <line x1="4" y1="21" x2="4" y2="14"/>
@@ -610,11 +627,11 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
             <button 
               ref={btnRecalculoRef}
               onClick={() => setModalRecalculoOpen(true)} 
-              disabled={produtos.length === 0}
-              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
-              title="Recálculos em lote"
+              disabled={!podeRecalcular || produtos.length === 0}
+              className={`bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${!podeRecalcular ? 'opacity-40 cursor-not-allowed' : ''}`} 
+              title={!podeRecalcular ? "Você não tem permissão para recálculos" : "Recálculos em lote"}
             >
-              Recálculos
+              Recálculos {!podeRecalcular && '🔒'}
             </button>
 
             <div className="flex gap-5 pr-4 border-r border-zinc-800">

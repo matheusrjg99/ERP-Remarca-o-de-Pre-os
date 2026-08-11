@@ -38,6 +38,7 @@ from .modules.collaborators import router as collaborators_router
 from .modules.nonconformities import router as nonconformities_router
 from .modules.disputes import router as disputes_router
 from .modules.commissions import router as commissions_router
+from .modules.pricing import router as pricing_router
 
 # ==========================================
 # Router Consolidado
@@ -63,5 +64,6 @@ router.include_router(collaborators_router)
 router.include_router(nonconformities_router)
 router.include_router(disputes_router)
 router.include_router(commissions_router)
+router.include_router(pricing_router)
 
 __all__ = ["router"]

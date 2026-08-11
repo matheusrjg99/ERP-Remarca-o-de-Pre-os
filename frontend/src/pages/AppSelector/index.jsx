@@ -12,7 +12,7 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
     // Carregar permissões do usuário ao montar o componente
     const carregarPermissoes = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');  // ✅ Chave correta
         const permsStr = localStorage.getItem('permissoes');
         console.log('📥 AppSelector: Lendo permissões do localStorage:', permsStr);
         if (permsStr) {

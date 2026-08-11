@@ -1,10 +1,10 @@
 import { usePermissions } from './usePermissions';
 
 /**
- * Hook especializado para permissões do Dashboard
+ * Hook especializado para permissões do Precificacao
  * @returns {Object} Funções e estados de permissão do dashboard
  */
-export const useDashboardPermissions = () => {
+export const usePrecificacaoPermissions = () => {
   const { 
     hasPermission, 
     hasAnyPermission, 
@@ -15,15 +15,15 @@ export const useDashboardPermissions = () => {
   } = usePermissions();
 
   // Permissões específicas do dashboard
-  const podeEditarCelulas = hasPermission('dashboard:editar_valores') || isAdmin;
-  const podeRecalcular = hasPermission('dashboard:recalcular') || isAdmin;
-  const podePersonalizarVisual = hasPermission('dashboard:personalizar_visual') || isAdmin;
-  const podeEditarRegras = hasPermission('dashboard:editar_regras') || isAdmin;
-  const podeExportar = hasPermission('dashboard:exportar') || isAdmin;
-  const podeImportar = hasPermission('dashboard:importar') || isAdmin;
-  const podeSelecionarNota = hasPermission('dashboard:selecionar_nota') || isAdmin;
-  const podeVerCustos = hasPermission('dashboard:ver_custos') || isAdmin;
-  const podeVerMargens = hasPermission('dashboard:ver_margens') || isAdmin;
+  const podeEditarCelulas = hasPermission('precificacao:editar_valores') || isAdmin;
+  const podeRecalcular = hasPermission('precificacao:recalcular') || isAdmin;
+  const podePersonalizarVisual = hasPermission('precificacao:personalizar_visual') || isAdmin;
+  const podeEditarRegras = hasPermission('precificacao:editar_regras') || isAdmin;
+  const podeExportar = hasPermission('precificacao:exportar') || isAdmin;
+  const podeImportar = hasPermission('precificacao:importar') || isAdmin;
+  const podeSelecionarNota = hasPermission('precificacao:selecionar_nota') || isAdmin;
+  const podeVerCustos = hasPermission('precificacao:ver_custos') || isAdmin;
+  const podeVerMargens = hasPermission('precificacao:ver_margens') || isAdmin;
 
   // Verifica se pode editar uma célula específica
   const podeEditarColuna = (colunaKey) => {
@@ -31,11 +31,11 @@ export const useDashboardPermissions = () => {
     
     // Mapeamento de colunas para permissões específicas
     const permissoesColuna = {
-      'custo': 'dashboard:editar_custos',
-      'sugerido': 'dashboard:editar_sugeridos',
-      'atual': 'dashboard:editar_atuais',
-      'margem': 'dashboard:editar_margens',
-      'desconto': 'dashboard:editar_descontos',
+      'custo': 'precificacao:editar_custos',
+      'sugerido': 'precificacao:editar_sugeridos',
+      'atual': 'precificacao:editar_atuais',
+      'margem': 'precificacao:editar_margens',
+      'desconto': 'precificacao:editar_descontos',
     };
 
     const permissaoNecessaria = permissoesColuna[colunaKey];
@@ -49,9 +49,9 @@ export const useDashboardPermissions = () => {
     if (isAdmin) return true;
     
     const colunasRestritas = {
-      'custo': 'dashboard:ver_custos',
-      'margem_valor': 'dashboard:ver_margens',
-      'lucro': 'dashboard:ver_lucros',
+      'custo': 'precificacao:ver_custos',
+      'margem_valor': 'precificacao:ver_margens',
+      'lucro': 'precificacao:ver_lucros',
     };
 
     const permissaoNecessaria = colunasRestritas[colunaKey];
@@ -61,8 +61,8 @@ export const useDashboardPermissions = () => {
   };
 
   // Ações em massa
-  const podeRecalculoEmMassa = hasAnyPermission(['dashboard:recalcular', 'dashboard:recalcular_em_massa']) || isAdmin;
-  const podeImportacaoEmMassa = hasPermission('dashboard:importar_em_massa') || isAdmin;
+  const podeRecalculoEmMassa = hasAnyPermission(['precificacao:recalcular', 'precificacao:recalcular_em_massa']) || isAdmin;
+  const podeImportacaoEmMassa = hasPermission('precificacao:importar_em_massa') || isAdmin;
 
   return {
     // Estados gerais
@@ -94,4 +94,4 @@ export const useDashboardPermissions = () => {
   };
 };
 
-export default useDashboardPermissions;
+export default usePrecificacaoPermissions;

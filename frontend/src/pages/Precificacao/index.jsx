@@ -6,7 +6,7 @@ import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
 import { ArrowLeftRight, UserCog, Scale,Loader2 } from 'lucide-react';
-import { useDashboardPermissions } from '../../hooks/useDashboardPermissions';
+import { usePrecificacaoPermissions } from '../../hooks/usePrecificacaoPermissions';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -20,7 +20,7 @@ const ModalSelecaoNota = lazy(() => import('./components/ModalSelecaoNota'));
 const ModalUsuarios = lazy(() => import('../../components/ModalUsuarios'));
 const ModalLogs = lazy(() => import('../../components/ModalLogs'));
 
-export default function Dashboard({ onLogout, onVoltarMenu }) {
+export default function Precificacao({ onLogout, onVoltarMenu }) {
   const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
   const btnRecalculoRef = useRef(null);
@@ -32,7 +32,7 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
     podeSelecionarNota,
     podeVerCustos,
     isLoading: loadingPermissoes
-  } = useDashboardPermissions();
+  } = usePrecificacaoPermissions();
   
   const [modalRecalculoOpen, setModalRecalculoOpen] = useState(false);
   const [registro, setRegistro] = useState('');

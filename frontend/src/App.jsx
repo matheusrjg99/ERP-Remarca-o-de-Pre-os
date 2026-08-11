@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login from './pages/Login';
 import AppSelector from './pages/AppSelector';
-import Dashboard from './pages/Dashboard';
+import Precificacao from './pages/Precificacao';
 import NaoConformidades from './pages/NaoConformidades';
 import ProtectedRoute from './components/ProtectedRoute'; // Importando o guardião
 
@@ -48,11 +48,11 @@ export default function App() {
           } 
         />
         
-        {/* Rota da Remarcação (Antigo Dashboard) */}
+        {/* Rota de Precificação (Remarcação) */}
         <Route 
           path="/remarcacao" 
           element={
-            <Dashboard 
+            <Precificacao 
               onLogout={handleLogout} 
               onVoltarMenu={() => navigate('/selector')} 
             />

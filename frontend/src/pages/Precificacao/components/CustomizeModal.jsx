@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDashboardPermissions } from '../../../hooks/useDashboardPermissions';
+import { usePrecificacaoPermissions } from '../../../hooks/usePrecificacaoPermissions';
 
 export default function CustomizeModal({ isOpen, onClose, colunas, preferencias, onAtualizarPreferencias }) {
   // Inicializamos com 'custo', mas agora permitimos selecionar o cabeçalho
@@ -26,7 +26,7 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
     podeEditarRegras,
     podePersonalizarVisual,
     isLoading 
-  } = useDashboardPermissions(); 
+  } = usePrecificacaoPermissions(); 
 
   useEffect(() => {
     if (isOpen) setPosition(pos => ({ ...pos, y: window.innerHeight * 0.1 }));

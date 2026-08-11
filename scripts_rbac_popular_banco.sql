@@ -53,12 +53,26 @@ INSERT INTO dbo.permissoes (codigo, descricao, modulo, ativo) VALUES
 ('precificacao:recalcular', 'Recalcular precificação em lote', 'precificacao', 1),
 ('precificacao:historico', 'Visualizar histórico de alterações de preço', 'precificacao', 1);
 
--- Módulo Dashboard
+-- Módulo Precificação (antigo Dashboard)
 INSERT INTO dbo.permissoes (codigo, descricao, modulo, ativo) VALUES
-('dashboard:visualizar', 'Acessar dashboard principal', 'dashboard', 1),
-('dashboard:ver_coluna_financeiro', 'Visualizar colunas financeiras no dashboard', 'dashboard', 1),
-('dashboard:editar_valores', 'Editar valores diretamente no dashboard', 'dashboard', 1),
-('dashboard:exportar', 'Exportar dados do dashboard', 'dashboard', 1);
+('precificacao:visualizar', 'Acessar módulo de precificação', 'precificacao', 1),
+('precificacao:ver_custos', 'Visualizar coluna de custos', 'precificacao', 1),
+('precificacao:ver_margens', 'Visualizar colunas de margens e lucros', 'precificacao', 1),
+('precificacao:editar', 'Editar preços e valores na planilha', 'precificacao', 1),
+('precificacao:recalcular', 'Recalcular precificação em lote', 'precificacao', 1),
+('precificacao:exportar', 'Exportar dados de precificação', 'precificacao', 1),
+('precificacao:importar', 'Importar dados de precificação', 'precificacao', 1),
+('precificacao:selecionar_nota', 'Selecionar nota fiscal para busca', 'precificacao', 1),
+('precificacao:personalizar_visual', 'Personalizar visualização da planilha', 'precificacao', 1),
+('precificacao:editar_regras', 'Editar regras de precificação', 'precificacao', 1),
+('precificacao:editar_custo', 'Editar coluna de custo', 'precificacao', 1),
+('precificacao:editar_sugerido', 'Editar coluna de preço sugerido', 'precificacao', 1),
+('precificacao:editar_preco', 'Editar coluna de preço atual', 'precificacao', 1),
+('precificacao:editar_margem', 'Editar coluna de margem', 'precificacao', 1),
+('precificacao:editar_desconto', 'Editar coluna de desconto', 'precificacao', 1),
+('precificacao:ver_custo', 'Visualizar coluna de custo', 'precificacao', 1),
+('precificacao:ver_margem', 'Visualizar coluna de margem', 'precificacao', 1),
+('precificacao:ver_lucro', 'Visualizar coluna de lucro', 'precificacao', 1);
 
 -- Módulo RBAC (gestão de acessos)
 INSERT INTO dbo.permissoes (codigo, descricao, modulo, ativo) VALUES
@@ -113,13 +127,13 @@ INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
 SELECT @id_admin, p.id FROM dbo.permissoes p 
 WHERE p.codigo IN ('rbac:listar_cargos', 'rbac:criar_cargo', 'rbac:editar_cargo', 'rbac:gerenciar_usuarios_cargo');
 
--- Gerente de Qualidade: NC completo + relatórios
+-- Gerente de Qualidade: NC completo + relatórios + Precificação (visualização)
 INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
 SELECT @id_gerente_q, p.id FROM dbo.permissoes p 
 WHERE p.codigo IN (
     'nc:listar', 'nc:criar', 'nc:editar', 'nc:excluir', 'nc:visualizar_relatorio', 'nc:exportar',
     'cadastros:colaboradores:visualizar',
-    'dashboard:visualizar', 'dashboard:ver_coluna_financeiro', 'dashboard:exportar'
+    'precificacao:visualizar', 'precificacao:ver_custos', 'precificacao:ver_margens', 'precificacao:exportar'
 );
 
 -- Operador de NC: Apenas operações básicas de NC
@@ -130,13 +144,13 @@ WHERE p.codigo IN (
     'cadastros:colaboradores:visualizar'
 );
 
--- Analista Comercial: Comissões e Precificação
+-- Analista Comercial: Comissões e Precificação completo
 INSERT INTO dbo.cargo_permissoes (cargo_id, permissao_id)
 SELECT @id_analista_com, p.id FROM dbo.permissoes p 
 WHERE p.codigo IN (
     'comissoes:configurar', 'comissoes:ver', 'comissoes:ver_resumo_total', 'comissoes:exportar',
-    'precificacao:visualizar', 'precificacao:editar', 'precificacao:historico',
-    'dashboard:visualizar', 'dashboard:ver_coluna_financeiro'
+    'precificacao:visualizar', 'precificacao:editar', 'precificacao:recalcular', 'precificacao:exportar',
+    'precificacao:ver_custos', 'precificacao:ver_margens', 'precificacao:editar_custo', 'precificacao:editar_preco'
 );
 
 -- Visualizador: Apenas leitura geral
@@ -146,8 +160,7 @@ WHERE p.codigo IN (
     'nc:listar', 'nc:visualizar_relatorio',
     'cadastros:colaboradores:visualizar',
     'comissoes:ver',
-    'precificacao:visualizar',
-    'dashboard:visualizar'
+    'precificacao:visualizar', 'precificacao:ver_custos', 'precificacao:ver_margens'
 );
 
 PRINT '✅ Permissões associadas aos cargos com sucesso!';

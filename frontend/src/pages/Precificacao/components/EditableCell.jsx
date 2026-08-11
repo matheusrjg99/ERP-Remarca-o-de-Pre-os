@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatNum } from '../utils/calculations';
-import { useDashboardPermissions } from '../../../hooks/useDashboardPermissions';
+import { usePrecificacaoPermissions } from '../../../hooks/usePrecificacaoPermissions';
 
 // Adicionamos a propriedade "decimals" (o padrão é 2, mas podemos passar 1)
 export default function EditableCell({ value, onChange, className, isPercentage = false, decimals = 2, colunaKey }) {
@@ -8,7 +8,7 @@ export default function EditableCell({ value, onChange, className, isPercentage 
   const [localValue, setLocalValue] = useState('');
   
   // Hook de permissões para verificar se pode editar esta célula
-  const { podeEditarColuna, isLoading } = useDashboardPermissions();
+  const { podeEditarColuna, isLoading } = usePrecificacaoPermissions();
   const podeEditar = colunaKey ? podeEditarColuna(colunaKey) : true;
 
   const handleFocus = (e) => {

@@ -3,6 +3,7 @@ Rotas de Consultas Gerais - Produtos, Notas, Classificações, Fornecedores
 Módulo Business/Queries: Responsável por consultas e leitura de dados do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from database import executar_query
 from security import requer_permissao

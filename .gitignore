@@ -1,1 +1,1 @@
-Nothing needs to be added to .gitignore since only a source code file (RBACManager.jsx) was modified and no build artifacts, dependencies, or temporary files were detected in the changes.
+Nothing should be ignored based on the provided file changes, as they consist only of source code files (.sql, .js) without any build artifacts, dependencies, or temporary files.

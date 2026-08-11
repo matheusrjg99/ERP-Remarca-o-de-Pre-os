@@ -15,14 +15,14 @@ export const usePrecificacaoPermissions = () => {
   } = usePermissions();
 
   // Permissões específicas do dashboard
-  const podeEditarCelulas = hasPermission('precificacao:editar_valores') || isAdmin;
+  const podeEditarCelulas = hasPermission('precificacao:editar') || isAdmin;
   const podeRecalcular = hasPermission('precificacao:recalcular') || isAdmin;
   const podePersonalizarVisual = hasPermission('precificacao:personalizar_visual') || isAdmin;
   const podeEditarRegras = hasPermission('precificacao:editar_regras') || isAdmin;
   const podeExportar = hasPermission('precificacao:exportar') || isAdmin;
   const podeImportar = hasPermission('precificacao:importar') || isAdmin;
   const podeSelecionarNota = hasPermission('precificacao:selecionar_nota') || isAdmin;
-  const podeVerCustos = hasPermission('precificacao:ver_custos') || isAdmin;
+  const podeVerCustos = hasPermission('precificacao:ver_custo') || isAdmin;
   const podeVerMargens = hasPermission('precificacao:ver_margens') || isAdmin;
 
   // Verifica se pode editar uma célula específica
@@ -31,11 +31,11 @@ export const usePrecificacaoPermissions = () => {
     
     // Mapeamento de colunas para permissões específicas
     const permissoesColuna = {
-      'custo': 'precificacao:editar_custos',
-      'sugerido': 'precificacao:editar_sugeridos',
-      'atual': 'precificacao:editar_atuais',
-      'margem': 'precificacao:editar_margens',
-      'desconto': 'precificacao:editar_descontos',
+      'custo': 'precificacao:editar_custo',
+      'sugerido': 'precificacao:editar_sugerido',
+      'atual': 'precificacao:editar_preco',
+      'margem': 'precificacao:editar_margem',
+      'desconto': 'precificacao:editar_desconto',
     };
 
     const permissaoNecessaria = permissoesColuna[colunaKey];
@@ -49,9 +49,9 @@ export const usePrecificacaoPermissions = () => {
     if (isAdmin) return true;
     
     const colunasRestritas = {
-      'custo': 'precificacao:ver_custos',
+      'custo': 'precificacao:ver_custo',
       'margem_valor': 'precificacao:ver_margens',
-      'lucro': 'precificacao:ver_lucros',
+      'lucro': 'precificacao:ver_lucro',
     };
 
     const permissaoNecessaria = colunasRestritas[colunaKey];
@@ -61,8 +61,8 @@ export const usePrecificacaoPermissions = () => {
   };
 
   // Ações em massa
-  const podeRecalculoEmMassa = hasAnyPermission(['precificacao:recalcular', 'precificacao:recalcular_em_massa']) || isAdmin;
-  const podeImportacaoEmMassa = hasPermission('precificacao:importar_em_massa') || isAdmin;
+  const podeRecalculoEmMassa = hasAnyPermission(['precificacao:recalcular']) || isAdmin;
+  const podeImportacaoEmMassa = hasPermission('precificacao:importar') || isAdmin;
 
   return {
     // Estados gerais

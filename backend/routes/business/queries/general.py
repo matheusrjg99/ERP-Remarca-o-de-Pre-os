@@ -102,14 +102,20 @@ async def buscar_registro_inteligente(
             endpoint="/api/notas"
         )
         
-        if not notas_encontradas:
+        if not notas_encontradas or len(notas_encontradas) == 0:
             raise HTTPException(status_code=404, detail="Nenhuma nota encontrada.")
             
+        # Converte para lista se for dicionário (caso a query retorne formato diferente)
+        if isinstance(notas_encontradas, dict):
+            notas_encontradas = [notas_encontradas]
+        
         if len(notas_encontradas) > 1:
             return {"action": "select_note", "notes": notas_encontradas}
             
         else:
-            numord_unico = notas_encontradas[0]['numord']
+            numord_unico = notas_encontradas[0].get('numord') if isinstance(notas_encontradas[0], dict) else getattr(notas_encontradas[0], 'numord', None)
+            if not numord_unico:
+                raise HTTPException(status_code=404, detail="Nota encontrada mas sem numord.")
             query_itens = """
                 SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
                 FROM PRODUTOCAD p

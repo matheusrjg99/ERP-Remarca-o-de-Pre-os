@@ -6,6 +6,7 @@ import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
 import { ArrowLeftRight, UserCog, Scale,Loader2 } from 'lucide-react';
+import { useDashboardPermissions } from '../../hooks/useDashboardPermissions';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -23,6 +24,15 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
   const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
   const btnRecalculoRef = useRef(null);
+  
+  // Hook de permissões do dashboard
+  const {
+    podeRecalcular,
+    podePersonalizarVisual,
+    podeSelecionarNota,
+    podeVerCustos,
+    isLoading: loadingPermissoes
+  } = useDashboardPermissions();
   
   const [modalRecalculoOpen, setModalRecalculoOpen] = useState(false);
   const [registro, setRegistro] = useState('');
@@ -395,9 +405,11 @@ export default function Dashboard({ onLogout, onVoltarMenu }) {
         onToggleCheck={toggleCheck} 
         onCellEdit={handleCellEdit} 
         preferencias={preferencias} 
+        podeEditarCelulas={podeRecalcular}
+        podeVerCustos={podeVerCustos}
       />
     ));
-  }, [produtosExibidos, selecionados, preferencias, handleCellEdit, toggleCheck]);
+  }, [produtosExibidos, selecionados, preferencias, handleCellEdit, toggleCheck, podeRecalcular, podeVerCustos]);
 
 
   return (

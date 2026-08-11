@@ -3,12 +3,9 @@ Rotas de Consultas Gerais - Produtos, Notas, Classificações, Fornecedores
 Módulo Business/Queries: Responsável por consultas e leitura de dados do sistema.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
-from typing import List, Optional
 
 from database import executar_query
-from sql_repo import Scripts
+from security import requer_permissao
 
 router = APIRouter(prefix="/queries", tags=["Consultas Gerais"])
 
@@ -18,92 +15,86 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-def obter_usuario_atual(token: str = Depends(oauth2_scheme)):
-    """Extrai o usuário do token JWT."""
-    from jose import jwt, JWTError
-    from auth.seguranca import SECRET_KEY, ALGORITHM
-    from fastapi import status, HTTPException
-    
-    credenciais_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Credenciais inválidas ou token expirado",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        usuario: str = payload.get("sub")
-        if usuario is None:
-            raise credenciais_exception
-        return usuario
-    except JWTError:
-        raise credenciais_exception
-
-@router.get("/divergencias-markup")
+@router.get("/divergencias-markup", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_divergencias_markup(
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Busca divergências de markup nos produtos."""
     db_name = AMBIENTES[ambiente]
-    query = Scripts.query['divergencia_markup']
+    query = """
+        SELECT codpro, custo, preco_venda, markup, 
+               (custo * 1.5) as preco_sugerido  -- Exemplo: markup sugerido 50%
+        FROM PRODUTOCAD
+        WHERE preco_venda < custo * 1.3  -- Divergência: markup abaixo de 30%
+        ORDER BY codpro
+    """
     
     dados = await executar_query(
         banco=db_name, 
         query=query, 
         params=(), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/divergencias-markup"
     )
     return dados
 
-@router.get("/produto/{registro}")
+@router.get("/produto/{registro}", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_registro_inteligente(
     registro: str, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
     is_numord: bool = Query(False),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Busca inteligente de produtos por código, nota fiscal ou múltiplos códigos."""
     db_name = AMBIENTES[ambiente]
     
-    # 1. Se o React avisou que é um NumOrd direto
+    # Se for NumOrd direto
     if is_numord:
-        query = Scripts.query['consulta_nota']
+        query = """
+            SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
+            FROM PRODUTOCAD p
+            LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
+            WHERE p.numord = ?
+        """
         dados = await executar_query(
             banco=db_name, 
             query=query, 
             params=(registro,), 
-            usuario=usuario, 
+            usuario="SISTEMA", 
             endpoint=f"/api/produto/nf/{registro}"
         )
         return dados
 
-    # 2. Múltiplos códigos
+    # Múltiplos códigos
     if "," in registro or "'" in registro:
         codigos = registro.split(",")
         codigos_formatados = ",".join(f"'{c.strip()}'" for c in codigos)
-        query_base = Scripts.query['consulta_codigo']
+        query = f"""
+            SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
+            FROM PRODUTOCAD p
+            LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
+            WHERE p.codpro IN ({codigos_formatados})
+        """
         
-        query = query_base.format(codigos=codigos_formatados)
-            
         dados = await executar_query(
             banco=db_name, 
             query=query, 
             params=(), 
-            usuario=usuario, 
+            usuario="SISTEMA", 
             endpoint="/api/produto/multiplos"
         )
         
-    # 3. Nota Fiscal
+    # Nota Fiscal
     elif len(registro) >= 6 and registro.isdigit():
-        query_notas = Scripts.query['buscar_notas_por_numero']
+        query_notas = """
+            SELECT DISTINCT numord FROM PRODUTOCAD WHERE numord LIKE ?
+        """
         notas_encontradas = await executar_query(
             banco=db_name, 
             query=query_notas, 
-            params=(registro,), 
-            usuario=usuario, 
+            params=(f"{registro}%",), 
+            usuario="SISTEMA", 
             endpoint="/api/notas"
         )
         
@@ -115,25 +106,34 @@ async def buscar_registro_inteligente(
             
         else:
             numord_unico = notas_encontradas[0]['numord']
-            query_itens = Scripts.query['consulta_nota']
+            query_itens = """
+                SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
+                FROM PRODUTOCAD p
+                LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
+                WHERE p.numord = ?
+            """
             dados = await executar_query(
                 banco=db_name, 
                 query=query_itens, 
                 params=(numord_unico,), 
-                usuario=usuario, 
+                usuario="SISTEMA", 
                 endpoint=f"/api/produto/nf/{numord_unico}"
             )
             
-    # 4. Código Individual
+    # Código Individual
     else:
         registro_formatado = str(registro).zfill(5)
-        query_base = Scripts.query['consulta_codigo']
-        query = query_base.format(codigos=f"'{registro_formatado}'")
+        query = """
+            SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
+            FROM PRODUTOCAD p
+            LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
+            WHERE p.codpro = ?
+        """
         dados = await executar_query(
             banco=db_name, 
             query=query, 
-            params=(), 
-            usuario=usuario, 
+            params=(registro_formatado,), 
+            usuario="SISTEMA", 
             endpoint=f"/api/produto/{registro}"
         )
 
@@ -143,13 +143,13 @@ async def buscar_registro_inteligente(
     return dados
 
 class LoteRequisicao(BaseModel):
-    codigos: List[str]
+    codigos: list[str]
 
-@router.post("/produtos-lote")
+@router.post("/produtos-lote", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_produtos_em_lote(
     lote: LoteRequisicao,
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Busca múltiplos produtos em lote."""
     from pydantic import BaseModel
@@ -160,14 +160,18 @@ async def buscar_produtos_em_lote(
     db_name = AMBIENTES[ambiente]
     codigos_formatados = ",".join(f"'{str(c).strip()}'" for c in lote.codigos)
     
-    query_base = Scripts.query['consulta_codigo']
-    query = query_base.format(codigos=codigos_formatados)
+    query = f"""
+        SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
+        FROM PRODUTOCAD p
+        LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
+        WHERE p.codpro IN ({codigos_formatados})
+    """
         
     dados = await executar_query(
         banco=db_name, 
         query=query, 
         params=(), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/produtos-lote"
     )
     
@@ -176,10 +180,10 @@ async def buscar_produtos_em_lote(
         
     return dados
 
-@router.get("/classificacoes")
+@router.get("/classificacoes", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def listar_classificacoes(
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Lista todas as classificações de produtos."""
     db_name = AMBIENTES[ambiente]
@@ -188,16 +192,16 @@ async def listar_classificacoes(
         banco=db_name, 
         query=query, 
         params=(), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/classificacoes"
     )
     return dados if dados else []
 
-@router.get("/fornecedores")
+@router.get("/fornecedores", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def listar_fornecedores(
     termo: str = "", 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Lista fornecedores com filtro por nome."""
     db_name = AMBIENTES[ambiente]
@@ -206,20 +210,20 @@ async def listar_fornecedores(
         banco=db_name, 
         query=query, 
         params=(f"%{termo}%",), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/fornecedores"
     )
     return dados if dados else []
 
-@router.get("/pesquisar")
+@router.get("/pesquisar", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def pesquisar_produto_avancado(
-    termo: Optional[str] = "", 
-    codigo: Optional[str] = "",
-    fornecedor: Optional[str] = "",
-    classificacao: Optional[str] = "",
-    disponibilidade: Optional[str] = "",
+    termo: str = "", 
+    codigo: str = "",
+    fornecedor: str = "",
+    classificacao: str = "",
+    disponibilidade: str = "",
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Pesquisa avançada de produtos com múltiplos filtros."""
     db_name = AMBIENTES[ambiente]
@@ -282,10 +286,9 @@ async def pesquisar_produto_avancado(
         banco=db_name, 
         query=query, 
         params=tuple(params), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/pesquisar"
     )
     return dados if dados else []
 
-# Import necessário no final para evitar circular dependency
 from pydantic import BaseModel

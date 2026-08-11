@@ -3,10 +3,9 @@ Rotas de Operações - Atualizações de Preço, Custo e Markup
 Módulo Business/Operations: Responsável por operações de escrita e atualização de dados.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.security import OAuth2PasswordBearer
 
 from database import executar_query
-from sql_repo import Scripts
+from security import requer_permissao
 
 router = APIRouter(prefix="/operations", tags=["Operações"])
 
@@ -16,42 +15,21 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-def obter_usuario_atual(token: str = Depends(oauth2_scheme)):
-    """Extrai o usuário do token JWT."""
-    from jose import jwt, JWTError
-    from auth.seguranca import SECRET_KEY, ALGORITHM
-    from fastapi import status, HTTPException
-    
-    credenciais_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Credenciais inválidas ou token expirado",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        usuario: str = payload.get("sub")
-        if usuario is None:
-            raise credenciais_exception
-        return usuario
-    except JWTError:
-        raise credenciais_exception
-
-@router.put("/remarcar")
+@router.put("/remarcar", dependencies=[Depends(requer_permissao("precificacao:editar"))])
 async def remarcar_preco(
     codigo: str, 
     novo_preco: float, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:editar"))
 ):
     """Atualiza o preço de venda de um produto."""
     db_name = AMBIENTES[ambiente]
+    query = "UPDATE PRODUTOCAD SET preco_venda = ? WHERE codpro = ?"
     sucesso = await executar_query(
         banco=db_name, 
-        query=Scripts.query['remarcação'], 
+        query=query, 
         params=(novo_preco, codigo), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/remarcar",
         is_select=False
     )
@@ -60,21 +38,22 @@ async def remarcar_preco(
         return {"status": "sucesso", "mensagem": f"Preço atualizado para R$ {novo_preco}"}
     raise HTTPException(status_code=500, detail=f"Erro: {sucesso}")
 
-@router.put("/atualizar-custo")
+@router.put("/atualizar-custo", dependencies=[Depends(requer_permissao("precificacao:editar_custo"))])
 async def atualizar_custo(
     codigo: str, 
     novo_custo: float, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:editar_custo"))
 ):
     """Atualiza o custo de um produto."""
     db_name = AMBIENTES[ambiente]
     
+    query = "UPDATE PRODUTOCAD SET custo = ? WHERE codpro = ?"
     sucesso = await executar_query(
         banco=db_name, 
-        query=Scripts.query['atualiza_custo'], 
+        query=query, 
         params=(novo_custo, codigo),
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/atualizar-custo",
         is_select=False
     )
@@ -84,21 +63,22 @@ async def atualizar_custo(
     else:
         raise HTTPException(status_code=500, detail=f"Falha ao atualizar o custo do produto {codigo}")
 
-@router.put("/atualizar-mkp")
+@router.put("/atualizar-mkp", dependencies=[Depends(requer_permissao("precificacao:editar"))])
 async def atualizar_markup(
     codigo: str, 
     novo_mkp: float,
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(obter_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:editar"))
 ):
     """Atualiza o markup de um produto."""
     db_name = AMBIENTES[ambiente]
     
+    query = "UPDATE PRODUTOCAD SET markup = ?, margem = ? WHERE codpro = ?"
     sucesso = await executar_query(
         banco=db_name, 
-        query=Scripts.query['atualiza_mkp'], 
+        query=query, 
         params=(novo_mkp, novo_mkp, codigo), 
-        usuario=usuario, 
+        usuario="SISTEMA", 
         endpoint="/api/atualizar-mkp",
         is_select=False
     )

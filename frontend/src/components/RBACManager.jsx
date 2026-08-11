@@ -28,7 +28,7 @@ const RBACManager = ({ onClose }) => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');  // ✅ Chave correta
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       const [resCargos, resPermissoes, resUsuarios] = await Promise.all([
@@ -52,7 +52,7 @@ const RBACManager = ({ onClose }) => {
     if (!cargoSelecionado) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');  // ✅ Chave correta
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       // Extrair apenas os IDs das permissões
@@ -82,7 +82,7 @@ const RBACManager = ({ onClose }) => {
     if (!usuarioEdicao) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');  // ✅ Chave correta
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       await axios.put(

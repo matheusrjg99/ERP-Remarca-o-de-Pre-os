@@ -47,69 +47,83 @@ async def obter_permissoes_usuario(login: str) -> list:
     if login.upper() == "SISTEMA":
         return ["admin_total"]
     
-    # Primeiro, verifica o nível de acesso do usuário
-    query_nivel = """
-        SELECT nivel_acesso FROM dbo.API_USUARIOS 
+    # Primeiro, busca TODOS os dados do usuário incluindo nivel_acesso e cargo_id
+    query_usuario_completo = """
+        SELECT login, nome, nivel_acesso, cargo_id 
+        FROM dbo.API_USUARIOS 
         WHERE login = ? AND ativo = 1
     """
     
     try:
-        resultado_nivel = await executar_query(
+        resultado_usuario = await executar_query(
             banco="Bddemo",
-            query=query_nivel,
+            query=query_usuario_completo,
             params=(login,),
             usuario="SISTEMA",
             endpoint="/auth/permissoes"
         )
         
-        if not resultado_nivel or isinstance(resultado_nivel, dict):
+        if not resultado_usuario or isinstance(resultado_usuario, dict) or len(resultado_usuario) == 0:
+            print(f"DEBUG: Usuário '{login}' não encontrado ou inativo")
             return []
         
-        nivel_acesso = resultado_nivel[0].get('nivel_acesso', '').upper()
+        usuario_info = resultado_usuario[0]
+        nivel_acesso = usuario_info.get('nivel_acesso', '').upper().strip()
+        cargo_id = usuario_info.get('cargo_id')
         
-        # Se for ADMIN, concede todas as permissões
+        print(f"DEBUG: Usuário '{login}' - nivel_acesso='{nivel_acesso}', cargo_id={cargo_id}")
+        
+        # Se for ADMIN, concede todas as permissões IMEDIATAMENTE
         if nivel_acesso == 'ADMIN':
+            print(f"DEBUG: Usuário '{login}' é ADMIN, retornando admin_total")
             return ["admin_total"]
         
-        # Query corrigida: Mantém LEFT JOINs e move filtros de permissão para o ON
-        # Isso garante que usuários sem cargo ainda retornem uma linha (com permissões vazias)
-        query = """
-            SELECT DISTINCT LTRIM(RTRIM(p.codigo)) as codigo
-            FROM dbo.API_USUARIOS u
-            LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
-            LEFT JOIN dbo.cargo_permissoes cp ON c.id = cp.cargo_id
-            LEFT JOIN dbo.permissoes p ON cp.permissao_id = p.id AND p.ativo = 1 AND p.codigo IS NOT NULL AND LTRIM(RTRIM(p.codigo)) <> ''
-            WHERE u.login = ? AND u.ativo = 1
-            ORDER BY p.codigo
-        """
+        # Se não tiver cargo atribuído, retorna vazio
+        if cargo_id is None:
+            print(f"DEBUG: Usuário '{login}' não tem cargo atribuído (cargo_id=None)")
+            return []
         
-        print(f"DEBUG: Buscando permissões para usuário '{login}' com cargo_id")
-        
-        # Query auxiliar para debug: verificar cargo do usuário
-        query_debug_cargo = """
-            SELECT u.cargo_id, c.nome as cargo_nome, c.ativo as cargo_ativo
-            FROM dbo.API_USUARIOS u
-            LEFT JOIN dbo.cargos c ON u.cargo_id = c.id
-            WHERE u.login = ?
+        # Verifica se o cargo está ativo
+        query_verifica_cargo = """
+            SELECT id, nome, ativo 
+            FROM dbo.cargos 
+            WHERE id = ? AND ativo = 1
         """
         resultado_cargo = await executar_query(
             banco="Bddemo",
-            query=query_debug_cargo,
-            params=(login,),
+            query=query_verifica_cargo,
+            params=(cargo_id,),
             usuario="SISTEMA",
-            endpoint="/auth/permissoes-debug"
+            endpoint="/auth/permissoes-cargo"
         )
-        print(f"DEBUG Cargo do usuário {login}: {resultado_cargo}")
+        
+        if not resultado_cargo or isinstance(resultado_cargo, dict) or len(resultado_cargo) == 0:
+            print(f"DEBUG: Cargo {cargo_id} do usuário '{login}' está inativo ou não existe")
+            return []
+        
+        print(f"DEBUG: Cargo ativo confirmado para usuário '{login}'")
+        
+        # Query otimizada: busca permissões do cargo ativo
+        query = """
+            SELECT DISTINCT LTRIM(RTRIM(p.codigo)) as codigo
+            FROM dbo.cargo_permissoes cp
+            INNER JOIN dbo.permissoes p ON cp.permissao_id = p.id 
+                AND p.ativo = 1 
+                AND p.codigo IS NOT NULL 
+                AND LTRIM(RTRIM(p.codigo)) <> ''
+            WHERE cp.cargo_id = ?
+            ORDER BY p.codigo
+        """
         
         resultado = await executar_query(
             banco="Bddemo",
             query=query,
-            params=(login,),
+            params=(cargo_id,),
             usuario="SISTEMA",
             endpoint="/auth/permissoes"
         )
         
-        print(f"DEBUG Permissões brutas do banco para {login}: {resultado}")
+        print(f"DEBUG: Permissões brutas do banco para {login} (cargo_id={cargo_id}): {resultado}")
         
         if not resultado or isinstance(resultado, dict):
             return []
@@ -121,7 +135,12 @@ async def obter_permissoes_usuario(login: str) -> list:
             if codigo and isinstance(codigo, str) and codigo.strip():
                 permissoes.append(codigo.strip())
         
-        return list(set(permissoes))  # Remove duplicatas extras
+        permissoes_finais = list(set(permissoes))  # Remove duplicatas extras
+        print(f"DEBUG: Permissões finais para {login}: {permissoes_finais}")
+        return permissoes_finais
+        
     except Exception as e:
         print(f"Erro ao buscar permissões para {login}: {e}")
+        import traceback
+        traceback.print_exc()
         return []

@@ -1,1 +1,1 @@
-Nothing should be ignored based on the provided file changes. The modification of 'backend/routes/business/queries/general.py' is a source code file and does not require any new ignore rules.
+Nothing should be ignored based on the provided file changes. The only modified file is a Python source file (`backend/routes/business/queries/general.py`), which should not be added to .gitignore.

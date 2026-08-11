@@ -16,6 +16,9 @@ AMBIENTES = {
     "treina": "bdtreina"
 }
 
+class LoteRequisicao(BaseModel):
+    codigos: list[str]
+
 @router.get("/divergencias-markup", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_divergencias_markup(
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
@@ -143,9 +146,6 @@ async def buscar_registro_inteligente(
         
     return dados
 
-class LoteRequisicao(BaseModel):
-    codigos: list[str]
-
 @router.post("/produtos-lote", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_produtos_em_lote(
     lote: LoteRequisicao,
@@ -153,8 +153,6 @@ async def buscar_produtos_em_lote(
     usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Busca múltiplos produtos em lote."""
-    from pydantic import BaseModel
-    
     if not lote.codigos:
         return []
 
@@ -291,5 +289,3 @@ async def pesquisar_produto_avancado(
         endpoint="/api/pesquisar"
     )
     return dados if dados else []
-
-from pydantic import BaseModel

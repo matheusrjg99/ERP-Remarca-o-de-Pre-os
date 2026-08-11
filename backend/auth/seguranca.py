@@ -104,6 +104,8 @@ async def obter_permissoes_usuario(login: str) -> list:
         print(f"DEBUG: Cargo ativo confirmado para usuário '{login}'")
         
         # Query otimizada: busca permissões do cargo ativo
+        # NOTA: Removido ORDER BY pois não é compatível com SELECT DISTINCT no SQL Server
+        # a menos que a coluna esteja na lista de seleção
         query = """
             SELECT DISTINCT LTRIM(RTRIM(p.codigo)) as codigo
             FROM dbo.cargo_permissoes cp
@@ -112,7 +114,6 @@ async def obter_permissoes_usuario(login: str) -> list:
                 AND p.codigo IS NOT NULL 
                 AND LTRIM(RTRIM(p.codigo)) <> ''
             WHERE cp.cargo_id = ?
-            ORDER BY p.codigo
         """
         
         resultado = await executar_query(

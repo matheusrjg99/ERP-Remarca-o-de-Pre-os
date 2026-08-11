@@ -140,6 +140,10 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   };
 
   const handleSelectNota = (numord) => {
+    if (!podeSelecionarNota) {
+      alert('Você não tem permissão para selecionar notas fiscais.');
+      return;
+    }
     setModalNotaOpen(false);  
     buscar(true, numord); 
   };
@@ -539,9 +543,10 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
             usuarioLogado={usuarioLogado} 
             onLogout={onLogout} 
             showName={false}
-            extraAction={{
+            userPermissions={permissions || []}
+            extraAction={!podePersonalizarVisual ? null : {
               label: 'Personalização',
-              title: 'Personalizar colunas',
+              title: !podePersonalizarVisual ? 'Você não tem permissão para personalizar' : 'Personalizar colunas',
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
                   <line x1="4" y1="21" x2="4" y2="14"/>
@@ -622,11 +627,11 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
             <button 
               ref={btnRecalculoRef}
               onClick={() => setModalRecalculoOpen(true)} 
-              disabled={produtos.length === 0}
-              className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
-              title="Recálculos em lote"
+              disabled={!podeRecalcular || produtos.length === 0}
+              className={`bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-zinc-300 font-medium shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${!podeRecalcular ? 'opacity-40 cursor-not-allowed' : ''}`} 
+              title={!podeRecalcular ? "Você não tem permissão para recálculos" : "Recálculos em lote"}
             >
-              Recálculos
+              Recálculos {!podeRecalcular && '🔒'}
             </button>
 
             <div className="flex gap-5 pr-4 border-r border-zinc-800">

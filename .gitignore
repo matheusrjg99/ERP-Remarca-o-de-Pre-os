@@ -1,26 +1,19 @@
 ```
-# Dependencies
-node_modules/
+# Documentation and SQL files
+*.md
+*.sql
 
-# Environment
+# Environment files
 .env
 .env.local
-.env.*
+*.env.*
 
-# Editors
-.vscode/
-.idea/
-
-# Logs and temp files
+# Logs
 *.log
+
+# Temporary files
 *.tmp
 *.swp
-
-# Build artifacts
-dist/
-build/
-*.js.map
-*.css.map
 
 # Python
 __pycache__/
@@ -31,29 +24,19 @@ __pycache__/
 env/
 venv/
 .venv/
-pip-log.txt
-pip-selfcheck.json
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-.nyc_output
-
-# Testing
+.ENV
+.python-version
+*.so
+.Python
 .pytest_cache/
 .mypy_cache/
-.hypothesis/
-
-# OS generated
-.DS_Store
-Thumbs.db
 
 # Compressed files
 *.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
 *.gz
-*.tar
-*.tgz
 *.bz2
 *.xz
 *.7z
@@ -68,8 +51,13 @@ Thumbs.db
 *.Z
 *.lz
 *.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 ```

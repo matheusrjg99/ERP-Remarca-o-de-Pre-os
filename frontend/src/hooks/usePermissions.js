@@ -116,6 +116,9 @@ export const usePermissions = () => {
     getModulePermissions,
     refreshPermissions,
     isAdmin: permissions.includes('admin_total'),
+    // Exporta todas as funções para uso externo
+    can: hasPermission,
+    cannot: (code) => !hasPermission(code),
   };
 };
 

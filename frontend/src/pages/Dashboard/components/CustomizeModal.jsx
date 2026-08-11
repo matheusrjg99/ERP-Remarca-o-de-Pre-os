@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 export default function CustomizeModal({ isOpen, onClose, colunas, preferencias, onAtualizarPreferencias }) {
   // Inicializamos com 'custo', mas agora permitimos selecionar o cabeçalho
@@ -18,6 +19,13 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
   const modalRef = useRef(null);
   const offsetRef = useRef({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 20, y: 0 }); 
+
+  // Hook de permissões para verificar acesso às funcionalidades
+  const { hasPermission, isLoading } = usePermissions();
+  
+  // Verifica se usuário tem permissão para editar regras condicionais
+  const podeEditarRegras = hasPermission('dashboard:editar_regras') || hasPermission('admin_total');
+  const podePersonalizarVisual = hasPermission('dashboard:personalizar_visual') || hasPermission('admin_total'); 
 
   useEffect(() => {
     if (isOpen) setPosition(pos => ({ ...pos, y: window.innerHeight * 0.1 }));
@@ -44,6 +52,7 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
   if (!isOpen) return null;
 
   const toggleColuna = (key) => {
+    if (!podePersonalizarVisual) return; // Bloqueia se não tiver permissão
     if (colunasSelecionadas.includes(key)) {
       if (colunasSelecionadas.length > 1) setColunasSelecionadas(colunasSelecionadas.filter(k => k !== key));
     } else {
@@ -51,10 +60,8 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
     }
   };
 
-  // Pega a preferência da primeira coluna selecionada para exibir nos inputs
-  const prefAtual = colunasSelecionadas.length > 0 ? (preferencias[colunasSelecionadas[0]] || {}) : {};
-
   const aplicarEmMassa = (updater) => {
+    if (!podePersonalizarVisual) return; // Bloqueia se não tiver permissão
     const novasPrefs = { ...preferencias };
     colunasSelecionadas.forEach(col => {
       const curr = novasPrefs[col] || {};
@@ -64,6 +71,7 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
   };
 
   const addOuSalvarRegra = () => {
+    if (!podeEditarRegras) return; // Bloqueia se não tiver permissão
     if (novaRegra.valor === '') return;
     
     aplicarEmMassa((curr) => {
@@ -80,11 +88,13 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
   };
 
   const editarRegra = (regra) => {
+    if (!podeEditarRegras) return; // Bloqueia se não tiver permissão
     setNovaRegra({ ...regra });
     setAba('condicional');
   };
 
   const removeRegra = (idRegra) => {
+    if (!podeEditarRegras) return; // Bloqueia se não tiver permissão
     aplicarEmMassa((curr) => ({
       ...curr, 
       regras: curr.regras ? curr.regras.filter(r => r.id !== idRegra) : []
@@ -97,6 +107,9 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
     return col ? col.label : key;
   };
 
+  // Pega a preferência da primeira coluna selecionada para exibir nos inputs
+  const prefAtual = colunasSelecionadas.length > 0 ? (preferencias[colunasSelecionadas[0]] || {}) : {};
+
   return (
     <div className="fixed inset-0 z-50 p-4 bg-transparent select-none pointer-events-none">
       <div 
@@ -108,7 +121,9 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
         <div onMouseDown={handleMouseDown} className="bg-zinc-800/60 px-4 py-3 border-b border-zinc-700 flex justify-between items-center cursor-move">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-            <h2 className="text-sm font-semibold text-white">Personalizar Visual</h2>
+            <h2 className="text-sm font-semibold text-white">
+              Personalizar Visual {!podePersonalizarVisual && '🔒'}
+            </h2>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-white transition-colors text-lg p-1">&times;</button>
         </div>
@@ -122,15 +137,30 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
               {/* Botão Especial para o Cabeçalho */}
               <button 
                 onClick={() => toggleColuna('__header__')}
-                className={`px-2.5 py-1 text-[10px] font-bold rounded border transition-all ${colunasSelecionadas.includes('__header__') ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-900/20' : 'bg-zinc-950 border-zinc-800 text-amber-500/70 hover:border-amber-600'}`}
+                disabled={!podePersonalizarVisual}
+                className={`px-2.5 py-1 text-[10px] font-bold rounded border transition-all ${
+                  !podePersonalizarVisual 
+                    ? 'bg-zinc-800 border-zinc-700 text-zinc-600 cursor-not-allowed'
+                    : colunasSelecionadas.includes('__header__') 
+                      ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-900/20' 
+                      : 'bg-zinc-950 border-zinc-800 text-amber-500/70 hover:border-amber-600'
+                }`}
               >
                 TOP: CABEÇALHO
               </button>
 
               {colunas.filter(c => c.key !== 'check').map(c => (
                 <button 
-                  key={c.key} onClick={() => toggleColuna(c.key)}
-                  className={`px-2 py-1 text-[10px] rounded border transition-colors ${colunasSelecionadas.includes(c.key) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600'}`}
+                  key={c.key} 
+                  onClick={() => toggleColuna(c.key)}
+                  disabled={!podePersonalizarVisual}
+                  className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                    !podePersonalizarVisual
+                      ? 'bg-zinc-800 border-zinc-700 text-zinc-600 cursor-not-allowed'
+                      : colunasSelecionadas.includes(c.key)
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600'
+                  }`}
                 >
                   {c.label}
                 </button>
@@ -140,24 +170,42 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
 
           {/* ABAS */}
           <div className="flex bg-zinc-950 rounded-md p-1 border border-zinc-800">
-            <button onClick={() => setAba('basica')} className={`flex-1 text-xs py-1.5 rounded transition-all ${aba === 'basica' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>Estilo Fixo</button>
             <button 
-              disabled={colunasSelecionadas.includes('__header__') && colunasSelecionadas.length === 1}
-              onClick={() => setAba('condicional')} 
-              className={`flex-1 text-xs py-1.5 rounded transition-all ${aba === 'condicional' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-500 hover:text-zinc-300'} disabled:opacity-30 disabled:cursor-not-allowed`}
+              onClick={() => setAba('basica')} 
+              disabled={!podePersonalizarVisual}
+              className={`flex-1 text-xs py-1.5 rounded transition-all ${
+                !podePersonalizarVisual
+                  ? 'text-zinc-700 cursor-not-allowed'
+                  : aba === 'basica'
+                    ? 'bg-zinc-800 text-white font-medium shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300'
+              }`}
             >
-              Regras (IF)
+              Estilo Fixo
+            </button>
+            <button 
+              disabled={(colunasSelecionadas.includes('__header__') && colunasSelecionadas.length === 1) || !podeEditarRegras || !podePersonalizarVisual} 
+              onClick={() => setAba('condicional')} 
+              className={`flex-1 text-xs py-1.5 rounded transition-all ${
+                !podeEditarRegras || !podePersonalizarVisual
+                  ? 'text-zinc-700 cursor-not-allowed'
+                  : aba === 'condicional'
+                    ? 'bg-zinc-800 text-white font-medium shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300'
+              } disabled:opacity-30 disabled:cursor-not-allowed`}
+            >
+              Regras (IF) {!podeEditarRegras && '🔒'}
             </button>
           </div>
 
           {/* CONTEÚDO: ESTILO BÁSICO */}
           {aba === 'basica' && (
-            <div className="flex flex-col gap-3 bg-zinc-950/50 p-3 border border-zinc-800 rounded-lg">
+            <div className={`flex flex-col gap-3 bg-zinc-950/50 p-3 border border-zinc-800 rounded-lg ${!podePersonalizarVisual ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-zinc-400 font-medium">Cor de Fundo</span>
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] text-zinc-600 font-mono">{prefAtual.bg || '#18181b'}</span>
-                    <input type="color" value={prefAtual.bg || '#18181b'} onChange={(e) => aplicarEmMassa(c => ({ ...c, bg: e.target.value }))} className="w-7 h-7 rounded-md cursor-pointer bg-zinc-800 border-2 border-zinc-700 p-0.5" />
+                    <input type="color" value={prefAtual.bg || '#18181b'} onChange={(e) => aplicarEmMassa(c => ({ ...c, bg: e.target.value }))} className="w-7 h-7 rounded-md cursor-pointer bg-zinc-800 border-2 border-zinc-700 p-0.5" disabled={!podePersonalizarVisual} />
                 </div>
               </div>
 
@@ -165,14 +213,14 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
                 <span className="text-[11px] text-zinc-400 font-medium">Cor do Texto</span>
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] text-zinc-600 font-mono">{prefAtual.text || '#ffffff'}</span>
-                    <input type="color" value={prefAtual.text || '#ffffff'} onChange={(e) => aplicarEmMassa(c => ({ ...c, text: e.target.value }))} className="w-7 h-7 rounded-md cursor-pointer bg-zinc-800 border-2 border-zinc-700 p-0.5" />
+                    <input type="color" value={prefAtual.text || '#ffffff'} onChange={(e) => aplicarEmMassa(c => ({ ...c, text: e.target.value }))} className="w-7 h-7 rounded-md cursor-pointer bg-zinc-800 border-2 border-zinc-700 p-0.5" disabled={!podePersonalizarVisual} />
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-zinc-400 font-medium">Tamanho da Fonte</span>
                 <div className="flex items-center gap-2">
-                   <input type="range" min="8" max="20" value={prefAtual.size || 12} onChange={(e) => aplicarEmMassa(c => ({ ...c, size: parseInt(e.target.value) }))} className="w-24 accent-blue-500" />
+                   <input type="range" min="8" max="20" value={prefAtual.size || 12} onChange={(e) => aplicarEmMassa(c => ({ ...c, size: parseInt(e.target.value) }))} className="w-24 accent-blue-500" disabled={!podePersonalizarVisual} />
                    <span className="text-[11px] text-white bg-zinc-800 px-2 py-0.5 rounded min-w-[35px] text-center">{prefAtual.size || 12}px</span>
                 </div>
               </div>
@@ -181,20 +229,20 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
 
           {/* CONTEÚDO: CONDICIONAL */}
           {aba === 'condicional' && (
-            <div className="flex flex-col gap-3">
+            <div className={`flex flex-col gap-3 ${!podeEditarRegras ? 'opacity-50 pointer-events-none' : ''}`}>
                {/* FORMULÁRIO DE REGRA */}
                <div className="flex flex-col gap-2 bg-zinc-950 p-3 border border-zinc-800 rounded-lg shadow-inner">
                 <div className="flex justify-between items-center mb-1">
                     <span className="text-[10px] font-bold text-blue-400 uppercase tracking-tight">{novaRegra.id ? '✏️ Editando Regra' : '✨ Nova Condição'}</span>
-                    {novaRegra.id && <button onClick={() => setNovaRegra({...novaRegra, id: null, valor: ''})} className="text-[9px] text-zinc-500 hover:text-zinc-300 underline">Cancelar</button>}
+                    {novaRegra.id && <button onClick={() => setNovaRegra({...novaRegra, id: null, valor: ''})} className="text-[9px] text-zinc-500 hover:text-zinc-300 underline" disabled={!podeEditarRegras}>Cancelar</button>}
                 </div>
                 
                 <div className="grid grid-cols-12 gap-2">
-                  <select value={novaRegra.colunaAlvo} onChange={e => setNovaRegra({...novaRegra, colunaAlvo: e.target.value})} className="col-span-12 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 outline-none">
+                  <select value={novaRegra.colunaAlvo} onChange={e => setNovaRegra({...novaRegra, colunaAlvo: e.target.value})} className="col-span-12 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 outline-none" disabled={!podeEditarRegras}>
                     {colunas.filter(c => c.key !== 'check').map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
 
-                  <select value={novaRegra.operador} onChange={e => setNovaRegra({...novaRegra, operador: e.target.value})} className="col-span-7 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 outline-none">
+                  <select value={novaRegra.operador} onChange={e => setNovaRegra({...novaRegra, operador: e.target.value})} className="col-span-7 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 outline-none" disabled={!podeEditarRegras}>
                     <option value=">">Maior que {'>'}</option>
                     <option value="<">Menor que {'<'}</option>
                     <option value=">=">Maior ou Igual {'>='}</option>
@@ -202,7 +250,7 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
                     <option value="=">Exatamente Igual =</option>
                   </select>
 
-                  <input type="number" placeholder="Valor" value={novaRegra.valor} onChange={e => setNovaRegra({...novaRegra, valor: e.target.value})} className="col-span-5 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 outline-none" />
+                  <input type="number" placeholder="Valor" value={novaRegra.valor} onChange={e => setNovaRegra({...novaRegra, valor: e.target.value})} className="col-span-5 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 outline-none" disabled={!podeEditarRegras} />
                 </div>
 
                 <div className="mt-2 p-3 rounded-md flex items-center justify-between border border-dashed border-zinc-800 transition-all" style={{ backgroundColor: novaRegra.bg }}>
@@ -210,13 +258,13 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
                       TEXTO DE EXEMPLO
                    </span>
                    <div className="flex gap-2">
-                      <input type="color" value={novaRegra.bg} title="Fundo" onChange={e => setNovaRegra({...novaRegra, bg: e.target.value})} className="w-5 h-5 rounded-full cursor-pointer border-0 p-0" />
-                      <input type="color" value={novaRegra.text} title="Texto" onChange={e => setNovaRegra({...novaRegra, text: e.target.value})} className="w-5 h-5 rounded-full cursor-pointer border-0 p-0" />
+                      <input type="color" value={novaRegra.bg} title="Fundo" onChange={e => setNovaRegra({...novaRegra, bg: e.target.value})} className="w-5 h-5 rounded-full cursor-pointer border-0 p-0" disabled={!podeEditarRegras} />
+                      <input type="color" value={novaRegra.text} title="Texto" onChange={e => setNovaRegra({...novaRegra, text: e.target.value})} className="w-5 h-5 rounded-full cursor-pointer border-0 p-0" disabled={!podeEditarRegras} />
                    </div>
                 </div>
 
-                <button onClick={addOuSalvarRegra} className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-2 rounded mt-1 transition-all">
-                  {novaRegra.id ? 'ATUALIZAR REGRA' : 'ADICIONAR À LISTA'}
+                <button onClick={addOuSalvarRegra} disabled={!podeEditarRegras} className={`w-full text-[10px] font-bold py-2 rounded mt-1 transition-all ${!podeEditarRegras ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+                  {novaRegra.id ? 'ATUALIZAR REGRA' : 'ADICIONAR À LISTA'} {!podeEditarRegras && '🔒'}
                 </button>
               </div>
 
@@ -233,9 +281,9 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
                           if <span className="text-blue-400">{getNomeColuna(r.colunaAlvo)}</span> {r.operador} {r.valor}
                         </span>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => editarRegra(r)} className="p-1 hover:bg-zinc-800 rounded text-blue-400" title="Editar">✏️</button>
-                        <button onClick={() => removeRegra(r.id)} className="p-1 hover:bg-zinc-800 rounded text-rose-500" title="Excluir">&times;</button>
+                      <div className={`flex gap-1 transition-opacity ${!podeEditarRegras ? 'opacity-30 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
+                        <button onClick={() => editarRegra(r)} className="p-1 hover:bg-zinc-800 rounded text-blue-400" title="Editar" disabled={!podeEditarRegras}>✏️</button>
+                        <button onClick={() => removeRegra(r.id)} className="p-1 hover:bg-zinc-800 rounded text-rose-500" title="Excluir" disabled={!podeEditarRegras}>&times;</button>
                       </div>
                     </div>
                   ))
@@ -247,13 +295,19 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
           {/* BOTÃO DE RESET */}
           <button 
             onClick={() => {
+              if (!podePersonalizarVisual) return;
               if(window.confirm('Deseja resetar o visual das colunas selecionadas?')) {
                 aplicarEmMassa(c => ({ bg: null, text: null, size: null, regras: [] }));
               }
             }} 
-            className="mt-auto w-full text-[10px] font-bold text-zinc-500 hover:text-rose-400 hover:bg-rose-500/5 py-2 rounded border border-zinc-800 hover:border-rose-900/30 transition-all uppercase tracking-widest"
+            disabled={!podePersonalizarVisual}
+            className={`mt-auto w-full text-[10px] font-bold py-2 rounded border transition-all uppercase tracking-widest ${
+              !podePersonalizarVisual
+                ? 'bg-zinc-800 text-zinc-600 border-zinc-700 cursor-not-allowed'
+                : 'text-zinc-500 hover:text-rose-400 hover:bg-rose-500/5 border-zinc-800 hover:border-rose-900/30'
+            }`}
           >
-            Limpar Formatação
+            Limpar Formatação {!podePersonalizarVisual && '🔒'}
           </button>
         </div>
       </div>

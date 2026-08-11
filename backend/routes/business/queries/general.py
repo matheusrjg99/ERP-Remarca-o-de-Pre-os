@@ -4,6 +4,7 @@ Módulo Business/Queries: Responsável por consultas e leitura de dados do siste
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
 
 from database import executar_query
 from security import requer_permissao
@@ -18,6 +19,189 @@ AMBIENTES = {
 
 class LoteRequisicao(BaseModel):
     codigos: list[str]
+
+# Queries SQL otimizadas
+QUERIES = {
+    'consulta_codigo': """  
+        WITH 
+        produtos_base AS (
+            SELECT 
+                PC.codpro,
+                CP.DescricaoLonga,
+                PC.Unid1,
+                PC.DtUltComp,
+                PC.Dtultrea,
+                PC.PrecoComp,
+                PC.PrecoVen,
+                PC.MargemLuc,
+                PC.faconv
+            FROM ProdutoCad PC
+            INNER JOIN ComplementoProduto CP ON CP.CodPro = PC.CodPro
+            WHERE PC.CodPro IN ({codigos})
+        ),
+        produtos_calculados AS (
+            SELECT 
+                *,
+                ISNULL((SELECT SUM(QUANT) FROM ITEMFILEST WHERE codpro = produtos_base.codpro), 0) AS QUANT,
+                ISNULL((
+                    SELECT TOP 1 ValorFornecedor 
+                    FROM Pesquisa 
+                    WHERE CodigoExterno = produtos_base.codpro 
+                    ORDER BY Oid DESC
+                ), 0) AS P_LISTA,
+                CASE 
+                    WHEN MargemLuc = 0 THEN 0
+                    WHEN (MargemLuc/(100 - MargemLuc)) * 100 > 99999.9 THEN 99999.9
+                    ELSE (MargemLuc/(100 - MargemLuc)) * 100
+                END AS MKP,
+                CASE 
+                    WHEN PrecoComp = 0 THEN 0
+                    WHEN ((PrecoVen - PrecoComp) / PrecoComp) * 100 > 99999.9 THEN 99999.9
+                    ELSE ((PrecoVen - PrecoComp) / PrecoComp) * 100
+                END AS MKP_REAL
+            FROM produtos_base
+        ),
+        NotaMaisRecente AS (
+            SELECT 
+                r.codpro,
+                i.NUMORD, 
+                i.valsubstri / NULLIF(i.quant, 0) AS valor_calculado,
+                nf.despincl AS DESPESAS,
+                i.valoripi
+            FROM produtos_calculados r
+            CROSS APPLY (
+                SELECT TOP 1 *
+                FROM ITNFENTCAD i 
+                WHERE i.codpro = r.codpro 
+                AND i.serie NOT LIKE '%dv%'
+                ORDER BY i.dtcheg DESC
+            ) i
+            INNER JOIN NFENTRACAD nf ON i.numord = nf.numord
+        ),
+        ICMSMaisRecente AS (
+            SELECT 
+                r.codpro,
+                CR.VALOR AS icms_valor,
+                NMR.NUMORD
+            FROM produtos_calculados r
+            CROSS APPLY (
+                SELECT TOP 1 *
+                FROM PESQUISA_R 
+                WHERE CODIGOEXTERNO = r.codpro
+                ORDER BY criadoem DESC
+            ) PR
+            INNER JOIN COMPOSICAO_R CR ON PR.oid = CR.RPESQUISA
+            INNER JOIN NotaMaisRecente NMR ON r.codpro = NMR.codpro
+            WHERE CR.RTIPOPESQUISA = '3035525'
+        ),
+        FreteMaisRecente AS (
+            SELECT 
+                r.codpro,
+                CR.VALOR AS frete_valor,
+                NMR.NUMORD
+            FROM produtos_calculados r
+            CROSS APPLY (
+                SELECT TOP 1 *
+                FROM PESQUISA_R 
+                WHERE CODIGOEXTERNO = r.codpro
+                ORDER BY criadoem DESC
+            ) PR
+            INNER JOIN COMPOSICAO_R CR ON PR.oid = CR.RPESQUISA
+            INNER JOIN NotaMaisRecente NMR ON r.codpro = NMR.codpro
+            WHERE CR.RTIPOPESQUISA IN ('2796133', '2796136')
+        )
+        SELECT 
+            CONVERT(varchar, r.DtUltComp, 23) AS ENT,
+            CONVERT(varchar, r.Dtultrea, 23) AS REM,
+            r.codpro AS COD,
+            r.DescricaoLonga AS DESCRICAO,
+            CAST(ISNULL(r.QUANT, 0) AS DECIMAL(18,2)) AS QUAN,
+            r.Unid1 AS UND,
+            CAST(ISNULL(r.P_LISTA, 0) AS DECIMAL(18,2)) AS P_LISTA,
+            CAST(COALESCE(icms.icms_valor, nr.valor_calculado, 0) AS DECIMAL(18,2)) AS ICMS,
+            CAST(ISNULL(fr.frete_valor, 0) AS DECIMAL(18,2)) AS FRETE,
+            nr.valoripi,
+            CAST(r.PrecoComp AS DECIMAL(18,4)) AS P_CUSTO,
+            CAST(r.PrecoComp * (1 + (r.MKP / 100)) AS DECIMAL(18,4)) AS P_SUGER,
+            CAST(r.PrecoVen AS DECIMAL(18,4)) AS P_ATUAL,
+            CAST(r.MKP_REAL AS DECIMAL(18,4)) AS MKP_REAL,
+            CAST(r.MKP AS DECIMAL(18,4)) AS MKP,
+            CAST(r.MKP_REAL - r.MKP AS DECIMAL(18,4)) AS DIF_MKP,
+            CAST(r.faconv AS DECIMAL(18,2)) AS CONVER
+        FROM produtos_calculados r
+        LEFT JOIN NotaMaisRecente nr ON r.codpro = nr.codpro
+        LEFT JOIN ICMSMaisRecente icms ON r.codpro = icms.codpro AND icms.NUMORD = nr.NUMORD
+        LEFT JOIN FreteMaisRecente fr ON r.codpro = fr.codpro AND fr.NUMORD = nr.NUMORD;
+    """,
+    
+    'consulta_nota': """
+        SELECT 
+            CONVERT(varchar, b.Dtultrea, 23) AS REM,
+            CONVERT(varchar, b.DtUltComp, 23) AS ENT,
+            a.codpro AS COD,
+            c.descricaolonga AS DESCRICAO,
+            CAST(a.quant AS DECIMAL(18,2)) AS QUAN,
+            a.unidade AS UND,
+            CAST(a.preco AS DECIMAL(18,2)) AS RS_LISTA,
+            CAST(
+                ISNULL(
+                    (SELECT TOP 1 CR.VALOR 
+                    FROM PESQUISA_R PR
+                    INNER JOIN COMPOSICAO_R CR ON PR.oid = CR.RPESQUISA
+                    WHERE PR.CODIGOEXTERNO = a.codpro
+                    AND CR.RTIPOPESQUISA = '3035525'
+                    AND PR.numord = a.numord
+                    ORDER BY PR.criadoem DESC),
+                    a.valsubstri / NULLIF(a.quant, 0)
+                ) AS DECIMAL(18,2)
+            ) AS ICMS,
+            CAST(
+                ISNULL(
+                    (SELECT TOP 1 CR.VALOR 
+                    FROM PESQUISA_R PR
+                    INNER JOIN COMPOSICAO_R CR ON PR.oid = CR.RPESQUISA
+                    WHERE PR.CODIGOEXTERNO = a.codpro
+                    AND CR.RTIPOPESQUISA IN ('2796133', '2796136')
+                    AND PR.numord = a.numord
+                    ORDER BY PR.criadoem DESC),
+                    0
+                ) AS DECIMAL(18,2)
+            ) AS FRETE,
+            a.valoripi as valoripi,
+            CAST(b.precocomp AS DECIMAL(18,4)) AS RS_CUSTO,
+            CAST(b.precoven AS DECIMAL(18,4)) AS RS_VEN_REAL,
+            CAST(CASE WHEN b.margemluc = 0 THEN 0 ELSE (b.margemluc/(100-b.margemluc))*100 END AS DECIMAL(18,2)) AS MKP,
+            CAST(CASE WHEN b.precocomp = 0 THEN 0 ELSE ((b.precoven-b.precocomp)/b.precocomp)*100 END AS DECIMAL(18,2)) AS MKP_REAL,
+            CAST(
+                (CASE WHEN b.precocomp = 0 THEN 0 ELSE ((b.precoven-b.precocomp)/b.precocomp)*100 END) -
+                (CASE WHEN b.margemluc = 0 THEN 0 ELSE (b.margemluc/(100-b.margemluc))*100 END)
+                AS DECIMAL(18,2)
+            ) AS DIF_MKP,
+            CAST(b.precocomp * (1 + (CASE WHEN b.margemluc = 0 THEN 0 ELSE (b.margemluc/(100-b.margemluc))*100 END / 100)) AS DECIMAL(18,4)) AS RS_VENDA_SUG,
+            CAST(a.faconv AS DECIMAL(18,2)) AS CONVER
+        FROM ITNFENTCAD a
+        INNER JOIN produtocad b ON a.codpro = b.codpro
+        INNER JOIN complementoproduto c ON b.codpro = c.codpro
+        INNER JOIN NFENTRACAD nf ON a.numord = nf.numord
+        WHERE a.numord = ?
+        ORDER BY b.precocomp;
+    """,
+    
+    'buscar_notas_por_numero': """
+        SELECT 
+            nf.numord, 
+            nf.numnota, 
+            CONVERT(varchar, nf.dtcheg, 23) AS data_chegada, 
+            f.NOME AS fornecedor
+        FROM NFENTRACAD nf 
+        LEFT JOIN FORNECECAD f ON nf.codfor = f.oid 
+        WHERE nf.numnota = ?
+    """,
+    
+    'buscar_notas_produto': """
+        SELECT DISTINCT numord FROM ITNFENTCAD WHERE codpro = ? ORDER BY dtcheg DESC
+    """
+}
 
 @router.get("/divergencias-markup", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_divergencias_markup(
@@ -47,110 +231,52 @@ async def buscar_divergencias_markup(
 async def buscar_registro_inteligente(
     registro: str, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    is_numord: bool = Query(False),
     usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
-    """Busca inteligente de produtos por código, nota fiscal ou múltiplos códigos."""
+    """Busca inteligente de produtos por código ou nota fiscal."""
     db_name = AMBIENTES[ambiente]
     
-    # Se for NumOrd direto
-    if is_numord:
-        query = """
-            SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
-            FROM PRODUTOCAD p
-            LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-            WHERE p.numord = ?
-        """
-        dados = await executar_query(
-            banco=db_name, 
-            query=query, 
-            params=(registro,), 
-            usuario="SISTEMA", 
-            endpoint=f"/api/produto/nf/{registro}"
-        )
-        return dados
-
-    # Múltiplos códigos
-    if "," in registro or "'" in registro:
-        codigos = registro.split(",")
-        codigos_formatados = ",".join(f"'{c.strip()}'" for c in codigos)
-        query = f"""
-            SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
-            FROM PRODUTOCAD p
-            LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-            WHERE p.codpro IN ({codigos_formatados})
-        """
-        
-        dados = await executar_query(
-            banco=db_name, 
-            query=query, 
-            params=(), 
-            usuario="SISTEMA", 
-            endpoint="/api/produto/multiplos"
-        )
-        
-    # Nota Fiscal
-    elif len(registro) >= 6 and registro.isdigit():
-        query_notas = """
-            SELECT DISTINCT numord FROM PRODUTOCAD WHERE numord LIKE ?
-        """
+    # Tenta buscar como código de produto primeiro
+    registro_formatado = str(registro).zfill(5)
+    
+    # Verifica se é um código de produto válido (apenas números)
+    if registro.isdigit():
+        # Busca notas fiscais deste produto para obter o numord mais recente
+        query_notas = QUERIES['buscar_notas_produto']
         notas_encontradas = await executar_query(
             banco=db_name, 
             query=query_notas, 
-            params=(f"{registro}%",), 
-            usuario="SISTEMA", 
-            endpoint="/api/notas"
-        )
-        
-        if not notas_encontradas or len(notas_encontradas) == 0:
-            raise HTTPException(status_code=404, detail="Nenhuma nota encontrada.")
-            
-        # Converte para lista se for dicionário (caso a query retorne formato diferente)
-        if isinstance(notas_encontradas, dict):
-            notas_encontradas = [notas_encontradas]
-        
-        if len(notas_encontradas) > 1:
-            return {"action": "select_note", "notes": notas_encontradas}
-            
-        else:
-            numord_unico = notas_encontradas[0].get('numord') if isinstance(notas_encontradas[0], dict) else getattr(notas_encontradas[0], 'numord', None)
-            if not numord_unico:
-                raise HTTPException(status_code=404, detail="Nota encontrada mas sem numord.")
-            query_itens = """
-                SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
-                FROM PRODUTOCAD p
-                LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-                WHERE p.numord = ?
-            """
-            dados = await executar_query(
-                banco=db_name, 
-                query=query_itens, 
-                params=(numord_unico,), 
-                usuario="SISTEMA", 
-                endpoint=f"/api/produto/nf/{numord_unico}"
-            )
-            
-    # Código Individual
-    else:
-        registro_formatado = str(registro).zfill(5)
-        query = """
-            SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
-            FROM PRODUTOCAD p
-            LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-            WHERE p.codpro = ?
-        """
-        dados = await executar_query(
-            banco=db_name, 
-            query=query, 
             params=(registro_formatado,), 
             usuario="SISTEMA", 
-            endpoint=f"/api/produto/{registro}"
+            endpoint="/api/notas-produto"
         )
-
-    if not dados:
-        raise HTTPException(status_code=404, detail="Nenhum registro encontrado para esta busca.")
         
-    return dados
+        # Se encontrou notas, usa a query completa de produto
+        if notas_encontradas and len(notas_encontradas) > 0:
+            query = QUERIES['consulta_codigo'].format(codigos=f"'{registro_formatado}'")
+            dados = await executar_query(
+                banco=db_name, 
+                query=query, 
+                params=(), 
+                usuario="SISTEMA", 
+                endpoint=f"/api/produto/{registro}"
+            )
+            return dados if dados else []
+    
+    # Se não encontrou como código, tenta como número de nota
+    query_nota = QUERIES['consulta_nota']
+    dados_nota = await executar_query(
+        banco=db_name, 
+        query=query_nota, 
+        params=(registro,), 
+        usuario="SISTEMA", 
+        endpoint=f"/api/nota/{registro}"
+    )
+    
+    if dados_nota:
+        return dados_nota
+    
+    raise HTTPException(status_code=404, detail="Nenhum registro encontrado para esta busca.")
 
 @router.post("/produtos-lote", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_produtos_em_lote(

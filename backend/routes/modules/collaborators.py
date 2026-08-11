@@ -38,7 +38,7 @@ class Colaborador(ColaboradorBase):
 
 # --- Rotas ---
 
-@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("cadastros:colaboradores:visualizar"))])
+@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("nc:criar"))])
 async def listar_colaboradores():
     """Lista todos os colaboradores cadastrados"""
     query = """

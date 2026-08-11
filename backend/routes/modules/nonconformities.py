@@ -41,7 +41,7 @@ class NaoConformidade(NaoConformidadeBase):
 
 # --- Rotas ---
 
-@router.get("", response_model=List[NaoConformidade], dependencies=[Depends(requer_permissao("nc:visualizar"))])
+@router.get("", response_model=List[NaoConformidade], dependencies=[Depends(requer_permissao("nc:listar"))])
 async def listar_ncs(colaborador_id: Optional[int] = None, status: Optional[str] = None, mes: Optional[int] = None, ano: Optional[int] = None):
     """Lista NCs com dados do colaborador (JOIN)"""
     query = """

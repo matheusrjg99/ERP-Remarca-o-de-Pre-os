@@ -1,6 +1,6 @@
 """
-Rotas de Consultas Gerais - Produtos, Notas, Classificações, Fornecedores
-Módulo Business/Queries: Responsável por consultas e leitura de dados do sistema.
+Rotas de Consultas - Módulo de Precificação (Remarcação de Preços)
+Consultas de produtos, notas fiscais, classificações e fornecedores.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ from database import executar_query
 from security import requer_permissao
 from sql_repo import Scripts
 
-router = APIRouter(prefix="/queries", tags=["Consultas Gerais"])
+router = APIRouter(prefix="/precificacao", tags=["Precificação - Consultas"])
 
 AMBIENTES = {
     "producao": "Bdenter",
@@ -44,7 +44,7 @@ async def buscar_divergencias_markup(
         query=query, 
         params=(), 
         usuario="SISTEMA", 
-        endpoint="/api/divergencias-markup"
+        endpoint="/precificacao/divergencias-markup"
     )
     return dados
 
@@ -61,7 +61,7 @@ async def buscar_registro_inteligente(
     # 1. Se o React avisou que é um NumOrd direto (usuário clicou na janelinha)
     if is_numord:
         query = QUERIES['consulta_nota']
-        dados = await executar_query(banco=db_name, query=query, params=(registro,), usuario="SISTEMA", endpoint=f"/api/produto/nf/{registro}")
+        dados = await executar_query(banco=db_name, query=query, params=(registro,), usuario="SISTEMA", endpoint=f"/precificacao/produto/nf/{registro}")
         return dados
 
     # 2. Múltiplos códigos
@@ -75,12 +75,12 @@ async def buscar_registro_inteligente(
         else:
             query = query_base.replace("= ?", f"IN ({codigos_formatados})")
             
-        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint="/api/produto/multiplos")
+        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint="/precificacao/produto/multiplos")
         
     # 3. Nota Fiscal (Digitou o número de documento)
     elif len(registro) >= 6 and registro.isdigit():
         query_notas = QUERIES['buscar_notas_por_numero']
-        notas_encontradas = await executar_query(banco=db_name, query=query_notas, params=(registro,), usuario="SISTEMA", endpoint="/api/notas")
+        notas_encontradas = await executar_query(banco=db_name, query=query_notas, params=(registro,), usuario="SISTEMA", endpoint="/precificacao/notas")
         
         if not notas_encontradas:
             raise HTTPException(status_code=404, detail="Nenhuma nota encontrada.")
@@ -93,13 +93,13 @@ async def buscar_registro_inteligente(
         else:
             numord_unico = notas_encontradas[0]['numord']
             query_itens = QUERIES['consulta_nota']
-            dados = await executar_query(banco=db_name, query=query_itens, params=(numord_unico,), usuario="SISTEMA", endpoint=f"/api/produto/nf/{numord_unico}")
+            dados = await executar_query(banco=db_name, query=query_itens, params=(numord_unico,), usuario="SISTEMA", endpoint=f"/precificacao/produto/nf/{numord_unico}")
             
     # 4. Código Individual
     else:
         registro_formatado = str(registro).zfill(5)
         query = QUERIES['consulta_codigo'].format(codigos=f"'{registro_formatado}'")
-        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint=f"/api/produto/{registro}")
+        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint=f"/precificacao/produto/{registro}")
 
     if not dados:
         raise HTTPException(status_code=404, detail="Nenhum registro encontrado para esta busca.")
@@ -131,7 +131,7 @@ async def buscar_produtos_em_lote(
         query=query, 
         params=(), 
         usuario="SISTEMA", 
-        endpoint="/api/produtos-lote"
+        endpoint="/precificacao/produtos-lote"
     )
     
     if not dados:
@@ -152,7 +152,7 @@ async def listar_classificacoes(
         query=query, 
         params=(), 
         usuario="SISTEMA", 
-        endpoint="/api/classificacoes"
+        endpoint="/precificacao/classificacoes"
     )
     return dados if dados else []
 
@@ -170,7 +170,7 @@ async def listar_fornecedores(
         query=query, 
         params=(f"%{termo}%",), 
         usuario="SISTEMA", 
-        endpoint="/api/fornecedores"
+        endpoint="/precificacao/fornecedores"
     )
     return dados if dados else []
 
@@ -246,6 +246,6 @@ async def pesquisar_produto_avancado(
         query=query, 
         params=tuple(params), 
         usuario="SISTEMA", 
-        endpoint="/api/pesquisar"
+        endpoint="/precificacao/pesquisar"
     )
     return dados if dados else []

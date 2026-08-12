@@ -1,13 +1,13 @@
 """
-Rotas de Operações - Atualizações de Preço, Custo e Markup
-Módulo Business/Operations: Responsável por operações de escrita e atualização de dados.
+Rotas de Operações - Módulo de Precificação (Remarcação de Preços)
+Atualizações de Preço, Custo e Markup.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from database import executar_query
 from security import requer_permissao
 
-router = APIRouter(prefix="/operations", tags=["Operações"])
+router = APIRouter(prefix="/precificacao", tags=["Precificação - Operações"])
 
 AMBIENTES = {
     "producao": "Bdenter",
@@ -30,7 +30,7 @@ async def remarcar_preco(
         query=query, 
         params=(novo_preco, codigo), 
         usuario="SISTEMA", 
-        endpoint="/api/remarcar",
+        endpoint="/precificacao/remarcar",
         is_select=False
     )
     
@@ -54,7 +54,7 @@ async def atualizar_custo(
         query=query, 
         params=(novo_custo, codigo),
         usuario="SISTEMA", 
-        endpoint="/api/atualizar-custo",
+        endpoint="/precificacao/atualizar-custo",
         is_select=False
     )
     
@@ -79,7 +79,7 @@ async def atualizar_markup(
         query=query, 
         params=(novo_mkp, novo_mkp, codigo), 
         usuario="SISTEMA", 
-        endpoint="/api/atualizar-mkp",
+        endpoint="/precificacao/atualizar-mkp",
         is_select=False
     )
     

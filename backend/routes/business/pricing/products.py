@@ -1,6 +1,6 @@
 """
-Rotas de Precificação (Remarcação de Preços)
-Módulo responsável por consultas de produtos, recálculos de preços e operações de precificação.
+Rotas de Produtos - Módulo de Precificação (Remarcação de Preços)
+Listagem, recálculo e exportação de produtos para precificação.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from typing import List, Optional
 from database import executar_query
 from security import requer_permissao
 
-router = APIRouter(prefix="/precificacao", tags=["Precificação"])
+router = APIRouter(prefix="/precificacao", tags=["Precificação - Produtos"])
 
 # --- Schemas Pydantic ---
 

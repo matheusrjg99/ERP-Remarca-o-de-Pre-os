@@ -218,6 +218,10 @@ class Scripts:
             WHERE nf.numnota = ?
         """,
 
+        'buscar_notas_produto': """
+            SELECT DISTINCT numord FROM ITNFENTCAD WHERE codpro = ? ORDER BY dtcheg DESC
+        """,
+
         'remarcação': """                     
             UPDATE produtocad
             SET precoven = ?, 

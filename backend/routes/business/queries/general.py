@@ -52,52 +52,59 @@ async def buscar_divergencias_markup(
 async def buscar_registro_inteligente(
     registro: str, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
+    is_numord: bool = Query(False),
     usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Busca inteligente de produtos por código ou nota fiscal."""
     db_name = AMBIENTES[ambiente]
     
-    # Tenta buscar como código de produto primeiro
-    registro_formatado = str(registro).zfill(5)
-    
-    # Verifica se é um código de produto válido (apenas números)
-    if registro.isdigit():
-        # Busca notas fiscais deste produto para obter o numord mais recente
-        query_notas = QUERIES['buscar_notas_produto']
-        notas_encontradas = await executar_query(
-            banco=db_name, 
-            query=query_notas, 
-            params=(registro_formatado,), 
-            usuario="SISTEMA", 
-            endpoint="/api/notas-produto"
-        )
+    # 1. Se o React avisou que é um NumOrd direto (usuário clicou na janelinha)
+    if is_numord:
+        query = QUERIES['consulta_nota']
+        dados = await executar_query(banco=db_name, query=query, params=(registro,), usuario="SISTEMA", endpoint=f"/api/produto/nf/{registro}")
+        return dados
+
+    # 2. Múltiplos códigos
+    if "," in registro or "'" in registro:
+        codigos = registro.split(",")
+        codigos_formatados = ",".join(f"'{c.strip()}'" for c in codigos)
+        query_base = QUERIES['consulta_codigo']
         
-        # Se encontrou notas, usa a query completa de produto
-        if notas_encontradas and len(notas_encontradas) > 0:
-            query = QUERIES['consulta_codigo'].format(codigos=f"'{registro_formatado}'")
-            dados = await executar_query(
-                banco=db_name, 
-                query=query, 
-                params=(), 
-                usuario="SISTEMA", 
-                endpoint=f"/api/produto/{registro}"
-            )
-            return dados if dados else []
-    
-    # Se não encontrou como código, tenta como número de nota
-    query_nota = QUERIES['consulta_nota']
-    dados_nota = await executar_query(
-        banco=db_name, 
-        query=query_nota, 
-        params=(registro,), 
-        usuario="SISTEMA", 
-        endpoint=f"/api/nota/{registro}"
-    )
-    
-    if dados_nota:
-        return dados_nota
-    
-    raise HTTPException(status_code=404, detail="Nenhum registro encontrado para esta busca.")
+        if "IN (?)" in query_base:
+            query = query_base.replace("IN (?)", f"IN ({codigos_formatados})")
+        else:
+            query = query_base.replace("= ?", f"IN ({codigos_formatados})")
+            
+        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint="/api/produto/multiplos")
+        
+    # 3. Nota Fiscal (Digitou o número de documento)
+    elif len(registro) >= 6 and registro.isdigit():
+        query_notas = QUERIES['buscar_notas_por_numero']
+        notas_encontradas = await executar_query(banco=db_name, query=query_notas, params=(registro,), usuario="SISTEMA", endpoint="/api/notas")
+        
+        if not notas_encontradas:
+            raise HTTPException(status_code=404, detail="Nenhuma nota encontrada.")
+            
+        # Se achou mais de uma nota com esse número
+        if len(notas_encontradas) > 1:
+            return {"action": "select_note", "notes": notas_encontradas}
+            
+        # Se achou só uma, carrega os itens usando o numord dela direto
+        else:
+            numord_unico = notas_encontradas[0]['numord']
+            query_itens = QUERIES['consulta_nota']
+            dados = await executar_query(banco=db_name, query=query_itens, params=(numord_unico,), usuario="SISTEMA", endpoint=f"/api/produto/nf/{numord_unico}")
+            
+    # 4. Código Individual
+    else:
+        registro_formatado = str(registro).zfill(5)
+        query = QUERIES['consulta_codigo'].format(codigos=f"'{registro_formatado}'")
+        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint=f"/api/produto/{registro}")
+
+    if not dados:
+        raise HTTPException(status_code=404, detail="Nenhum registro encontrado para esta busca.")
+        
+    return dados
 
 @router.post("/produtos-lote", dependencies=[Depends(requer_permissao("precificacao:visualizar"))])
 async def buscar_produtos_em_lote(

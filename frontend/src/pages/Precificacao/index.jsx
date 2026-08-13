@@ -348,14 +348,14 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         }
 
         if (opcoes.mkp) {
-          await api.put(`/operations/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
+          await api.put(`/precificacao/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
         }
         
         if (opcoes.custo) {
-          await api.put(`/operations/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
+          await api.put(`/precificacao/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
         }
         
-        await api.put(`/operations/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
+        await api.put(`/precificacao/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
       } catch (error) { 
         console.error(`Erro ao processar o produto ${p.id}:`, error);

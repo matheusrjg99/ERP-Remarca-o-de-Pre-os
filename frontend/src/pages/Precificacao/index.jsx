@@ -10,7 +10,7 @@ import { usePrecificacaoPermissions } from '../../hooks/usePrecificacaoPermissio
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
-import { recalcularProduto, round1, round2, roundTo05 } from './utils/calculations';
+import { recalcularProduto, round1, round2, roundTo05, resetarFlagsEdicao } from './utils/calculations';
 
 // CARGA PREGUIÇOSA (Lazy Loading) DOS MODAIS
 const ModalRecalculos = lazy(() => import('./components/ModalRecalculos'));
@@ -43,10 +43,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   const [loading, setLoading] = useState(false);
   const [resultadosDivergencias, setResultadosDivergencias] = useState([]);
 
-    // 👇 ADICIONE ESTE useEffect AQUI PARA DEBUG
-  useEffect(() => {
-    console.log('📊 Estado opcoes atualizado:', opcoes);
-  }, [opcoes]);
+
 
   
   const [loadingAcao, setLoadingAcao] = useState(false);
@@ -203,10 +200,8 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   };
 
   const handleAplicarRecalculo = useCallback(({ campoAlvo, tipoAjuste, valorAjuste }) => {
-    console.log('🔧 [handleAplicarRecalculo] Recebido:', { campoAlvo, tipoAjuste, valorAjuste });
     
     setProdutos((prevProdutos) => {
-      console.log('📦 [handleAplicarRecalculo] Total de produtos antes:', prevProdutos.length);
       
       const novosProdutos = prevProdutos.map((produto, index) => {
         const valorAtual = produto[campoAlvo];
@@ -221,12 +216,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // ✅ CORRIGIDO: Agora passamos o valor numérico, e NÃO convertemos pra string
         novoValor = round2(Math.max(0, novoValor));
 
-        // Log dos primeiros 3 produtos
-        if (index < 3) {
-          console.log(`🔄 [handleAplicarRecalculo] Produto ${index} (${produto.descricao || produto.id}):`);
-          console.log(`   ANTES: ${campoAlvo}=${produto[campoAlvo]} | custo=${produto.custo} | sugerido=${produto.sugerido} | atual=${produto.atual}`);
-          console.log(`   NOVO VALOR calculado: ${novoValor}`);
-        }
+
 
         // ✅ CORRIGIDO: Criamos o objeto atualizado diretamente, sem chamar recalcularProduto com string
         const produtoAtualizado = { ...produto, [campoAlvo]: novoValor };
@@ -257,15 +247,10 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // Recalcula markupReal e difMarkup sempre
         resultado.markupReal = resultado.custo > 0 ? round1(((resultado.atual - resultado.custo) / resultado.custo) * 100) : 0;
         resultado.difMarkup = round1(resultado.markupReal - resultado.markup);
-
-        if (index < 3) {
-          console.log(`   RESULTADO FINAL: custo=${resultado.custo} | sugerido=${resultado.sugerido} | atual=${resultado.atual} | markup=${resultado.markup}`);
-        }
         
         return resultado;
       });
       
-      console.log('✅ [handleAplicarRecalculo] Recálculo concluído para', novosProdutos.length, 'produtos');
       return novosProdutos;
     });
   }, []);
@@ -339,19 +324,6 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
     for (let p of produtosMarcados) {
       try {
         // 🔍 LOG PARA DEBUG - VERIFICA O ESTADO DAS FLAGS DE EDIÇÃO
-        console.log('🔍 [REMARCAR] Produto:', p.id, p.descricao);
-        console.log('   📊 Flags de edição:', { 
-          custoEditado: p.custoEditado, 
-          markupEditado: p.markupEditado, 
-          precoEditado: p.precoEditado 
-        });
-        console.log('   💰 Valores:', { 
-          custo: p.custo, 
-          markup: p.markup, 
-          atual: p.atual, 
-          sugerido: p.sugerido 
-        });
-        console.log('   ✅ Opções marcadas:', { mkp: opcoes.mkp, custo: opcoes.custo, arredondar: opcoes.arredondar });
         
         // 🆕 Aplica arredondamento nos valores antes de enviar
         let mkpFinal = p.markup;
@@ -359,7 +331,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         
         // ✅ VERIFICA SE HOUVE EDIÇÃO MANUAL EM CADA CAMPO
         // Se foi editado manualmente, usa o valor editado. Caso contrário, usa o sugerido/original.
-        let precoRemarcacao = p.precoEditado ? p.atual : p.sugerido;
+        let precoRemarcacao = p.precoAtualEditado ? p.atual : p.sugerido;
         
         // Se o custo foi editado manualmente, envia o custo editado
         // Se não, mantém o custo original (não envia atualização de custo)
@@ -369,15 +341,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // Se não, mantém o markup original (não envia atualização de markup)
         const markupEditado = p.markupEditado || false;
         
-        console.log('   🚦 Decisões:', {
-          vaiEnviarCusto: opcoes.custo && custoEditado,
-          vaiEnviarMkp: opcoes.mkp && markupEditado,
-          custoEditado: custoEditado,
-          markupEditado: markupEditado,
-          opcaoCustoMarcada: opcoes.custo,
-          opcaoMkpMarcada: opcoes.mkp,
-          precoUsado: p.precoEditado ? 'EDITADO (atual)' : 'SUGERIDO'
-        });
+
 
         if (opcoes.arredondar) {
           mkpFinal = roundTo05(mkpFinal);
@@ -387,22 +351,17 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
 
         // ✅ SÓ ENVIA ATUALIZAÇÃO DE MKP SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
         if (opcoes.mkp && markupEditado) {
-          console.log('   📤 ENVIANDO atualização de MKP:', mkpFinal.toFixed(4));
           await api.put(`/precificacao/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
         } else {
-          console.log('   ⏭️ PULANDO atualização de MKP (opção não marcada ou não editado)');
         }
         
         // ✅ SÓ ENVIA ATUALIZAÇÃO DE CUSTO SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
         if (opcoes.custo && custoEditado) {
-          console.log('   📤 ENVIANDO atualização de CUSTO:', custoFinal.toFixed(4));
           await api.put(`/precificacao/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
         } else {
-          console.log('   ⏭️ PULANDO atualização de CUSTO (opção não marcada ou não editado)');
         }
         
         // ✅ ENVIA REMARCAÇÃO SEMPRE (usando o preço editado ou sugerido)
-        console.log('   📤 ENVIANDO remarcação:', precoRemarcacao.toFixed(4));
         await api.put(`/precificacao/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
       } catch (error) { 
@@ -427,14 +386,8 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         setProdutos(prevProdutos => prevProdutos.map(p => {
           const atualizado = produtosFresquinhos.find(novo => novo.id === p.id);
           if (atualizado) {
-            // ✅ PRESERVA AS FLAGS DE EDIÇÃO DO PRODUTO ORIGINAL APÓS O REFRESH
-            // Isso evita que as flags sejam resetadas para false após uma remarcação bem-sucedida
-            return {
-              ...atualizado,
-              custoEditado: p.custoEditado,
-              markupEditado: p.markupEditado,
-              precoEditado: p.precoEditado
-            };
+            // ✅ Resetar TODAS as flags de edição após o refresh
+            return resetarFlagsEdicao(atualizado);
           }
           return p;
         }));

@@ -21,6 +21,7 @@ export default function EditableCell({ value, onChange, className, isPercentage 
   };
 
   const handleBlur = () => {
+    console.log('💾 [EditableCell] Salvando valor:', { colunaKey, localValue, valorAntes: value });
     setIsEditing(false);
     onChange(localValue);
   };

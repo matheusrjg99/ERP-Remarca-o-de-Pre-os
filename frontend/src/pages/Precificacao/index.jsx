@@ -338,6 +338,21 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
 
     for (let p of produtosMarcados) {
       try {
+        // 🔍 LOG PARA DEBUG - VERIFICA O ESTADO DAS FLAGS DE EDIÇÃO
+        console.log('🔍 [REMARCAR] Produto:', p.id, p.descricao);
+        console.log('   📊 Flags de edição:', { 
+          custoEditado: p.custoEditado, 
+          markupEditado: p.markupEditado, 
+          precoEditado: p.precoEditado 
+        });
+        console.log('   💰 Valores:', { 
+          custo: p.custo, 
+          markup: p.markup, 
+          atual: p.atual, 
+          sugerido: p.sugerido 
+        });
+        console.log('   ✅ Opções marcadas:', { mkp: opcoes.mkp, custo: opcoes.custo });
+        
         // 🆕 Aplica arredondamento nos valores antes de enviar
         let mkpFinal = p.markup;
         let custoFinal = p.custo;
@@ -353,6 +368,12 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // Se o markup foi editado manualmente, envia o markup editado
         // Se não, mantém o markup original (não envia atualização de markup)
         const markupEditado = p.markupEditado || false;
+        
+        console.log('   🚦 Decisões:', {
+          vaiEnviarCusto: opcoes.custo && custoEditado,
+          vaiEnviarMkp: opcoes.mkp && markupEditado,
+          precoUsado: p.precoEditado ? 'EDITADO (atual)' : 'SUGERIDO'
+        });
 
         if (opcoes.arredondar) {
           mkpFinal = roundTo05(mkpFinal);
@@ -362,15 +383,22 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
 
         // ✅ SÓ ENVIA ATUALIZAÇÃO DE MKP SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
         if (opcoes.mkp && markupEditado) {
+          console.log('   📤 ENVIANDO atualização de MKP:', mkpFinal.toFixed(4));
           await api.put(`/precificacao/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
+        } else {
+          console.log('   ⏭️ PULANDO atualização de MKP (opção não marcada ou não editado)');
         }
         
         // ✅ SÓ ENVIA ATUALIZAÇÃO DE CUSTO SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
         if (opcoes.custo && custoEditado) {
+          console.log('   📤 ENVIANDO atualização de CUSTO:', custoFinal.toFixed(4));
           await api.put(`/precificacao/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
+        } else {
+          console.log('   ⏭️ PULANDO atualização de CUSTO (opção não marcada ou não editado)');
         }
         
         // ✅ ENVIA REMARCAÇÃO SEMPRE (usando o preço editado ou sugerido)
+        console.log('   📤 ENVIANDO remarcação:', precoRemarcacao.toFixed(4));
         await api.put(`/precificacao/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
       } catch (error) { 

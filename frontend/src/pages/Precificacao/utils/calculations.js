@@ -29,6 +29,16 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
   const p = { ...produtoOriginal };
   const valorFloat = toFloat(valorDigitado);
   
+  console.log('✏️ [recalcularProduto] Editando:', { 
+    produto: p.id, 
+    campo: campoEditado, 
+    valorDigitado, 
+    valorFloat,
+    custoEditadoAntes: p.custoEditado,
+    markupEditadoAntes: p.markupEditado,
+    precoEditadoAntes: p.precoEditado
+  });
+  
   // Atualiza o campo com o valor puro
   p[campoEditado] = valorFloat;
 
@@ -56,6 +66,12 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
     p.custoEditado = false;
     p.markupEditado = false;
   }
+  
+  console.log('✅ [recalcularProduto] Flags após edição:', {
+    custoEditado: p.custoEditado,
+    markupEditado: p.markupEditado,
+    precoEditado: p.precoEditado
+  });
 
   // Recálculos de Markup Real e Diferença
   p.markupReal = p.custo > 0 ? round1(((p.atual - p.custo) / p.custo) * 100) : 0;

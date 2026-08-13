@@ -394,7 +394,17 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
 
         setProdutos(prevProdutos => prevProdutos.map(p => {
           const atualizado = produtosFresquinhos.find(novo => novo.id === p.id);
-          return atualizado ? atualizado : p;
+          if (atualizado) {
+            // ✅ PRESERVA AS FLAGS DE EDIÇÃO DO PRODUTO ORIGINAL APÓS O REFRESH
+            // Isso evita que as flags sejam resetadas para false após uma remarcação bem-sucedida
+            return {
+              ...atualizado,
+              custoEditado: p.custoEditado,
+              markupEditado: p.markupEditado,
+              precoEditado: p.precoEditado
+            };
+          }
+          return p;
         }));
       } catch (err) {
         console.error("Erro ao dar refresh nos itens atualizados", err);

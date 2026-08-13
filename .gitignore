@@ -1,1 +1,5 @@
-Nothing should be ignored based on the provided file changes. The modification of 'backend/routes/business/pricing/operations.py' represents a standard source code change that does not require any new ignore rules. The existing .gitignore content is empty, so there are no rules to preserve or update. No build artifacts, dependencies, or temporary files are present in the changes to warrant adding ignore patterns.
+(frontend/src/pages/Precificacao/index.jsx is a source code file, and there are no build artifacts, dependencies, or temporary files in the changes)
+
+```javascript
+
+```

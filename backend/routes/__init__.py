@@ -25,11 +25,11 @@ from .business.administration.users import router as users_router
 from .business.administration.settings import router as settings_router
 from .business.administration.management import router as management_router
 
-# Queries: Consultas e leitura de dados
-from .business.queries.general import router as queries_router
-
-# Operations: Operações de escrita e atualização
-from .business.operations.transactions import router as operations_router
+# Pricing (Precificação): Módulo unificado de remarcação de preços
+# Contém: Consultas, Operações e Produtos
+from .business.pricing.queries import router as pricing_queries_router
+from .business.pricing.operations import router as pricing_operations_router
+from .business.pricing.products import router as pricing_products_router
 
 # ==========================================
 # MODULES - Módulos Independentes
@@ -38,7 +38,6 @@ from .modules.collaborators import router as collaborators_router
 from .modules.nonconformities import router as nonconformities_router
 from .modules.disputes import router as disputes_router
 from .modules.commissions import router as commissions_router
-from .modules.pricing import router as pricing_router
 
 # ==========================================
 # Router Consolidado
@@ -56,14 +55,16 @@ router.include_router(rbac_router)
 router.include_router(users_router)
 router.include_router(settings_router)
 router.include_router(management_router)
-router.include_router(queries_router)
-router.include_router(operations_router)
+
+# Módulo de Precificação (Consultas, Operações e Produtos)
+router.include_router(pricing_queries_router)
+router.include_router(pricing_operations_router)
+router.include_router(pricing_products_router)
 
 # Inclusão das rotas de MODULES
 router.include_router(collaborators_router)
 router.include_router(nonconformities_router)
 router.include_router(disputes_router)
 router.include_router(commissions_router)
-router.include_router(pricing_router)
 
 __all__ = ["router"]

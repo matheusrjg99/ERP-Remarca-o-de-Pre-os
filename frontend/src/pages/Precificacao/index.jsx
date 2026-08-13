@@ -121,7 +121,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
       const termoBusca = overrideRegistro || registro;
       if (!termoBusca) return;
 
-      const url = `/queries/produto/${termoBusca}?ambiente=${ambiente}${isNumOrd ? '&is_numord=true' : ''}`;
+      const url = `/precificacao/produto/${termoBusca}?ambiente=${ambiente}${isNumOrd ? '&is_numord=true' : ''}`;
       const res = await api.get(url);
 
       if (res.data && res.data.action === "select_note") {
@@ -151,7 +151,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   const handleProdutosSelecionadosDoModal = useCallback(async (codigos) => {
     setLoadingAcao(true);
     try {
-      const res = await api.post(`/queries/produtos-lote?ambiente=${ambiente}`, { 
+      const res = await api.post(`/precificacao/produtos-lote?ambiente=${ambiente}`, { 
         codigos: codigos 
       });
       
@@ -175,7 +175,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
     try {
       const token = localStorage.getItem('access_token');
       
-      const response = await api.get('/queries/divergencias-markup', {
+      const response = await api.get('/precificacao/divergencias-markup', {
         params: { ambiente: ambiente },
         headers: {
           'Authorization': `Bearer ${token}`
@@ -368,7 +368,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
     if (erros === 0 || produtosMarcados.length > erros) {
       try {
         const codigosAtualizados = produtosMarcados.map(p => p.id);
-        const promises = codigosAtualizados.map(codigo => api.get(`/queries/produto/${codigo}?ambiente=${ambiente}`));
+        const promises = codigosAtualizados.map(codigo => api.get(`/precificacao/produto/${codigo}?ambiente=${ambiente}`));
         const responses = await Promise.all(promises);
         
         const produtosFresquinhos = responses.map(res => {

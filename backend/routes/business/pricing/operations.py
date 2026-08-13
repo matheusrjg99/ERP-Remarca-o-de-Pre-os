@@ -21,7 +21,7 @@ async def remarcar_preco(
     codigo: str, 
     novo_preco: float, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(requer_permissao("precificacao:editar"))
+    usuario: dict = Depends(requer_permissao("precificacao:editar"))
 ):
     """Atualiza o preço de venda de um produto."""
     db_name = AMBIENTES[ambiente]
@@ -30,7 +30,7 @@ async def remarcar_preco(
         banco=db_name, 
         query=query, 
         params=(novo_preco, codigo), 
-        usuario="SISTEMA", 
+        usuario=usuario["user_login"], 
         endpoint="/precificacao/remarcar",
         is_select=False
     )
@@ -44,7 +44,7 @@ async def atualizar_custo(
     codigo: str, 
     novo_custo: float, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(requer_permissao("precificacao:editar_custo"))
+    usuario: dict = Depends(requer_permissao("precificacao:editar_custo"))
 ):
     """Atualiza o custo de um produto."""
     db_name = AMBIENTES[ambiente]
@@ -54,7 +54,7 @@ async def atualizar_custo(
         banco=db_name, 
         query=query, 
         params=(novo_custo, codigo),
-        usuario="SISTEMA", 
+        usuario=usuario["user_login"], 
         endpoint="/precificacao/atualizar-custo",
         is_select=False
     )
@@ -69,7 +69,7 @@ async def atualizar_markup(
     codigo: str, 
     novo_mkp: float,
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: str = Depends(requer_permissao("precificacao:editar"))
+    usuario: dict = Depends(requer_permissao("precificacao:editar"))
 ):
     """Atualiza o markup de um produto."""
     db_name = AMBIENTES[ambiente]
@@ -79,7 +79,7 @@ async def atualizar_markup(
         banco=db_name, 
         query=query, 
         params=(novo_mkp, novo_mkp, codigo), 
-        usuario="SISTEMA", 
+        usuario=usuario["user_login"], 
         endpoint="/precificacao/atualizar-mkp",
         is_select=False
     )

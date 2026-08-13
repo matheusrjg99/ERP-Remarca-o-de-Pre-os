@@ -50,9 +50,10 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
     p.sugerido = round2(p.custo * (1 + (p.markup / 100)));
   } 
   else if (campoEditado === 'sugerido') {
-    p.precoEditado = false;
-    p.custoEditado = false;
-    p.markupEditado = false;
+    // ✅ Ao editar o preço sugerido, NÃO resetar as outras flags
+    // Apenas marca que o preço foi editado, mas mantém o histórico de edição de custo/markup
+    p.precoEditado = true;
+    // Mantém custoEditado e markupEditado como estavam antes
     p.markup = p.custo > 0 ? round1(((p.sugerido - p.custo) / p.custo) * 100) : 0;
   } 
   else if (campoEditado === 'markup') {

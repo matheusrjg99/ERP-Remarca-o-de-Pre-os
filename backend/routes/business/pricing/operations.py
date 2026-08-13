@@ -78,7 +78,7 @@ async def atualizar_markup(
     sucesso = await executar_query(
         banco=db_name, 
         query=query, 
-        params=(novo_mkp, codigo), 
+        params=(novo_mkp, novo_mkp, codigo), 
         usuario="SISTEMA", 
         endpoint="/precificacao/atualizar-mkp",
         is_select=False

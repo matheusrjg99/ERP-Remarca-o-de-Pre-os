@@ -9,6 +9,8 @@ from typing import List, Optional
 from database import executar_query
 from security import requer_permissao
 
+from sql_repo import Scripts
+
 router = APIRouter(prefix="/precificacao", tags=["Precificação - Produtos"])
 
 # --- Schemas Pydantic ---
@@ -43,22 +45,7 @@ async def listar_produtos_precificacao(
     # Extrai o usuário do token via decorator
     db_name = "Bdenter" if ambiente == "producao" else f"bd{ambiente}"
     
-    query = """
-        SELECT 
-            p.codpro,
-            cp.descricaolonga as descricao,
-            p.custo,
-            p.preco_venda,
-            p.markup,
-            p.margem,
-            c.descr as classificacao,
-            f.nome as fornecedor
-        FROM PRODUTOCAD p
-        LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-        LEFT JOIN CLASSIFCAD c ON p.clasprod = c.clasprod
-        LEFT JOIN FORNECECAD f ON p.codfor = f.oid
-        WHERE 1=1
-    """
+    query = Scripts.query['pesquisar_produto']
     params = []
     
     if classificacao:

@@ -35,18 +35,26 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
   // IMPORTANTE: Agora usamos as chaves limpas do Adapter!
   if (campoEditado === 'custo') {
     p.precoEditado = false;
+    p.custoEditado = true;  // ✅ Marca que o custo foi editado manualmente
+    p.markupEditado = false;
     p.sugerido = round2(p.custo * (1 + (p.markup / 100)));
   } 
   else if (campoEditado === 'sugerido') {
     p.precoEditado = false;
+    p.custoEditado = false;
+    p.markupEditado = false;
     p.markup = p.custo > 0 ? round1(((p.sugerido - p.custo) / p.custo) * 100) : 0;
   } 
   else if (campoEditado === 'markup') {
     p.precoEditado = false;
+    p.custoEditado = false;
+    p.markupEditado = true;  // ✅ Marca que o markup foi editado manualmente
     p.sugerido = round2(p.custo * (1 + (p.markup / 100)));
   } 
   else if (campoEditado === 'atual') {
-    p.precoEditado = true;
+    p.precoEditado = true;    // ✅ Marca que o preço atual foi editado manualmente
+    p.custoEditado = false;
+    p.markupEditado = false;
   }
 
   // Recálculos de Markup Real e Diferença

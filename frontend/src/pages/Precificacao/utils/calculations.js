@@ -29,14 +29,19 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
   const p = { ...produtoOriginal };
   const valorFloat = toFloat(valorDigitado);
   
+  // Preserva as flags atuais antes de qualquer edição
+  const custoEditadoAntes = p.custoEditado || false;
+  const markupEditadoAntes = p.markupEditado || false;
+  const precoEditadoAntes = p.precoEditado || false;
+  
   console.log('✏️ [recalcularProduto] Editando:', { 
     produto: p.id, 
     campo: campoEditado, 
     valorDigitado, 
     valorFloat,
-    custoEditadoAntes: p.custoEditado,
-    markupEditadoAntes: p.markupEditado,
-    precoEditadoAntes: p.precoEditado
+    custoEditadoAntes,
+    markupEditadoAntes,
+    precoEditadoAntes
   });
   
   // Atualiza o campo com o valor puro
@@ -53,7 +58,8 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
     // ✅ Ao editar o preço sugerido, NÃO resetar as outras flags
     // Apenas marca que o preço foi editado, mas mantém o histórico de edição de custo/markup
     p.precoEditado = true;
-    // Mantém custoEditado e markupEditado como estavam antes
+    p.custoEditado = custoEditadoAntes;  // ✅ Mantém o estado anterior
+    p.markupEditado = markupEditadoAntes;  // ✅ Mantém o estado anterior
     p.markup = p.custo > 0 ? round1(((p.sugerido - p.custo) / p.custo) * 100) : 0;
   } 
   else if (campoEditado === 'markup') {
@@ -64,8 +70,8 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado) 
   } 
   else if (campoEditado === 'atual') {
     p.precoEditado = true;    // ✅ Marca que o preço atual foi editado manualmente
-    p.custoEditado = false;
-    p.markupEditado = false;
+    p.custoEditado = custoEditadoAntes;  // ✅ Mantém o estado anterior da edição de custo
+    p.markupEditado = markupEditadoAntes;  // ✅ Mantém o estado anterior da edição de markup
   }
   
   console.log('✅ [recalcularProduto] Flags após edição:', {

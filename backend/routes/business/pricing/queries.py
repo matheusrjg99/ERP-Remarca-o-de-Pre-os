@@ -31,13 +31,7 @@ async def buscar_divergencias_markup(
 ):
     """Busca divergências de markup nos produtos."""
     db_name = AMBIENTES[ambiente]
-    query = """
-        SELECT codpro, custo, preco_venda, markup, 
-               (custo * 1.5) as preco_sugerido  -- Exemplo: markup sugerido 50%
-        FROM PRODUTOCAD
-        WHERE preco_venda < custo * 1.3  -- Divergência: markup abaixo de 30%
-        ORDER BY codpro
-    """
+    query = Scripts.query['divergencia_markup']
     
     dados = await executar_query(
         banco=db_name, 

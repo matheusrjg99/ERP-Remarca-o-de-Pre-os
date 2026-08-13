@@ -351,7 +351,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
           atual: p.atual, 
           sugerido: p.sugerido 
         });
-        console.log('   ✅ Opções marcadas:', { mkp: opcoes.mkp, custo: opcoes.custo });
+        console.log('   ✅ Opções marcadas:', { mkp: opcoes.mkp, custo: opcoes.custo, arredondar: opcoes.arredondar });
         
         // 🆕 Aplica arredondamento nos valores antes de enviar
         let mkpFinal = p.markup;
@@ -372,6 +372,10 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         console.log('   🚦 Decisões:', {
           vaiEnviarCusto: opcoes.custo && custoEditado,
           vaiEnviarMkp: opcoes.mkp && markupEditado,
+          custoEditado: custoEditado,
+          markupEditado: markupEditado,
+          opcaoCustoMarcada: opcoes.custo,
+          opcaoMkpMarcada: opcoes.mkp,
           precoUsado: p.precoEditado ? 'EDITADO (atual)' : 'SUGERIDO'
         });
 

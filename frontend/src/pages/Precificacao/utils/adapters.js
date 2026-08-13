@@ -19,5 +19,8 @@ export const adaptarProdutoDeEntrada = (p) => ({
   markup: round1(toFloat(p.MKP)),
   difMarkup: round1(toFloat(p.DIF_MKP)),
   conversao: toFloat(p.CONVER || p.CONV),
-  precoEditado: false // Flag de controle do sistema
+  // Flags de controle do sistema - todas iniciam como false pois são dados do banco
+  precoEditado: false,
+  custoEditado: false,
+  markupEditado: false
 });

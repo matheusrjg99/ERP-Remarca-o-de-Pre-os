@@ -231,10 +231,12 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // ✅ CORRIGIDO: Criamos o objeto atualizado diretamente, sem chamar recalcularProduto com string
         const produtoAtualizado = { ...produto, [campoAlvo]: novoValor };
         
-        // ✅ CORRIGIDO: Recalculamos os dependentes manualmente
+        // ✅ CORRIGIDO: Recalculamos os dependentes manualmente E marcamos as edições
         const resultado = {
           ...produtoAtualizado,
-          precoEditado: campoAlvo === 'atual' ? true : false
+          precoEditado: campoAlvo === 'atual' ? true : false,
+          custoEditado: campoAlvo === 'custo' ? true : false,
+          markupEditado: campoAlvo === 'markup' ? true : false
         };
 
         // Se alterou o custo, recalcula sugerido e markups
@@ -339,7 +341,18 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // 🆕 Aplica arredondamento nos valores antes de enviar
         let mkpFinal = p.markup;
         let custoFinal = p.custo;
+        
+        // ✅ VERIFICA SE HOUVE EDIÇÃO MANUAL EM CADA CAMPO
+        // Se foi editado manualmente, usa o valor editado. Caso contrário, usa o sugerido/original.
         let precoRemarcacao = p.precoEditado ? p.atual : p.sugerido;
+        
+        // Se o custo foi editado manualmente, envia o custo editado
+        // Se não, mantém o custo original (não envia atualização de custo)
+        const custoEditado = p.custoEditado || false;
+        
+        // Se o markup foi editado manualmente, envia o markup editado
+        // Se não, mantém o markup original (não envia atualização de markup)
+        const markupEditado = p.markupEditado || false;
 
         if (opcoes.arredondar) {
           mkpFinal = roundTo05(mkpFinal);
@@ -347,14 +360,17 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
           precoRemarcacao = roundTo05(precoRemarcacao);
         }
 
-        if (opcoes.mkp) {
+        // ✅ SÓ ENVIA ATUALIZAÇÃO DE MKP SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
+        if (opcoes.mkp && markupEditado) {
           await api.put(`/precificacao/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
         }
         
-        if (opcoes.custo) {
+        // ✅ SÓ ENVIA ATUALIZAÇÃO DE CUSTO SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
+        if (opcoes.custo && custoEditado) {
           await api.put(`/precificacao/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
         }
         
+        // ✅ ENVIA REMARCAÇÃO SEMPRE (usando o preço editado ou sugerido)
         await api.put(`/precificacao/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
       } catch (error) { 

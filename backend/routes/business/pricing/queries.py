@@ -59,17 +59,21 @@ async def buscar_registro_inteligente(
         return dados
 
     # 2. Múltiplos códigos
-    if "," in registro or "'" in registro:
-        codigos = registro.split(",")
-        codigos_formatados = ",".join(f"'{c.strip()}'" for c in codigos)
-        query_base = QUERIES['consulta_codigo']
+    if "," in registro:
+        # Remove aspas simples existentes e divide por vírgula
+        codigos = [c.strip().strip("'").strip() for c in registro.split(",") if c.strip()]
+        # Filtra apenas códigos não vazios
+        codigos = [c for c in codigos if c]
         
-        if "IN (?)" in query_base:
-            query = query_base.replace("IN (?)", f"IN ({codigos_formatados})")
-        else:
-            query = query_base.replace("= ?", f"IN ({codigos_formatados})")
+        if codigos:
+            codigos_formatados = ",".join(f"'{c}'" for c in codigos)
+            query_base = QUERIES['consulta_codigo']
+            # Substitui o placeholder {codigos} pela lista formatada
+            query = query_base.format(codigos=codigos_formatados)
             
-        dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint="/precificacao/produto/multiplos")
+            dados = await executar_query(banco=db_name, query=query, params=(), usuario="SISTEMA", endpoint="/precificacao/produto/multiplos")
+        else:
+            raise HTTPException(status_code=400, detail="Lista de códigos inválida.")
         
     # 3. Nota Fiscal (Digitou o número de documento)
     elif len(registro) >= 6 and registro.isdigit():

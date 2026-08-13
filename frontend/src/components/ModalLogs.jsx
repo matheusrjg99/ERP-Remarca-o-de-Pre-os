@@ -19,7 +19,7 @@ export default function ModalLogs({ isOpen, onClose, ambiente }) {
   const buscarLogs = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/logs', {
+      const res = await api.get('admin/logs', {
         params: { ...filtros, ambiente }
       });
       setLogs(Array.isArray(res.data) ? res.data : []);

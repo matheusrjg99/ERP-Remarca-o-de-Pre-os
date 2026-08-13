@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from database import executar_query
 from security import requer_permissao
+from sql_repo import Scripts
 
 router = APIRouter(prefix="/precificacao", tags=["Precificação - Operações"])
 
@@ -24,7 +25,7 @@ async def remarcar_preco(
 ):
     """Atualiza o preço de venda de um produto."""
     db_name = AMBIENTES[ambiente]
-    query = "UPDATE PRODUTOCAD SET preco_venda = ? WHERE codpro = ?"
+    query = Scripts.query['remarcação']
     sucesso = await executar_query(
         banco=db_name, 
         query=query, 
@@ -48,7 +49,7 @@ async def atualizar_custo(
     """Atualiza o custo de um produto."""
     db_name = AMBIENTES[ambiente]
     
-    query = "UPDATE PRODUTOCAD SET custo = ? WHERE codpro = ?"
+    query = Scripts.query['atualiza_custo']
     sucesso = await executar_query(
         banco=db_name, 
         query=query, 
@@ -73,11 +74,11 @@ async def atualizar_markup(
     """Atualiza o markup de um produto."""
     db_name = AMBIENTES[ambiente]
     
-    query = "UPDATE PRODUTOCAD SET markup = ?, margem = ? WHERE codpro = ?"
+    query = Scripts.query['atualiza_mkp']
     sucesso = await executar_query(
         banco=db_name, 
         query=query, 
-        params=(novo_mkp, novo_mkp, codigo), 
+        params=(novo_mkp, codigo), 
         usuario="SISTEMA", 
         endpoint="/precificacao/atualizar-mkp",
         is_select=False

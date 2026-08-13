@@ -30,7 +30,7 @@ async def remarcar_preco(
         banco=db_name, 
         query=query, 
         params=(novo_preco, codigo), 
-        usuario="SISTEMA", 
+        usuario=usuario, 
         endpoint="/precificacao/remarcar",
         is_select=False
     )
@@ -54,7 +54,7 @@ async def atualizar_custo(
         banco=db_name, 
         query=query, 
         params=(novo_custo, codigo),
-        usuario="SISTEMA", 
+        usuario=usuario, 
         endpoint="/precificacao/atualizar-custo",
         is_select=False
     )
@@ -79,7 +79,7 @@ async def atualizar_markup(
         banco=db_name, 
         query=query, 
         params=(novo_mkp, novo_mkp, codigo), 
-        usuario="SISTEMA", 
+        usuario=usuario, 
         endpoint="/precificacao/atualizar-mkp",
         is_select=False
     )

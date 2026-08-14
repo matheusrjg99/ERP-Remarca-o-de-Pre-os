@@ -22,7 +22,7 @@ async def login(dados: LoginData):
     Realiza o login do usuário e retorna token JWT com permissões.
     Endpoint: /auth/login
     """
-    query = "SELECT login, senha_hash, nivel_acesso, nome FROM API_USUARIOS WHERE login = ? AND ativo = 1"
+    query = "SELECT login, senha_hash, cargo_id, nome FROM API_USUARIOS WHERE login = ? AND ativo = 1"
     resultado = await executar_query(
         banco="Bddemo", 
         query=query, 
@@ -45,7 +45,6 @@ async def login(dados: LoginData):
     # Criar token incluindo as permissões
     token_jwt = criar_token_acesso(dados={
         "sub": usuario_db["login"],
-        "nivel": usuario_db["nivel_acesso"],
         "permissions": permissoes,
         "nome": usuario_db.get("nome", "")
     })
@@ -53,7 +52,6 @@ async def login(dados: LoginData):
     return {
         "access_token": token_jwt,
         "token_type": "bearer",
-        "nivel_acesso": usuario_db["nivel_acesso"],
         "usuario": usuario_db["login"],
         "nome": usuario_db.get("nome", ""),
         "permissions": permissoes

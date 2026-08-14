@@ -18,14 +18,16 @@ class UsuarioNovo(BaseModel):
     login: str
     senha: str
     nome: str
-    nivel_acesso: str  # 'ADMIN' ou 'COMUM'
+    cargo_id: int
 
 def exigir_admin(token: str = Depends(oauth2_scheme)):
     """Dependência para validar se o usuário é Administrador."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        nivel: str = payload.get("nivel")
-        if nivel != "ADMIN":
+        permissoes = payload.get("permissions", [])
+        
+        # Verifica se tem permissão de admin_total ou gestão de usuários
+        if "admin_total" not in permissoes and "usuarios:gerenciar" not in permissoes:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, 
                 detail="Acesso negado. Recurso exclusivo para administradores."
@@ -37,7 +39,12 @@ def exigir_admin(token: str = Depends(oauth2_scheme)):
 @router.get("")
 async def listar_usuarios(admin_slug: str = Depends(exigir_admin)):
     """Lista todos os usuários do sistema (Apenas ADMIN)."""
-    query = "SELECT login, nome, nivel_acesso, ativo FROM API_USUARIOS ORDER BY nome"
+    query = """
+        SELECT u.login, u.nome, u.cargo_id, c.nome as cargo_nome, u.ativo 
+        FROM API_USUARIOS u
+        LEFT JOIN dbo.cargos c ON u.cargo_id = c.id AND c.ativo = 1
+        ORDER BY u.nome
+    """
     return await executar_query(
         banco="Bddemo", 
         query=query, 
@@ -51,10 +58,10 @@ async def cadastrar_usuario(dados: UsuarioNovo, admin_slug: str = Depends(exigir
     """Cadastra um novo usuário no sistema (Apenas ADMIN)."""
     hash_senha = gerar_hash_senha(dados.senha)
     query = """
-        INSERT INTO API_USUARIOS (login, senha_hash, nome, nivel_acesso, ativo)
+        INSERT INTO API_USUARIOS (login, senha_hash, nome, cargo_id, ativo)
         VALUES (?, ?, ?, ?, 1)
     """
-    params = (dados.login.lower().strip(), hash_senha, dados.nome.upper(), dados.nivel_acesso.upper())
+    params = (dados.login.lower().strip(), hash_senha, dados.nome.upper(), dados.cargo_id)
     
     sucesso = await executar_query(
         banco="Bddemo", 

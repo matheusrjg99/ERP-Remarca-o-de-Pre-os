@@ -173,7 +173,7 @@ async def obter_permissoes_usuario(login: str) -> list:
     não tiver cargo atribuído, evitando que usuários sem cargo recebam permissões
     indevidas por INNER JOINs falharem.
     
-    Usuários com nivel_acesso = 'ADMIN' recebem automaticamente a permissão admin_total.
+    Usuários com login 'SISTEMA' recebem automaticamente a permissão admin_total.
     """
     from database import executar_query
     
@@ -181,9 +181,10 @@ async def obter_permissoes_usuario(login: str) -> list:
     if login.upper() == "SISTEMA":
         return ["admin_total"]
     
-    # Primeiro, busca TODOS os dados do usuário incluindo nivel_acesso e cargo_id
+    # Busca dados do usuário incluindo cargo_id
+    # NOTA: A coluna nivel_acesso foi removida em favor do sistema RBAC baseado em cargos
     query_usuario_completo = """
-        SELECT login, nome, nivel_acesso, cargo_id 
+        SELECT login, nome, cargo_id 
         FROM dbo.API_USUARIOS 
         WHERE login = ? AND ativo = 1
     """
@@ -202,15 +203,9 @@ async def obter_permissoes_usuario(login: str) -> list:
             return []
         
         usuario_info = resultado_usuario[0]
-        nivel_acesso = usuario_info.get('nivel_acesso', '').upper().strip()
         cargo_id = usuario_info.get('cargo_id')
         
-        print(f"DEBUG: Usuário '{login}' - nivel_acesso='{nivel_acesso}', cargo_id={cargo_id}")
-        
-        # Se for ADMIN, concede todas as permissões IMEDIATAMENTE
-        if nivel_acesso == 'ADMIN':
-            print(f"DEBUG: Usuário '{login}' é ADMIN, retornando admin_total")
-            return ["admin_total"]
+        print(f"DEBUG: Usuário '{login}' - cargo_id={cargo_id}")
         
         # Se não tiver cargo atribuído, retorna vazio
         if cargo_id is None:

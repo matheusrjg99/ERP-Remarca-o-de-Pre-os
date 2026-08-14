@@ -117,12 +117,7 @@ async def buscar_produtos_em_lote(
     db_name = AMBIENTES[ambiente]
     codigos_formatados = ",".join(f"'{str(c).strip()}'" for c in lote.codigos)
     
-    query = f"""
-        SELECT p.codpro, p.preco_venda, p.custo, p.markup, cp.descricaolonga
-        FROM PRODUTOCAD p
-        LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-        WHERE p.codpro IN ({codigos_formatados})
-    """
+    query = Scripts.query['consulta_codigo'].format(codigos=codigos_formatados)
         
     dados = await executar_query(
         banco=db_name, 
@@ -185,19 +180,7 @@ async def pesquisar_produto_avancado(
     """Pesquisa avançada de produtos com múltiplos filtros."""
     db_name = AMBIENTES[ambiente]
     
-    query = """
-        SELECT
-            p.codpro AS CODPRO,
-            cp.descricaolonga AS DESCRICAOLONGA,
-            f.NOME AS RAZSOC,
-            c.descr AS CLASSIFICACAO,
-            i.NOME AS STATUS_DISP
-        FROM PRODUTOCAD p
-        LEFT JOIN complementoproduto cp ON p.codpro = cp.codpro
-        LEFT JOIN FORNECECAD f ON p.codfor = f.oid
-        LEFT JOIN item i ON p.Disponibilidade = i.OID
-        LEFT JOIN CLASSIFCAD c ON p.clasprod = c.clasprod
-    """
+    query = Scripts.query['pesquisar_produto']
     
     conditions = []
     params = []

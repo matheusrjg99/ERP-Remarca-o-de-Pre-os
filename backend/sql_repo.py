@@ -252,8 +252,6 @@ class Scripts:
             LEFT JOIN FORNECECAD f ON p.codfor = f.oid
             LEFT JOIN item i ON p.Disponibilidade = i.OID
             LEFT JOIN CLASSIFCAD c ON p.clasprod = c.clasprod
-            WHERE 1=1
-            ORDER BY p.codpro
         """, 
 
         'listar_fornecedores': """

@@ -4,13 +4,14 @@ Apenas definição de endpoints, injeção de dependências e retorno de respost
 Nenhuma regra de negócio ou SQL deve residir aqui.
 """
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
-from backend.auth.seguranca import get_usuario_atual, requer_permissao
-from .schemas import ProdutoPrecificacao, RecalculoRequest, ExportacaoRequest
+
+from backend.auth.seguranca import requer_permissao
+from .schemas import ProdutoPrecificacao, ProdutoAvancado
 from .services import ProdutoService
 
-router = APIRouter(prefix="/pricing/products", tags=["Precificação - Produtos"])
+router = APIRouter(tags=["Precificação - Produtos"])
 
 
 def get_produto_service() -> ProdutoService:
@@ -18,101 +19,56 @@ def get_produto_service() -> ProdutoService:
     return ProdutoService()
 
 
-@router.get("", response_model=List[ProdutoPrecificacao])
-@requer_permissao("precificacao:consultar")
-async def listar_produtos(
-    request: Request,
+@router.get(
+    "/precificacao/produtos",
+    response_model=List[ProdutoPrecificacao],
+    dependencies=[Depends(requer_permissao("precificacao:consultar"))]
+)
+async def listar_produtos_precificacao(
+    ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
+    classificacao: Optional[str] = None,
+    fornecedor: Optional[str] = None,
     service: ProdutoService = Depends(get_produto_service),
-    produto_id: Optional[int] = Query(None),
-    descricao: Optional[str] = Query(None),
-    grupo: Optional[str] = Query(None),
-    subgrupo: Optional[str] = Query(None),
-    marca: Optional[str] = Query(None),
-    fornecedor_id: Optional[int] = Query(None),
-    ativo: Optional[bool] = Query(None)
+    # O decorador acima já valida o token e as permissões (hierarquia: editar inclui consultar)
+    usuario: str = Depends(requer_permissao("precificacao:consultar"))
 ):
     """
-    Lista produtos com precificação.
-    Permissão necessária: precificacao:consultar
+    Lista produtos para precificação com custos, preços e markups.
+    Permissão necessária: precificacao:consultar (ou superior, como precificacao:editar).
     """
-    # Coleta filtros dinâmicos
-    filtros = {
-        "produto_id": produto_id,
-        "descricao": descricao,
-        "grupo": grupo,
-        "subgrupo": subgrupo,
-        "marca": marca,
-        "fornecedor_id": fornecedor_id,
-        "ativo": ativo
-    }
-    # Remove None values para não sujar a query
-    filtros = {k: v for k, v in filtros.items() if v is not None}
-    
-    return await service.listar_produtos(filtros=filtros)
+    return await service.listar_produtos(
+        ambiente=ambiente,
+        classificacao=classificacao,
+        fornecedor=fornecedor
+    )
 
 
-@router.get("/{produto_id}", response_model=ProdutoPrecificacao)
-@requer_permissao("precificacao:consultar")
-async def obter_produto(
-    produto_id: int,
-    service: ProdutoService = Depends(get_produto_service)
-):
-    """
-    Obtém detalhes de um produto específico.
-    Permissão necessária: precificacao:consultar
-    """
-    return await service.obter_produto_detalhe(produto_id=produto_id)
-
-
-@router.post("/recalcular")
-@requer_permissao("precificacao:editar")
-async def recalcular_precificacao(
-    payload: RecalculoRequest,
-    request: Request,
+@router.get(
+    "/precificacao/produtos/pesquisar",
+    response_model=List[ProdutoAvancado],
+    dependencies=[Depends(requer_permissao("precificacao:consultar"))]
+)
+async def pesquisar_produtos_avancado(
+    termo: Optional[str] = "",
+    codigo: Optional[str] = "",
+    fornecedor: Optional[str] = "",
+    classificacao: Optional[str] = "",
+    disponibilidade: Optional[str] = "",
+    ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
     service: ProdutoService = Depends(get_produto_service),
-    usuario: dict = Depends(get_usuario_atual)
+    usuario: str = Depends(requer_permissao("precificacao:consultar"))
 ):
     """
-    Recalcula a precificação de produtos (em lote ou individual).
-    Permissão necessária: precificacao:editar (herda consultar implicitamente)
+    Pesquisa avançada de produtos com múltiplos filtros dinâmicos.
+    Permite buscar por termo, código, fornecedor, classificação e disponibilidade.
+    Permissão necessária: precificacao:consultar.
     """
-    usuario_id = usuario.get("usuario_id")
-    
-    resultado = await service.recalcular_precificacao(
-        produto_ids=payload.produto_ids,
-        novo_custo=payload.novo_custo,
-        nova_margem=payload.nova_margem,
-        justifica=payload.justifica,
-        usuario_id=usuario_id
-    )
-    
-    return resultado
-
-
-@router.post("/exportar")
-@requer_permissao("precificacao:consultar")
-async def exportar_produtos(
-    payload: ExportacaoRequest,
-    request: Request,
-    service: ProdutoService = Depends(get_produto_service)
-):
-    """
-    Exporta lista de produtos para arquivo (CSV/JSON).
-    Permissão necessária: precificacao:consultar
-    """
-    dados_binarios = await service.exportar_produtos(
-        formato=payload.formato,
-        filtros=payload.filtros
-    )
-    
-    # Definir headers adequados para download
-    media_type = "text/csv" if payload.formato.upper() != "JSON" else "application/json"
-    
-    from fastapi.responses import Response
-    return Response(
-        content=dados_binarios,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f"attachment; filename=produtos_export.{payload.formato.lower()}"
-        }
+    return await service.pesquisar_produto_avancado(
+        termo=termo,
+        codigo=codigo,
+        fornecedor=fornecedor,
+        classificacao=classificacao,
+        disponibilidade=disponibilidade,
+        ambiente=ambiente,
+        usuario=usuario
     )

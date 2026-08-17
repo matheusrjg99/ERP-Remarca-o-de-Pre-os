@@ -7,9 +7,28 @@ async def setup_admin():
     senha_plana = "admin123" # Você poderá alterar depois
     hash_seguro = gerar_hash_senha(senha_plana)
     
+    # Primeiro, precisamos garantir que o cargo de Administrador existe e obter seu ID
+    query_busca_cargo = """
+        SELECT id FROM dbo.cargos WHERE nome = 'Administrador' AND ativo = 1
+    """
+    
+    resultado = await executar_query(
+        banco="Bddemo",
+        query=query_busca_cargo,
+        params=(),
+        usuario="SETUP",
+        endpoint="/setup_inicial"
+    )
+    
+    if not resultado or len(resultado) == 0:
+        print("Erro: Cargo 'Administrador' não encontrado. Execute o script init.sql primeiro.")
+        return
+    
+    cargo_id_admin = resultado[0]['id']
+    
     query = """
-        INSERT INTO API_USUARIOS (login, senha_hash, nome, nivel_acesso, ativo)
-        VALUES (?, ?, ?, 'ADMIN', 1)
+        INSERT INTO API_USUARIOS (login, senha_hash, nome, cargo_id, ativo)
+        VALUES (?, ?, ?, ?, 1)
     """
     
     print("Iniciando criação do usuário Administrador...")
@@ -17,7 +36,7 @@ async def setup_admin():
     sucesso = await executar_query(
         banco="Bddemo", # Banco de demonstração
         query=query,
-        params=(login_admin, hash_seguro, "Administrador Sistema"),
+        params=(login_admin, hash_seguro, "Administrador Sistema", cargo_id_admin),
         usuario="SETUP",
         endpoint="/setup_inicial",
         is_select=False

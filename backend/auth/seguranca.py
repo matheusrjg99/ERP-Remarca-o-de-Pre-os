@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
+from functools import wraps
+from fastapi import HTTPException, status
 
 # Configurações de Segurança
 SECRET_KEY = "chave_secreta_provisoria_mudar_depois"
@@ -9,6 +11,138 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 # MUDANÇA AQUI: Trocamos 'bcrypt' por 'pbkdf2_sha256'
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+# Hierarquia de Níveis de Privilégio (quanto maior o número, mais privilegiado)
+NIVEIS_PRIVILEGIO = {
+    "excluir": 4,
+    "editar": 3,
+    "remarcar": 2,
+    "consultar": 1,
+    "visualizar": 1,
+    "listar": 1,
+}
+
+def verificar_hierarquia_permissao(permissao_requerida: str, permissoes_usuario: list) -> bool:
+    """
+    Verifica se o usuário possui a permissão requerida, considerando:
+    1. Permissão exata
+    2. Curinga do módulo (ex: 'precificacao:*')
+    3. Admin total
+    4. Hierarquia implícita (ações de nível superior incluem inferiores)
+    
+    Args:
+        permissao_requerida: String no formato "modulo:acao" (ex: "precificacao:consultar")
+        permissoes_usuario: Lista de permissões do usuário
+    
+    Returns:
+        bool: True se autorizado, False caso contrário
+    """
+    # Admin total tem acesso a tudo
+    if "admin_total" in permissoes_usuario:
+        return True
+    
+    # Permissão exata
+    if permissao_requerida in permissoes_usuario:
+        return True
+    
+    # Curinga do módulo (ex: "precificacao:*")
+    modulo = permissao_requerida.split(":")[0] if ":" in permissao_requerida else permissao_requerida
+    if f"{modulo}:*" in permissoes_usuario:
+        return True
+    
+    # Verificar hierarquia implícita
+    if ":" not in permissao_requerida:
+        return False
+    
+    modulo_requerido, acao_requerida = permissao_requerida.split(":", 1)
+    nivel_requerido = NIVEIS_PRIVILEGIO.get(acao_requerida.lower(), 0)
+    
+    # Se não há nível definido, não aplica hierarquia
+    if nivel_requerido == 0:
+        return False
+    
+    # Verificar se o usuário tem alguma permissão do mesmo módulo com nível superior
+    for permissao in permissoes_usuario:
+        if ":" not in permissao:
+            continue
+        
+        usuario_modulo, usuario_acao = permissao.split(":", 1)
+        
+        # Só compara permissões do mesmo módulo
+        if usuario_modulo != modulo_requerido:
+            continue
+        
+        # Ignora curingas (já tratados acima)
+        if usuario_acao == "*":
+            continue
+        
+        nivel_usuario = NIVEIS_PRIVILEGIO.get(usuario_acao.lower(), 0)
+        
+        # Se o usuário tem uma permissão de nível superior no mesmo módulo, autoriza
+        if nivel_usuario > nivel_requerido:
+            return True
+    
+    return False
+
+def requer_permissao(permissao_necessaria: str):
+    """
+    Decorador para verificar permissões com hierarquia implícita.
+    
+    Args:
+        permissao_necessaria: Permissão requerida no formato "modulo:acao"
+    """
+    def decorador(funcao):
+        @wraps(funcao)
+        async def wrapper(*args, **kwargs):
+            # Tenta obter o token das args ou kwargs
+            token = None
+            
+            # Verifica em kwargs primeiro (comum em FastAPI com Depends)
+            if 'token' in kwargs:
+                token = kwargs['token']
+            elif 'request' in kwargs and hasattr(kwargs['request'], 'headers'):
+                auth_header = kwargs['request'].headers.get('Authorization', '')
+                if auth_header.startswith('Bearer '):
+                    token = auth_header[7:]
+            
+            # Se não encontrou token, tenta buscar nos args
+            if not token:
+                for arg in args:
+                    if isinstance(arg, dict) and 'access_token' in arg:
+                        token = arg['access_token']
+                        break
+                    elif hasattr(arg, 'headers'):
+                        auth_header = getattr(arg, 'headers', {}).get('Authorization', '')
+                        if auth_header.startswith('Bearer '):
+                            token = auth_header[7:]
+                            break
+            
+            if not token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token não fornecido"
+                )
+            
+            try:
+                # Decodifica o token para obter as permissões
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                permissoes_usuario = payload.get("permissoes", [])
+                
+                # Verifica a permissão com hierarquia
+                if not verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Permissão insuficiente. Requer: {permissao_necessaria}"
+                    )
+            except jwt.JWTError:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token inválido ou expirado"
+                )
+            
+            return await funcao(*args, **kwargs)
+        return wrapper
+    return decorador
 
 def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
     """Compara a senha digitada com o hash salvo no banco."""
@@ -39,7 +173,7 @@ async def obter_permissoes_usuario(login: str) -> list:
     não tiver cargo atribuído, evitando que usuários sem cargo recebam permissões
     indevidas por INNER JOINs falharem.
     
-    Usuários com nivel_acesso = 'ADMIN' recebem automaticamente a permissão admin_total.
+    Usuários com login 'SISTEMA' recebem automaticamente a permissão admin_total.
     """
     from database import executar_query
     
@@ -47,9 +181,10 @@ async def obter_permissoes_usuario(login: str) -> list:
     if login.upper() == "SISTEMA":
         return ["admin_total"]
     
-    # Primeiro, busca TODOS os dados do usuário incluindo nivel_acesso e cargo_id
+    # Busca dados do usuário incluindo cargo_id
+    # NOTA: A coluna nivel_acesso foi removida em favor do sistema RBAC baseado em cargos
     query_usuario_completo = """
-        SELECT login, nome, nivel_acesso, cargo_id 
+        SELECT login, nome, cargo_id 
         FROM dbo.API_USUARIOS 
         WHERE login = ? AND ativo = 1
     """
@@ -68,15 +203,9 @@ async def obter_permissoes_usuario(login: str) -> list:
             return []
         
         usuario_info = resultado_usuario[0]
-        nivel_acesso = usuario_info.get('nivel_acesso', '').upper().strip()
         cargo_id = usuario_info.get('cargo_id')
         
-        print(f"DEBUG: Usuário '{login}' - nivel_acesso='{nivel_acesso}', cargo_id={cargo_id}")
-        
-        # Se for ADMIN, concede todas as permissões IMEDIATAMENTE
-        if nivel_acesso == 'ADMIN':
-            print(f"DEBUG: Usuário '{login}' é ADMIN, retornando admin_total")
-            return ["admin_total"]
+        print(f"DEBUG: Usuário '{login}' - cargo_id={cargo_id}")
         
         # Se não tiver cargo atribuído, retorna vazio
         if cargo_id is None:

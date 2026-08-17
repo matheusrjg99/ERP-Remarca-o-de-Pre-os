@@ -8,9 +8,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import json
 
-# Assumindo que temos um pool de conexão ou utilitário de DB global
-# Em produção, isso viria de injeção de dependência ou config centralizada
-from backend.database.connection import get_db_connection 
+from backend.database import executar_query
 from fastapi import HTTPException
 
 
@@ -24,31 +22,31 @@ class ProdutoService:
         params = []
 
         if filtros.get("produto_id"):
-            query_base += " AND produto_id = %s"
+            query_base += " AND produto_id = ?"
             params.append(filtros["produto_id"])
         
         if filtros.get("descricao"):
-            query_base += " AND descricao ILIKE %s"
+            query_base += " AND descricao LIKE ?"
             params.append(f"%{filtros['descricao']}%")
         
         if filtros.get("grupo"):
-            query_base += " AND grupo = %s"
+            query_base += " AND grupo = ?"
             params.append(filtros["grupo"])
         
         if filtros.get("subgrupo"):
-            query_base += " AND subgrupo = %s"
+            query_base += " AND subgrupo = ?"
             params.append(filtros["subgrupo"])
         
         if filtros.get("marca"):
-            query_base += " AND marca = %s"
+            query_base += " AND marca = ?"
             params.append(filtros["marca"])
         
         if filtros.get("fornecedor_id"):
-            query_base += " AND fornecedor_id = %s"
+            query_base += " AND fornecedor_id = ?"
             params.append(filtros["fornecedor_id"])
         
         if filtros.get("ativo") is not None:
-            query_base += " AND ativo = %s"
+            query_base += " AND ativo = ?"
             params.append(filtros["ativo"])
 
         # Ordenação padrão
@@ -62,42 +60,39 @@ class ProdutoService:
         
         query, params = self._construir_query_filtros(filtros)
         
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(query, params)
-            resultados = cursor.fetchall()
-            cursor.close()
-            return resultados
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erro ao consultar produtos: {str(e)}")
-        finally:
-            conn.close()
+        resultado = await executar_query(
+            banco="microuni",
+            query=query,
+            params=tuple(params) if params else None,
+            is_select=True
+        )
+        
+        if isinstance(resultado, dict) and "erro" in resultado:
+            raise HTTPException(status_code=500, detail=f"Erro ao consultar produtos: {resultado['erro']}")
+        
+        return resultado if resultado else []
 
     async def obter_produto_detalhe(self, produto_id: int) -> Dict[str, Any]:
         """Obtém detalhes completos de um único produto."""
         query = """
             SELECT * FROM API_PRODUTOS 
-            WHERE produto_id = %s
+            WHERE produto_id = ?
         """
         
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(query, (produto_id,))
-            resultado = cursor.fetchone()
-            cursor.close()
-            
-            if not resultado:
-                raise HTTPException(status_code=404, detail="Produto não encontrado.")
-            
-            return resultado
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erro ao buscar produto: {str(e)}")
-        finally:
-            conn.close()
+        resultado = await executar_query(
+            banco="microuni",
+            query=query,
+            params=(produto_id,),
+            is_select=True
+        )
+        
+        if isinstance(resultado, dict) and "erro" in resultado:
+            raise HTTPException(status_code=500, detail=f"Erro ao buscar produto: {resultado['erro']}")
+        
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Produto não encontrado.")
+        
+        return resultado[0]
 
     async def recalcular_precificacao(
         self, 
@@ -113,15 +108,12 @@ class ProdutoService:
         - Se custo/margem forem fornecidos, atualiza antes de calcular preço.
         - Registra log da alteração.
         """
-        conn = get_db_connection()
         try:
-            cursor = conn.cursor(dictionary=True)
-            
             # Construção dinâmica do WHERE para os IDs
             if produto_ids:
-                placeholders = ','.join(['%s'] * len(produto_ids))
+                placeholders = ','.join(['?'] * len(produto_ids))
                 where_clause = f"AND produto_id IN ({placeholders})"
-                params_ids = produto_ids
+                params_ids = list(produto_ids)
             else:
                 where_clause = ""
                 params_ids = []
@@ -131,42 +123,56 @@ class ProdutoService:
             update_params = []
             
             if novo_custo is not None:
-                updates.append("custo_atual = %s")
+                updates.append("custo_atual = ?")
                 update_params.append(novo_custo)
             
             if nova_margem is not None:
-                updates.append("margem_atual = %s")
+                updates.append("margem_atual = ?")
                 update_params.append(nova_margem)
             
             if updates:
-                update_params.extend(params_ids) # Adiciona os IDs no final
+                update_params.extend(params_ids)
+                update_params.append(usuario_id)
+                
                 query_update = f"""
                     UPDATE API_PRODUTOS 
                     SET {', '.join(updates)},
-                        ultima_atualizacao = NOW(),
-                        usuario_alteracao = %s
+                        ultima_atualizacao = GETDATE(),
+                        usuario_alteracao = ?
                     WHERE 1=1 {where_clause}
                 """
-                update_params.append(usuario_id)
-                cursor.execute(query_update, update_params)
-            
+                
+                result_update = await executar_query(
+                    banco="microuni",
+                    query=query_update,
+                    params=tuple(update_params),
+                    is_select=False
+                )
+                
+                if isinstance(result_update, dict) and "erro" in result_update:
+                    raise HTTPException(status_code=500, detail=f"Erro ao atualizar custos: {result_update['erro']}")
+
             # 2. Recalcular preço de venda (Exemplo: Custo * (1 + Margem/100))
-            # Nota: Ajuste a fórmula conforme a regra real do negócio
             query_recalculo = f"""
                 UPDATE API_PRODUTOS 
                 SET preco_venda = ROUND(custo_atual * (1 + (margem_atual / 100)), 2),
-                    ultima_atualizacao = NOW(),
-                    usuario_alteracao = %s
+                    ultima_atualizacao = GETDATE(),
+                    usuario_alteracao = ?
                 WHERE 1=1 {where_clause}
             """
             params_recalculo = params_ids + [usuario_id]
-            cursor.execute(query_recalculo, params_recalculo)
+            
+            result_recalculo = await executar_query(
+                banco="microuni",
+                query=query_recalculo,
+                params=tuple(params_recalculo),
+                is_select=False
+            )
+            
+            if isinstance(result_recalculo, dict) and "erro" in result_recalculo:
+                raise HTTPException(status_code=500, detail=f"Erro ao recalcular preços: {result_recalculo['erro']}")
             
             # 3. Registrar Log (Assumindo tabela API_LOGS existente)
-            query_log = """
-                INSERT INTO API_LOGS (usuario_id, acao, tabela_afetada, detalhes, data_ocorrencia)
-                VALUES (%s, %s, %s, %s, NOW())
-            """
             detalhes_log = json.dumps({
                 "acao": "recalculo_precificacao",
                 "produto_ids": produto_ids,
@@ -174,21 +180,31 @@ class ProdutoService:
                 "nova_margem": nova_margem,
                 "justificativa": justifica
             })
-            cursor.execute(query_log, (usuario_id, "RECALCULO_PRECO", "API_PRODUTOS", detalhes_log))
             
-            conn.commit()
-            cursor.close()
+            query_log = """
+                INSERT INTO API_LOGS (usuario_id, acao, tabela_afetada, detalhes, data_ocorrencia)
+                VALUES (?, ?, ?, ?, GETDATE())
+            """
+            
+            result_log = await executar_query(
+                banco="microuni",
+                query=query_log,
+                params=(usuario_id, "RECALCULO_PRECO", "API_PRODUTOS", detalhes_log),
+                is_select=False
+            )
+            
+            if isinstance(result_log, dict) and "erro" in result_log:
+                raise HTTPException(status_code=500, detail=f"Erro ao registrar log: {result_log['erro']}")
             
             return {
                 "mensagem": "Precificação recalculada com sucesso.",
-                "afetados": cursor.rowcount if hasattr(cursor, 'rowcount') else 0 # Nota: rowcount pode variar dependendo do driver
+                "afetados": len(produto_ids) if produto_ids else 0
             }
             
+        except HTTPException:
+            raise
         except Exception as e:
-            conn.rollback()
             raise HTTPException(status_code=500, detail=f"Erro ao recalcular precificação: {str(e)}")
-        finally:
-            conn.close()
 
     async def exportar_produtos(self, formato: str, filtros: Optional[Dict[str, Any]]) -> bytes:
         """
@@ -206,7 +222,7 @@ class ProdutoService:
             return b""
         
         linhas = []
-        cabecalho = ",".join(dados[0].keys())
+        cabecalho = ",".join(str(k) for k in dados[0].keys())
         linhas.append(cabecalho)
         
         for item in dados:

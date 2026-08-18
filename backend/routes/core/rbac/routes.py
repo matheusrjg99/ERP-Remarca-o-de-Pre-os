@@ -17,25 +17,21 @@ from .schemas import (
 from .services import RBACService
 
 # Importa autenticação
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from security import get_current_user_permissions, requer_permissao
+from auth.seguranca import get_current_user, requer_permissao
 
 router = APIRouter(prefix="/rbac", tags=["RBAC - Controle de Acesso"])
 
 
 # ==================== DEPENDÊNCIAS ====================
 
-async def get_usuario_autenticado(request: Request) -> str:
+async def get_usuario_autenticado(current_user: dict = Depends(get_current_user)) -> str:
     """Extrai o login do usuário autenticado a partir do token JWT"""
-    user_data = await get_current_user_permissions(request)
-    return user_data["user_login"]
+    return current_user.get("nome", current_user.get("usuario_id", "desconhecido"))
 
 
-async def get_rbac_service(request: Request) -> RBACService:
+async def get_rbac_service(current_user: dict = Depends(get_current_user)) -> RBACService:
     """Cria instância do serviço RBAC com usuário autenticado"""
-    usuario_logado = await get_usuario_autenticado(request)
+    usuario_logado = current_user.get("nome", current_user.get("usuario_id", "desconhecido"))
     return RBACService(usuario_logado)
 
 

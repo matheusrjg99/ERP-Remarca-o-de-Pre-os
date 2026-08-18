@@ -5,13 +5,10 @@ Gerencia CRUD de colaboradores do sistema
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-import sys
-import os
 
 # Adiciona o path do backend para importar database
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
-from security import requer_permissao
+from auth.seguranca import requer_permissao
 
 router = APIRouter(prefix="/colaboradores", tags=["Colaboradores"])
 

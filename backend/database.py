@@ -4,10 +4,11 @@ from typing import List, Dict, Any, Optional
 
 class Sql:
     def __init__(self, banco_dados: str):
-        # Em produção, usaremos variáveis de ambiente. Por enquanto, mantemos seu IP.
-        self.servidor = '192.168.0.254'
-        self.usuario = 'microuni'
-        self.senha = 'microuni'
+        # Credenciais via variáveis de ambiente (segurança)
+        # Fallback para valores locais apenas em desenvolvimento
+        self.servidor = os.getenv("DB_SERVER", "192.168.0.254")
+        self.usuario = os.getenv("DB_USER", "microuni")
+        self.senha = os.getenv("DB_PASSWORD", "microuni")
         self.banco_dados = banco_dados
 
     # MUDANÇA 1: Transformamos em async def

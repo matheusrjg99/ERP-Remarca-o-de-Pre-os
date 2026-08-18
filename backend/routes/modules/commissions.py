@@ -6,13 +6,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, date
-import sys
-import os
 
 # Adiciona o path do backend para importar database
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from database import executar_query
-from security import requer_permissao
+from auth.seguranca import requer_permissao
 
 router = APIRouter(prefix="/comissoes", tags=["Comissões"])
 

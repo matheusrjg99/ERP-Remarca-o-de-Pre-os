@@ -42,11 +42,12 @@ async def login(dados: LoginData):
     # Buscar permissões do usuário baseado no cargo
     permissoes = await obter_permissoes_usuario(usuario_db["login"])
     
-    # Criar token incluindo as permissões
+    # Criar token incluindo as permissões e o cargo (CAMPOS CORRIGIDOS)
     token_jwt = criar_token_acesso(dados={
         "sub": usuario_db["login"],
-        "permissions": permissoes,
-        "nome": usuario_db.get("nome", "")
+        "permissoes": permissoes,  # Corrigido de 'permissions' para 'permissoes'
+        "nome": usuario_db.get("nome", ""),
+        "cargo": usuario_db.get("cargo_id")  # Adicionado campo cargo
     })
     
     return {
@@ -54,7 +55,7 @@ async def login(dados: LoginData):
         "token_type": "bearer",
         "usuario": usuario_db["login"],
         "nome": usuario_db.get("nome", ""),
-        "permissions": permissoes
+        "permissoes": permissoes  # Corrigido para 'permissoes'
     }
 
 # Router de compatibilidade para frontend antigo (sem prefixo)

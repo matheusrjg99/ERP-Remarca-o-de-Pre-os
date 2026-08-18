@@ -98,21 +98,36 @@ def requer_permissao(permissao_necessaria: str):
     
     Returns uma dependência do FastAPI que pode ser usada com Depends().
     """
+    import logging
+    
     async def verificar(current_user: dict = Depends(get_current_user)):
         permissoes_usuario = current_user.get("permissoes", [])
         cargo = current_user.get("cargo", "")
+        username = current_user.get("nome", "desconhecido")
+        
+        # LOG: Entrada da verificação
+        logging.warning(f"[DEBUG PERMISSAO] Usuário: {username} | Cargo: {cargo}")
+        logging.warning(f"[DEBUG PERMISSAO] Permissão requerida: {permissao_necessaria}")
+        logging.warning(f"[DEBUG PERMISSAO] Permissões do usuário: {permissoes_usuario}")
         
         # Admin total (cargos especiais) tem acesso a tudo
         if cargo in ["Administrador", "TI"] or "admin_total" in permissoes_usuario:
+            logging.warning(f"[DEBUG PERMISSAO] Acesso concedido (ADMIN/CARGO ESPECIAL)")
             return current_user
         
         # Verifica permissão explícita ou hierárquica
-        if not verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario):
+        tem_permissao = verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario)
+        
+        logging.warning(f"[DEBUG PERMISSAO] Resultado da verificação hierárquica: {tem_permissao}")
+        
+        if not tem_permissao:
+            logging.error(f"[ACESSO NEGADO] {username} não tem {permissao_necessaria}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permissão insuficiente. Requer: {permissao_necessaria}"
             )
         
+        logging.warning(f"[DEBUG PERMISSAO] Acesso concedido para {username}")
         return current_user
     
     return verificar

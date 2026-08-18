@@ -1,5 +1,19 @@
 import { useState, useEffect } from 'react';
 
+// Mapa de Hierarquia de Permissões
+// Chave: Permissão Superior | Valor: Lista de permissões inferiores herdadas
+const HIERARCHY_MAP = {
+  'admin:cargos': ['admin:usuarios', 'admin:configuracoes', 'admin:logs'],
+  'precificacao:editar': ['precificacao:consultar'],
+  'precificacao:excluir': ['precificacao:editar', 'precificacao:consultar'],
+  'nc:editar': ['nc:visualizar', 'nc:contestar'],
+  'nc:excluir': ['nc:editar', 'nc:visualizar', 'nc:contestar'],
+  'rbac:cargo_editar': ['rbac:cargo_visualizar'],
+  'rbac:cargo_excluir': ['rbac:cargo_editar', 'rbac:cargo_visualizar'],
+  'rbac:permissao_editar': ['rbac:permissao_visualizar'],
+  'rbac:permissao_excluir': ['rbac:permissao_editar', 'rbac:permissao_visualizar'],
+};
+
 /**
  * Hook personalizado para gerenciar permissões RBAC no frontend
  * @returns {Object} Objeto com funções e estados de permissão
@@ -7,7 +21,7 @@ import { useState, useEffect } from 'react';
 export const usePermissions = () => {
   const [permissions, setPermissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   useEffect(() => {
     // Carrega as permissões do localStorage (salvas no login como 'permissoes')
     const storedPermissions = localStorage.getItem('permissoes');
@@ -23,17 +37,32 @@ export const usePermissions = () => {
   }, []);
 
   /**
-   * Verifica se o usuário tem uma permissão específica
+   * Verifica se o usuário tem uma permissão específica, considerando hierarquia
    * @param {string} permissionCode - Código da permissão (ex: 'cadastros:colaboradores')
    * @returns {boolean} true se tiver permissão
    */
   const hasPermission = (permissionCode) => {
-    if (isLoading) return false;
+    if (isLoading || !permissionCode) return false;
+    
+    const reqPerm = permissionCode.toLowerCase();
     
     // Admin total tem todas as permissões
     if (permissions.includes('admin_total')) return true;
     
-    return permissions.includes(permissionCode);
+    // Normaliza permissões do usuário para minúsculas
+    const userPerms = permissions.map(p => p.toLowerCase());
+    
+    // 1. Verificação direta
+    if (userPerms.includes(reqPerm)) return true;
+    
+    // 2. Verificação Hierárquica (Busca permissões superiores que concedem esta)
+    for (const [superPerm, inheritedPerms] of Object.entries(HIERARCHY_MAP)) {
+      if (inheritedPerms.includes(reqPerm) && userPerms.includes(superPerm.toLowerCase())) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   /**
@@ -46,7 +75,7 @@ export const usePermissions = () => {
     
     if (permissions.includes('admin_total')) return true;
     
-    return permissionCodes.some(code => permissions.includes(code));
+    return permissionCodes.some(code => hasPermission(code));
   };
 
   /**
@@ -59,7 +88,7 @@ export const usePermissions = () => {
     
     if (permissions.includes('admin_total')) return true;
     
-    return permissionCodes.every(code => permissions.includes(code));
+    return permissionCodes.every(code => hasPermission(code));
   };
 
   /**

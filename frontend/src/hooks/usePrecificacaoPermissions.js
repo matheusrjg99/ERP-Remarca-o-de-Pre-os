@@ -1,96 +1,46 @@
 import { usePermissions } from './usePermissions';
 
 /**
- * Hook especializado para permissões do Precificacao
- * @returns {Object} Funções e estados de permissão do dashboard
+ * Hook específico para permissões do módulo de Precificação
+ * Implementa fallback para permissões legadas e hierarquia
  */
 export const usePrecificacaoPermissions = () => {
-  const { 
-    hasPermission, 
-    hasAnyPermission, 
-    hasAllPermissions, 
-    isLoading,
-    isAdmin,
-    permissions 
-  } = usePermissions();
+  const { hasPermission, permissions, isLoading } = usePermissions();
 
-  // Permissões específicas do dashboard
-  const podeEditarCelulas = hasPermission('precificacao:editar') || isAdmin;
-  const podeRecalcular = hasPermission('precificacao:recalcular') || isAdmin;
-  const podePersonalizarVisual = hasPermission('precificacao:personalizar_visual') || isAdmin;
-  const podeEditarRegras = hasPermission('precificacao:editar_regras') || isAdmin;
-  const podeExportar = hasPermission('precificacao:exportar') || isAdmin;
-  const podeImportar = hasPermission('precificacao:importar') || isAdmin;
-  const podeSelecionarNota = hasPermission('precificacao:selecionar_nota') || isAdmin;
-  const podeVerCustos = hasPermission('precificacao:ver_custo') || isAdmin;
-  const podeVerMargens = hasPermission('precificacao:ver_margens') || isAdmin;
-
-  // Verifica se pode editar uma célula específica
-  const podeEditarColuna = (colunaKey) => {
-    if (isAdmin) return true;
-    
-    // Mapeamento de colunas para permissões específicas
-    const permissoesColuna = {
-      'custo': 'precificacao:editar_custo',
-      'sugerido': 'precificacao:editar_sugerido',
-      'atual': 'precificacao:editar_preco',
-      'margem': 'precificacao:editar_margem',
-      'desconto': 'precificacao:editar_desconto',
-    };
-
-    const permissaoNecessaria = permissoesColuna[colunaKey];
-    if (!permissaoNecessaria) return podeEditarCelulas;
-    
-    return hasPermission(permissaoNecessaria);
-  };
-
-  // Verifica se pode ver uma coluna específica
-  const podeVerColuna = (colunaKey) => {
-    if (isAdmin) return true;
-    
-    const colunasRestritas = {
-      'custo': 'precificacao:ver_custo',
-      'margem_valor': 'precificacao:ver_margens',
-      'lucro': 'precificacao:ver_lucro',
-    };
-
-    const permissaoNecessaria = colunasRestritas[colunaKey];
-    if (!permissaoNecessaria) return true; // Colunas sem restrição
-    
-    return hasPermission(permissaoNecessaria);
-  };
-
-  // Ações em massa
-  const podeRecalculoEmMassa = hasAnyPermission(['precificacao:recalcular']) || isAdmin;
-  const podeImportacaoEmMassa = hasPermission('precificacao:importar') || isAdmin;
+  // Fallback: Se não tiver a permissão específica, verifica a base
+  const canConsultar = () => hasPermission('precificacao:consultar');
+  
+  // Hierarquia implícita: editar concede consultar
+  const canEditar = () => hasPermission('precificacao:editar') || hasPermission('precificacao:consultar');
+  
+  // Permissões específicas ou fallback para editar
+  const canRecalcular = () => hasPermission('precificacao:recalcular') || hasPermission('precificacao:editar');
+  const canPersonalizarVisual = () => hasPermission('precificacao:personalizar_visual') || hasPermission('precificacao:consultar');
+  const canEditarRegras = () => hasPermission('precificacao:editar_regras') || hasPermission('precificacao:editar');
+  const canExportar = () => hasPermission('precificacao:exportar') || hasPermission('precificacao:consultar');
+  const canImportar = () => hasPermission('precificacao:importar') || hasPermission('precificacao:editar');
+  const canVerMargens = () => hasPermission('precificacao:ver_margens') || hasPermission('precificacao:consultar');
+  
+  // Exclusão requer permissão explícita ou editar (hierarquia)
+  const canExcluir = () => hasPermission('precificacao:excluir') || hasPermission('precificacao:editar');
 
   return {
-    // Estados gerais
     isLoading,
-    isAdmin,
     permissions,
-    
-    // Flags de permissão
-    podeEditarCelulas,
-    podeRecalcular,
-    podePersonalizarVisual,
-    podeEditarRegras,
-    podeExportar,
-    podeImportar,
-    podeSelecionarNota,
-    podeVerCustos,
-    podeVerMargens,
-    
-    // Funções específicas
-    podeEditarColuna,
-    podeVerColuna,
-    podeRecalculoEmMassa,
-    podeImportacaoEmMassa,
-    
-    // Funções originais do usePermissions
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
+    canConsultar,
+    canEditar,
+    canRecalcular,
+    canPersonalizarVisual,
+    canEditarRegras,
+    canExportar,
+    canImportar,
+    canVerMargens,
+    canExcluir,
+    // Alias para compatibilidade
+    podeConsultar: canConsultar,
+    podeEditar: canEditar,
+    podeRecalcular: canRecalcular,
+    podeExcluir: canExcluir,
   };
 };
 

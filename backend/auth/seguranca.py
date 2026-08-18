@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from functools import wraps
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
+from typing import List, Optional
 
 # Configurações de Segurança
 SECRET_KEY = "chave_secreta_provisoria_mudar_depois"
@@ -11,6 +13,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 # MUDANÇA AQUI: Trocamos 'bcrypt' por 'pbkdf2_sha256'
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+# Schema OAuth2 para extração do token
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Hierarquia de Níveis de Privilégio (quanto maior o número, mais privilegiado)
 NIVEIS_PRIVILEGIO = {
@@ -86,63 +91,122 @@ def verificar_hierarquia_permissao(permissao_requerida: str, permissoes_usuario:
 
 def requer_permissao(permissao_necessaria: str):
     """
-    Decorador para verificar permissões com hierarquia implícita.
+    Decorador que valida se o usuário possui a permissão necessária.
+    Implementa hierarquia implícita: níveis superiores herdam inferiores.
     
-    Args:
-        permissao_necessaria: Permissão requerida no formato "modulo:acao"
+    Uso: @requer_permissao("precificacao:consultar")
+    
+    Returns uma dependência do FastAPI que pode ser usada com Depends().
     """
-    def decorador(funcao):
-        @wraps(funcao)
-        async def wrapper(*args, **kwargs):
-            # Tenta obter o token das args ou kwargs
-            token = None
-            
-            # Verifica em kwargs primeiro (comum em FastAPI com Depends)
-            if 'token' in kwargs:
-                token = kwargs['token']
-            elif 'request' in kwargs and hasattr(kwargs['request'], 'headers'):
-                auth_header = kwargs['request'].headers.get('Authorization', '')
-                if auth_header.startswith('Bearer '):
-                    token = auth_header[7:]
-            
-            # Se não encontrou token, tenta buscar nos args
-            if not token:
-                for arg in args:
-                    if isinstance(arg, dict) and 'access_token' in arg:
-                        token = arg['access_token']
-                        break
-                    elif hasattr(arg, 'headers'):
-                        auth_header = getattr(arg, 'headers', {}).get('Authorization', '')
-                        if auth_header.startswith('Bearer '):
-                            token = auth_header[7:]
-                            break
-            
-            if not token:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token não fornecido"
-                )
-            
-            try:
-                # Decodifica o token para obter as permissões
-                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                permissoes_usuario = payload.get("permissoes", [])
-                
-                # Verifica a permissão com hierarquia
-                if not verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Permissão insuficiente. Requer: {permissao_necessaria}"
-                    )
-            except jwt.JWTError:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token inválido ou expirado"
-                )
-            
-            return await funcao(*args, **kwargs)
-        return wrapper
-    return decorador
+    async def verificar(current_user: dict = Depends(get_current_user)):
+        permissoes_usuario = current_user.get("permissoes", [])
+        cargo = current_user.get("cargo", "")
+        
+        # Admin total (cargos especiais) tem acesso a tudo
+        if cargo in ["Administrador", "TI"] or "admin_total" in permissoes_usuario:
+            return current_user
+        
+        # Verifica permissão explícita ou hierárquica
+        if not verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permissão insuficiente. Requer: {permissao_necessaria}"
+            )
+        
+        return current_user
+    
+    return verificar
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    """
+    Dependência do FastAPI para injetar o usuário atual nas rotas.
+    Decodifica o JWT e retorna o payload com permissões.
+    
+    Nota: As permissões são validadas no momento da criação do token.
+    Para validação em tempo real contra o banco, usar get_current_user_with_db().
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciais inválidas",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        usuario_id: int = payload.get("sub")
+        if usuario_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    # Retorna o payload completo do token
+    return {
+        "usuario_id": payload.get("sub"),
+        "nome": payload.get("nome"),
+        "email": payload.get("email"),
+        "cargo": payload.get("cargo"),
+        "permissoes": payload.get("permissoes", [])
+    }
+
+
+async def get_current_user_with_db(token: str = Depends(oauth2_scheme), db=None) -> dict:
+    """
+    Dependência do FastAPI que valida o usuário e busca permissões atualizadas no banco.
+    Usar quando precisar de permissões em tempo real (ex: após mudança de cargo).
+    """
+    from database import Database
+    
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciais inválidas",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        usuario_id: int = payload.get("sub")
+        login = payload.get("sub")  # Assume que 'sub' é o login
+        if usuario_id is None and login is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    # Busca permissões atualizadas no banco
+    if db is None:
+        db = Database()
+    
+    permissoes = await obter_permissoes_usuario(login or str(usuario_id))
+    
+    if not permissoes:
+        raise credentials_exception
+    
+    # Busca dados do usuário
+    query_usuario = """
+        SELECT 
+            u.id as usuario_id,
+            u.nome,
+            u.email,
+            c.nome as cargo
+        FROM USUARIOS u
+        INNER JOIN CARGOS c ON u.cargo_id = c.id
+        WHERE u.id = ? OR u.login = ?
+    """
+    
+    resultado = await db.executar_query(query_usuario, (usuario_id, login))
+    
+    if not resultado:
+        raise credentials_exception
+    
+    row = resultado[0]
+    
+    return {
+        "usuario_id": row['usuario_id'],
+        "nome": row['nome'],
+        "email": row['email'],
+        "cargo": row['cargo'],
+        "permissoes": permissoes
+    }
 
 def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
     """Compara a senha digitada com o hash salvo no banco."""

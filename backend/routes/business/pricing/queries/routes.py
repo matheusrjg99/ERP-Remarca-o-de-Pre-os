@@ -5,7 +5,7 @@ Define os endpoints da API e delega a lógica para os serviços.
 from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import List, Dict, Any
 
-from security import requer_permissao
+from auth.seguranca import requer_permissao
 from .schemas import LoteRequisicao, ProdutoSearchRequest
 from .services import QueriesService
 

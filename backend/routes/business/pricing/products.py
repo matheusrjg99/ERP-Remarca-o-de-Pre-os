@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 
-from database import executar_query
-from security import requer_permissao
+from auth.seguranca import requer_permissao
+from .products.services import ProductsService
 
 from sql_repo import Scripts
 
@@ -35,29 +35,12 @@ async def listar_produtos_precificacao(
     usuario: str = Depends(requer_permissao("precificacao:visualizar"))
 ):
     """Lista produtos para precificação com custos, preços e markups."""
-    from auth.seguranca import get_current_user_permissions
-    # Extrai o usuário do token via decorator
     db_name = "Bdenter" if ambiente == "producao" else f"bd{ambiente}"
     
-    query = Scripts.query['pesquisar_produto']
-    params = []
-    
-    if classificacao:
-        query += " AND p.clasprod LIKE ?"
-        params.append(f"{classificacao}%")
-    
-    if fornecedor:
-        query += " AND f.nome LIKE ?"
-        params.append(f"%{fornecedor}%")
-    
-    query += " ORDER BY p.codpro"
-    
-    resultado = await executar_query(
-        banco=db_name,
-        query=query,
-        params=tuple(params),
-        usuario="SISTEMA",
-        endpoint="/precificacao/produtos"
+    resultado = await ProductsService.listar_produtos_precificacao(
+        db_name=db_name,
+        classificacao=classificacao,
+        fornecedor=fornecedor
     )
     
     if isinstance(resultado, dict) and "erro" in resultado:

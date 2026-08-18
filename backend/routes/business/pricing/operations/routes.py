@@ -5,7 +5,7 @@ Atualizações de Preço, Custo e Markup.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth.seguranca import requer_permissao
-from .operations.services import OperationsService
+from .services import OperationsService
 from sql_repo import Scripts
 
 router = APIRouter(prefix="/precificacao", tags=["Precificação - Operações"])

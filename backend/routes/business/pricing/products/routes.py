@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from auth.seguranca import requer_permissao
-from .products.services import ProductsService
+from .services import ProductsService
 
 from sql_repo import Scripts
 

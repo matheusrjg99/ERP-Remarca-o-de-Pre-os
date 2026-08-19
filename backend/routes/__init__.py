@@ -34,10 +34,10 @@ from .business.pricing.products import router as pricing_products_router
 # ==========================================
 # MODULES - Módulos Independentes
 # ==========================================
-from .modules.collaborators import router as collaborators_router
-from .modules.nonconformities import router as nonconformities_router
-from .modules.disputes import router as disputes_router
-from .modules.commissions import router as commissions_router
+from .modules.collaborators.routes import router as collaborators_router
+from .modules.nonconformities.routes import router as nonconformities_router
+from .modules.disputes.routes import router as disputes_router
+from .modules.commissions.routes import router as commissions_router
 
 # ==========================================
 # Router Consolidado

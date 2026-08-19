@@ -23,7 +23,7 @@ from .core.rbac import router as rbac_router
 # Administration: Gestão de usuários, configurações e administração geral
 from .business.administration.users import router as users_router
 from .business.administration.settings import router as settings_router
-from .business.administration.management import router as management_router
+from .business.administration.logs import router as logs_router
 
 # Pricing (Precificação): Módulo unificado de remarcação de preços
 # Contém: Consultas, Operações e Produtos
@@ -54,7 +54,7 @@ router.include_router(rbac_router)
 # Inclusão das rotas de BUSINESS
 router.include_router(users_router)
 router.include_router(settings_router)
-router.include_router(management_router)
+router.include_router(logs_router)
 
 # Módulo de Precificação (Consultas, Operações e Produtos)
 router.include_router(pricing_queries_router)

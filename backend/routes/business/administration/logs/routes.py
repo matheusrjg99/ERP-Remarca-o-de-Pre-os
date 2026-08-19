@@ -5,7 +5,7 @@ Apenas definição de endpoints, injeção de dependências e retorno de respost
 """
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
-from auth.rbac.services import verificar_permissao_usuario
+from auth.seguranca import requer_permissao
 from .services import LogService
 from .schemas import LogFiltro, LogResponse
 
@@ -21,14 +21,14 @@ async def consultar_logs(
     operacao: Optional[str] = Query(None, description="Tipo de operação"),
     termo: Optional[str] = Query(None, description="Termo para busca nos detalhes"),
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"], description="Ambiente"),
-    usuario_logado: str = Depends(verificar_permissao_usuario("admin:logs"))
+    current_user: dict = Depends(requer_permissao("admin:logs"))
 ):
     """
     Consulta logs do sistema com filtros.
     Requer permissão: admin:logs (ou admin_total).
     Retorna até 500 registros ordenados por ID decrescente.
     """
-    service = LogService(usuario_logado)
+    service = LogService(current_user)
     return await service.consultar_logs(
         data_inicio=data_inicio,
         data_fim=data_fim,

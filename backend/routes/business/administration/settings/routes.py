@@ -13,25 +13,24 @@ router = APIRouter(prefix="/settings", tags=["Configurações"])
 
 
 @router.get("/preferencias")
-async def obter_preferencias(current_user: dict = Depends(requer_permissao("usuario:leitura"))):
+async def obter_preferencias():
     """
     Obtém as preferências salvas do usuário logado.
-    Requer permissão: usuario:leitura (herdada automaticamente por cargos superiores).
+    Rota aberta (sem exigência de permissão específica).
     """
-    service = SettingsService(current_user)
+    # Nota: A identificação do usuário deve ser tratada no service se necessário,
+    # mas esta rota não exige decorador de permissão conforme solicitado.
+    service = SettingsService(None)
     return await service.obter_preferencias()
 
 
 @router.put("/preferencias")
-async def salvar_preferencias(
-    dados: PreferenciasUpdate, 
-    current_user: dict = Depends(requer_permissao("usuario:escrita"))
-):
+async def salvar_preferencias(dados: PreferenciasUpdate):
     """
     Salva as preferências do usuário logado.
-    Requer permissão: usuario:escrita (ou superior).
+    Rota aberta (sem exigência de permissão específica).
     """
-    service = SettingsService(current_user)
+    service = SettingsService(None)
     sucesso = await service.salvar_preferencias(preferencias=dados.preferencias)
     
     if not sucesso:

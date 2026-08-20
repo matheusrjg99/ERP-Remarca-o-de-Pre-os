@@ -2,8 +2,8 @@
 Schemas para Autenticação - Modelos Pydantic
 Módulo Core: Responsável pela validação de dados de entrada e saída.
 """
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Union, Any
 
 
 class LoginData(BaseModel):
@@ -26,7 +26,15 @@ class TokenData(BaseModel):
     sub: str
     permissoes: List[str]
     nome: Optional[str] = None
-    cargo: Optional[str] = None
+    cargo: Optional[Union[str, int]] = None
+    
+    @field_validator('cargo', mode='before')
+    @classmethod
+    def validate_cargo(cls, v: Any) -> Optional[str]:
+        """Converte cargo para string se for inteiro"""
+        if v is None:
+            return None
+        return str(v)
 
 
 class UsuarioInfo(BaseModel):
@@ -34,8 +42,18 @@ class UsuarioInfo(BaseModel):
     id: Optional[int] = None
     login: str
     nome: Optional[str] = None
-    cargo_id: Optional[int] = None
+    cargo_id: Optional[Union[str, int]] = None
     permissions: List[str]
+    
+    @field_validator('cargo_id', mode='before')
+    @classmethod
+    def validate_cargo_id(cls, v: Any) -> Optional[int]:
+        """Converte cargo_id para int se for string numérica"""
+        if v is None:
+            return None
+        if isinstance(v, str) and v.isdigit():
+            return int(v)
+        return v if isinstance(v, int) else None
 
 
 class UsuarioSistema(BaseModel):
@@ -43,5 +61,15 @@ class UsuarioSistema(BaseModel):
     id: int
     username: str
     nome: Optional[str] = None
-    cargo_id: Optional[int] = None
+    cargo_id: Optional[Union[str, int]] = None
     cargo_nome: Optional[str] = None
+    
+    @field_validator('cargo_id', mode='before')
+    @classmethod
+    def validate_cargo_id(cls, v: Any) -> Optional[int]:
+        """Converte cargo_id para int se for string numérica"""
+        if v is None:
+            return None
+        if isinstance(v, str) and v.isdigit():
+            return int(v)
+        return v if isinstance(v, int) else None

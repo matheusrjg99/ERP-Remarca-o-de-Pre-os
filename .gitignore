@@ -1,1 +1,22 @@
-Nothing should be ignored since the changes only include Python source files (.py) which are legitimate source code files.
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dependencies
+.venv/
+venv/
+env/
+lib/
+tmp/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*
+```

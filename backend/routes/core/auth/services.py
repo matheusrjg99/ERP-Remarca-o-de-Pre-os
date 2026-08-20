@@ -126,7 +126,7 @@ class AuthService:
         Raises:
             HTTPException: Se usuário não encontrado
         """
-        query = "SELECT id, login, nome, email, cargo_id FROM API_USUARIOS WHERE login = ? AND ativo = 1"
+        query = "SELECT id, login, nome, cargo_id FROM API_USUARIOS WHERE login = ? AND ativo = 1"
         resultado = await executar_query(
             banco="Bddemo",
             query=query,

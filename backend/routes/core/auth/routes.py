@@ -80,7 +80,6 @@ async def get_current_user_info(token: str = Depends(oauth2_scheme)):
         "id": usuario.get("id"),
         "login": usuario.get("login"),
         "nome": usuario.get("nome"),
-        "email": usuario.get("email"),
         "cargo_id": usuario.get("cargo_id"),
         "permissions": permissoes
     }

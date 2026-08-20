@@ -34,7 +34,6 @@ class UsuarioInfo(BaseModel):
     id: Optional[int] = None
     login: str
     nome: Optional[str] = None
-    email: Optional[str] = None
     cargo_id: Optional[int] = None
     permissions: List[str]
 

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Edit3, Trash2, MessageSquare, User, Calendar, ChevronUp, ChevronDown, ChevronsUpDown, ShieldCheck, XCircle, BarChart3 } from 'lucide-react';
 import ModalEdicao from "./ModalEdicao";
 import ModalContestacao from "./ModalContestacao";
-import { Can } from '../../components/Can';
+import Can from '../../components/Can';
 import { nonConformitiesService } from '@/services';
 import { usePermissions } from '@/hooks/usePermissions';
 

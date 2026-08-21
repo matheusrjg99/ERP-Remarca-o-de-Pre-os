@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { PermissionProvider } from './context/PermissionContext';
-import { ApiErrorListener } from './components/ApiErrorListener';
+import ApiErrorListener from './components/ApiErrorListener';
 import Login from './pages/Login';
 import AppSelector from './pages/AppSelector';
 import Precificacao from './pages/Precificacao';

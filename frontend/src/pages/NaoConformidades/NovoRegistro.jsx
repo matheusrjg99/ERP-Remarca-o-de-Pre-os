@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Save, User, FileText, Calendar } from 'lucide-react';
-import { Can } from '../../components/Can';
+import Can from '../../components/Can';
 import { nonConformitiesService } from '@/services';
 
 export default function NovoRegistro({ aoSalvar, colaboradores }) {

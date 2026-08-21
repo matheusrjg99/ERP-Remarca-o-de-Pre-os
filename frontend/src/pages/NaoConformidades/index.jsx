@@ -14,7 +14,7 @@ import ConfiguracaoComissoes from './ConfiguracaoComissoes';
 // Componentes Universais do Sophon
 import LogoSophon from '../../components/LogoSophon'; 
 import UserAvatar from '../../components/UserAvatar';
-import { Can, CanModule } from '../../components/Can';
+import Can, { CanModule } from '../../components/Can';
 
 export default function NaoConformidades() {
   const navigate = useNavigate();

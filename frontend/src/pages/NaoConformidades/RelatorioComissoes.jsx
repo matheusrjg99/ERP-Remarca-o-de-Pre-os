@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { DollarSign, Users, TrendingDown, Calendar, Search, Download } from 'lucide-react';
-import { Can } from '../../components/Can';
+import Can from '../../components/Can';
 
 export default function RelatorioComissoes({ config, API_URL }) {
   const [relatorio, setRelatorio] = useState([]);

@@ -13,12 +13,12 @@ export default function AppSelector({ onSelectRemarcacao, onLogout }) {
     const carregarPermissoes = async () => {
       try {
         const token = localStorage.getItem('access_token');  // ✅ Chave correta
-        const permsStr = localStorage.getItem('permissoes');
+        const permsStr = localStorage.getItem('permissions');  // ✅ Correção: 'permissions' no lugar de 'permissoes'
         console.log('📥 AppSelector: Lendo permissões do localStorage:', permsStr);
         if (permsStr) {
           let perms = JSON.parse(permsStr);
           console.log('📦 Permissões parseadas:', perms);
-          // Normaliza para array de strings no formato "modulo.permissao"
+          // Normaliza para array de strings no formato "modulo:permissao"
           if (Array.isArray(perms)) {
             const normalized = perms.map(p => {
               if (typeof p === 'string') return p;

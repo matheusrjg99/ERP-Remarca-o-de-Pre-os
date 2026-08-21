@@ -61,7 +61,7 @@ export default function NaoConformidades() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('usuario');
     localStorage.removeItem('nivel_acesso');
-    localStorage.removeItem('permissoes');
+    localStorage.removeItem('permissions');
     localStorage.removeItem('user');
     navigate('/');
   };

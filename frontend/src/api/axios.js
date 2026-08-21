@@ -34,7 +34,7 @@ api.interceptors.response.use(
 
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
-      localStorage.removeItem('permissoes');
+      localStorage.removeItem('permissions');
 
       window.location.href = '/';
     }

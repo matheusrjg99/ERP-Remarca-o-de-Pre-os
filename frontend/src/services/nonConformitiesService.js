@@ -16,6 +16,19 @@ export const nonConformitiesService = {
   },
 
   /**
+   * Busca não conformidades por mês/ano
+   * GET /nao-conformidades?mes=X&ano=Y
+   */
+  getByMonth: async (mes, ano, colaborador_id = null, status = null) => {
+    const params = { mes, ano };
+    if (colaborador_id) params.colaborador_id = colaborador_id;
+    if (status) params.status = status;
+    
+    const response = await api.get('/nao-conformidades', { params });
+    return response.data;
+  },
+
+  /**
    * Cria uma nova não conformidade
    * POST /nao-conformidades
    */

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3, Save, User, FileText } from 'lucide-react';
+import { nonConformitiesService } from '@/services';
 
 const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
   const [form, setForm] = useState({
@@ -24,11 +25,17 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
 
   if (!registro) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     // Envia apenas a descrição, status é gerenciado pelo fluxo de auditoria
     const dadosParaSalvar = { descricao: form.descricao };
-    aoSalvar(dadosParaSalvar); 
+    try {
+      await nonConformitiesService.updateById(registro.id, dadosParaSalvar);
+      aoSalvar();
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      alert("Falha ao salvar alterações.");
+    }
   };
 
   return (

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { LayoutDashboard, UserPlus, Users, DollarSign, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { nonConformitiesService, collaboratorsService } from '@/services';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // Importando os componentes do módulo
 import Consulta from './Consulta';
@@ -17,29 +18,38 @@ import { Can, CanModule } from '../../components/Can';
 
 export default function NaoConformidades() {
   const navigate = useNavigate();
+  const { can, canAny, loading: permissionsLoading } = usePermissions();
   const [abaAtiva, setAbaAtiva] = useState('consulta');
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
   const [registros, setRegistros] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
-
-  const token = localStorage.getItem('access_token');
-  const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const [loading, setLoading] = useState(true);
 
   // Puxando o nome do usuário logado (igual na remarcação)
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
 
-  const buscarRegistros = () => {
-    axios.get(`${API_URL}/nao-conformidades?mes=${mes}&ano=${ano}`, config)
-         .then(res => setRegistros(Array.isArray(res.data) ? res.data : []))
-         .catch(() => setRegistros([]));
+  const buscarRegistros = async () => {
+    try {
+      setLoading(true);
+      const response = await nonConformitiesService.getByMonth(mes, ano);
+      setRegistros(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error("Erro ao buscar registros:", error);
+      setRegistros([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const buscarColabs = () => {
-    axios.get(`${API_URL}/colaboradores`, config)
-         .then(res => setColaboradores(Array.isArray(res.data) ? res.data : []))
-         .catch(() => setColaboradores([]));
+  const buscarColabs = async () => {
+    try {
+      const response = await collaboratorsService.getAll();
+      setColaboradores(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error("Erro ao buscar colaboradores:", error);
+      setColaboradores([]);
+    }
   };
 
   useEffect(() => { 
@@ -152,48 +162,50 @@ export default function NaoConformidades() {
 
       {/* VIEWPORT PRINCIPAL */}
       <main className="max-w-[1800px] mx-auto px-6 py-8 animate-in fade-in duration-300">
-        {abaAtiva === 'consulta' && (
-          <CanModule module="nc" fallback={<SemAcesso modulo="Não Conformidades" />}>
-            <Consulta 
-              registros={registros} 
-              buscarRegistros={buscarRegistros} 
-              mes={mes} setMes={setMes} 
-              ano={ano} setAno={setAno} 
-              colaboradores={colaboradores} 
-            />
-          </CanModule>
-        )}
-        {abaAtiva === 'novo' && (
-          <Can permission="nc:criar" fallback={<SemAcesso acao="registrar não conformidades" />}>
-            <NovoRegistro 
-              aoSalvar={() => { buscarRegistros(); setAbaAtiva('consulta'); }} 
-              colaboradores={colaboradores} 
-            />
-          </Can>
-        )}
-        {abaAtiva === 'equipe' && (
-          <Can permission="cadastros:colaboradores:visualizar" fallback={<SemAcesso acao="gerenciar equipe" />}>
-            <Equipe 
-              colaboradores={colaboradores} 
-              buscarColabs={buscarColabs} 
-            />
-          </Can>
-        )}
-        {abaAtiva === 'configurar' && (
-          <Can permission="comissoes:configurar" fallback={<SemAcesso acao="configurar comissões" />}>
-            <ConfiguracaoComissoes 
-              config={config}
-              API_URL={API_URL}
-            />
-          </Can>
-        )}
-        {abaAtiva === 'comissoes' && (
-          <Can permission="comissoes:ver" fallback={<SemAcesso acao="ver relatório de comissões" />}>
-            <RelatorioComissoes 
-              config={config}
-              API_URL={API_URL}
-            />
-          </Can>
+        {loading || permissionsLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-zinc-500 text-xs font-black uppercase tracking-widest animate-pulse">Carregando...</div>
+          </div>
+        ) : (
+          <>
+            {abaAtiva === 'consulta' && (
+              <CanModule module="nc" fallback={<SemAcesso modulo="Não Conformidades" />}>
+                <Consulta 
+                  registros={registros} 
+                  buscarRegistros={buscarRegistros} 
+                  mes={mes} setMes={setMes} 
+                  ano={ano} setAno={setAno} 
+                  colaboradores={colaboradores} 
+                />
+              </CanModule>
+            )}
+            {abaAtiva === 'novo' && (
+              <Can permission="nc:criar" fallback={<SemAcesso acao="registrar não conformidades" />}>
+                <NovoRegistro 
+                  aoSalvar={() => { buscarRegistros(); setAbaAtiva('consulta'); }} 
+                  colaboradores={colaboradores} 
+                />
+              </Can>
+            )}
+            {abaAtiva === 'equipe' && (
+              <Can permission="cadastros:colaboradores:visualizar" fallback={<SemAcesso acao="gerenciar equipe" />}>
+                <Equipe 
+                  colaboradores={colaboradores} 
+                  buscarColabs={buscarColabs} 
+                />
+              </Can>
+            )}
+            {abaAtiva === 'configurar' && (
+              <Can permission="comissoes:configurar" fallback={<SemAcesso acao="configurar comissões" />}>
+                <ConfiguracaoComissoes />
+              </Can>
+            )}
+            {abaAtiva === 'comissoes' && (
+              <Can permission="comissoes:ver" fallback={<SemAcesso acao="ver relatório de comissões" />}>
+                <RelatorioComissoes />
+              </Can>
+            )}
+          </>
         )}
       </main>
 

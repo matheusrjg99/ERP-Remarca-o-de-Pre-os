@@ -1,4 +1,3 @@
-```
 # Dependencies
 node_modules/
 
@@ -8,43 +7,937 @@ build/
 *.js.map
 *.css.map
 
-# Environment
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment variables
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Logs
-*.log
+# Coverage reports
+coverage/
+htmlcov/
+*.coverage
 
-# Temp files
-*.tmp
-
-# Python
+# Python specific
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
+*.so
+.coverage
+.pytest_cache/
+.mypy_cache/
+
+# Node.js specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Compression files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+
+# Java specific
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+!frontend/src/pages/NaoConformidades/
+
+# C/C++ specific
+*.o
+*.a
+*.obj
+*.out
+*.exe
+*.dll
+*.so
+
+# Go specific
+*.exe
+*.test
+*.prof
+vendor/
+
+# Ruby specific
+*.gem
+*.rbc
+.bundle/
+.ruby-version
+
+# Rust specific
+Cargo.lock
+*.rlib
+target/
+
+# Julia specific
+.julia/
+*.ji
+
+# Zig specific
+zig-cache/
+zig-out/
+
+# Elixir specific
+mix.lock
+.erlang.cookie
+
+# PHP specific
+composer.phar
+*.phar
+
+# .NET specific
+bin/
+obj/
+*.sln
+*.csproj.user
+
+# Dart specific
+.dart_tool/
+.packages
+.pubspec.lock
+
+# Flutter specific
+flutter/
+.flutter-plugins
+.flutter-plugin-dependencies
+
+# Terraform specific
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Ansible specific
+*.retry
+
+# Vim specific
+*.swp
+*.swo
+*~
+
+# Emacs specific
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# Codecov
+codecov.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# IDE specific
+.vs/
+.project
+.cproject
+.settings/
+*.sublime-workspace
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Database
+*.db
+*.db-journal
+
+# Certificate
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.der
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.rej
+*~
+
+# Log files
+*.log
+
+# Package manager caches
+.npm/
+.yarn/
+.bower-cache/
+.bower-registry/
+.bower-tmp/
+.jspm/
+.pnpm-store/
+
+# Testing
+coverage/
+.nyc_output/
+istanbul/
+.mocha.opts
+
+# Documentation
+doc/api/
+
+# Distribution / packaging
+.Python
+*.egg-info/
+.eggs/
+eggs/
+parts/
+develop-eggs/
+.sconf_temp/
+.scrapy
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git/
+.bzr/
+.hg/
+.svn/
+.tox/
+.nox/
+.pytest_cache/
+.hypothesis/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Sage
+*.sage.py
+
+# Environments
+.env
+.venv
 env/
 venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/**/*.png
+
+# Bundle
+bundle.js
+bundle.js.map
+static/js/bundle.js
+static/js/bundle.js.map
+
+# Webpack
+webpack.config.js
+webpack.config.babel.js
+webpack.config.dev.js
+webpack.config.prod.js
+webpack.mix.js
+mix-manifest.json
+public/mix-manifest.json
+
+# Babel
+.babelrc
+.babelrc.js
+babel.config.js
+
+# ESLint
+.eslintcache
+.eslintignore
+
+# Prettier
+.prettierrc
+.prettierrc.js
+prettier.config.js
+.prettierignore
+
+# Jest
+jest.config.js
+jest.setup.js
+coverage/
+.nyc_output/
+.nycrc
+
+# Cypress
+cypress/screenshots/
+cypress/videos/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Storybook
+.storybook/
+storybook-static/
+
+# Vite
+.vite/
+
+# Next.js
+.next/
+out/
+
+# Gatsby
+.cache/
+public/
+
+# Angular
+.angular/
+
+# Vue
+.vuepress/dist
+.output.js
+.output.css
+
+# Svelte
+.svelte-kit/
+.copiedFiles.json
+
+# Nuxt
+.nuxt/
+.output/
+dist/
+
+# Remix
+.remix/
+netlify/
+
+# Astro
+.dist/
+astro/
+
+# SolidStart
+.solid/
+dist/
+
+# Nitro
+.output/
+nitro.config.ts
+
+# Nuxt
+.nuxt/
+.output/
+dist/
+
+# Quasar
+.quasar/
+
+# Ionic
+ionic.config.json
+.io-config.json
+
+# Capacitor
+capacitor.config.json
+capacitor.config.ts
+
+# Expo
+.expo/
+.expo-shared/
+
+# React Native
+.rn_metadata
+ReactNativeAssetCatalog/
+
+# Electron
+electron/
+electron-builder.yaml
+
+# Tauri
+src-tauri/target/
+src-tauri/tauri.conf.json
+
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Logs/
+*.unityproj
+*.pidb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.booproj
+*.svd
+*.signalpdb
+*.cosmdb
+*.meta
+*.pidb.meta
+*.prefab
+*.prefab.meta
+*.asset
+*.asset.meta
+*.mat
+*.mat.meta
+*.anim
+*.anim.meta
+*.controller
+*.controller.meta
+*.unity
+*.unity.meta
+*.prefab
+*.prefab.meta
+*.physicsMaterial2D
+*.physicsMaterial2D.meta
+*.physicsMaterial
+*.physicsMaterial.meta
+*.assetBundle
+*.assetBundle.meta
+*.guiconfig
+*.guiconfig.meta
+*.shader
+*.shader.meta
+*.cginc
+*.cginc.meta
+*.compute
+*.compute.meta
+*.hull
+*.hull.meta
+*.geom
+*.geom.meta
+*.jslib
+*.jslib.meta
+*.asmdef
+*.asmdef.meta
+*.rsp
+*.rsp.meta
+*.asmref
+*.asmref.meta
+*.meta
+*.pidb.meta
+*.prefab
+*.prefab.meta
+*.asset
+*.asset.meta
+*.mat
+*.mat.meta
+*.anim
+*.anim.meta
+*.controller
+*.controller.meta
+*.unity
+*.unity.meta
+*.prefab
+*.prefab.meta
+*.physicsMaterial2D
+*.physicsMaterial2D.meta
+*.physicsMaterial
+*.physicsMaterial.meta
+*.assetBundle
+*.assetBundle.meta
+*.guiconfig
+*.guiconfig.meta
+*.shader
+*.shader.meta
+*.cginc
+*.cginc.meta
+*.compute
+*.compute.meta
+*.hull
+*.hull.meta
+*.geom
+*.geom.meta
+*.jslib
+*.jslib.meta
+*.asmdef
+*.asmdef.meta
+*.rsp
+*.rsp.meta
+*.asmref
+*.asmref.meta
+
+# Godot
+.godot/
+*.import
+*.remap
+
+# Defold
+.defoldignore
+build/
+
+# Loom
+loom/
+LoomPreferences.json
+
+# FlashDevelop
+Output/
+Export/
+[Content_Types].xml
+*.fdz
+
+# Pure Data
+pd/
+*.pd_linux
+*.pd_darwin
+*.pd_nt
+*.pd_freebsd
+*.pd_irix64
+*.pd_solaris
+*.pd_hpux
+*.pd_osx
+*.pd_w32
+*.pd_w64
+
+# Visual Studio Code
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Visual Studio
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+*.vcxproj.filters
+[ip|IP]*.tmp
+*.pdb
+*.ilk
+*.obj
+*.iobj
+*.tlog
+*.res
+*.metagen
+*.bsc
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb.meta
+*.svclog
+*.scc
+
+# Visual Studio 2015/2017 cache/options
+*.VC.VC.opendb
+*.VC.db
+*.VC.sln.cpp.db
+*.VC.sln.sqlite
+
+# Visual Studio Code for Unreal Engine
+*.CodeAnalysisLog.xml
+*.VC.db
+*.VC.VC.opendb
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+*.DotSettings
+*.dotCover
+
+# JetBrains
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Code::Blocks
+*.depend
+*.layout
+*.cbp
+*.workspace
+*.layout
+
+# Dev-C++
+*.dev
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+.gradle/
+.cproject
+.project
+*.launch
+.classpath
+.gitignore
+.rcproject
+.gitattributes
+*.orig
+.externalToolBuilders/
+*.flexBuildPath
+*.wtpModules
+.deployables
+.flexLibProperties
+.servicecloud
+.svnignore
+.profile
+.apt_generated/
+.factorypath
+.dub
+.ensime
+.ensime_cache/
+.fusebox/
+.gwt-tmp/
+.ijwb/
+.jpb/
+.jps/
+.jsdtscope
+.libsass-cache/
+.nb-gradle/
+.nodelete
+.nrepl-port
+.repldump
+.rnc
+.tern-project
+.tern-port
+.travis.yml
+.well-known/
+.yo-rc.json
+angular-cli.json
+appveyor.yml
+bower.json
+checkstyle.xml
+circle.yml
+coffeelint.json
+config.ru
+crowdin.yml
+docker-compose.yml
+Dockerfile
+drone.yml
+elm-package.json
+flowconfig
+Gemfile
+Gemfile.lock
+gruntfile.coffee
+Gruntfile.coffee
+Gruntfile.js
+gulpfile.coffee
+Gulpfile.coffee
+Gulpfile.js
+jenkinsfile
+karma.conf.js
+mvnw
+package-lock.json
+pom.xml
+protractor.conf.js
+README.md
+settings.gradle
+sonar-project.properties
+stack.yml
+travis.yml
+webpack.config.js
+yarn.lock
+.git/
+.hg/
+.svn/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+.externals/
+nb-configuration.xml
+
+# CodeLite
+.codelite/
+.cxx
+.out
+.so
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+*.moc.cpp
+*.qm
+*.prl
+*.pri
+Makefile*
+*.pro
+*.prf
+*.prl
+*.qmlc
+*.jsc
+*.a
+*.la
+*.lo
+*.o
+*.obj
+*.dylib
 *.so
-.Python
-*.pyc
-*.pyo
-*.pyd
-*.pyc
-*.pyo
-*.pyd
-*.pyc
-*.pyo
-*.pyd
-```
+*.so.*
+*.dll
+*.exe
+*.bin
+*.out
+*.app
+*.framework
+*.bundle
+*.cmake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.manifest
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+_deps/
+
+# CLion
+cmake-build-*/
+
+# Sublime Text
+*.tmlanguage
+*.tmtheme
+*.sublime-project
+*.sublime-workspace
+*.sublime-settings
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+Session.vim
+.directory
+*.un~
+tags
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Nano
+.*.swp
+
+# Kate
+.*.kate-swp
+
+# KDevelop4
+.kdev4/*
+
+# Kate
+.kate/
+
+# Geany
+.geany/
+
+# Notepad++
+*.bak
+*.log
+*.tmp
+
+# UltraEdit
+*.bak
+*.log
+*.tmp
+
+# Vimperator
+.vimperatorrc
+.vimperatorrc.un~
+.vimperatorinfo
+
+# Firefox
+sessionstore-backups/
+*.parentlock
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.crashreporter-annotations.log
+*.telemetry-ping.log
+
+# Chrome
+Default/History-journal
+Default/Last\ Session
+Default/Current\ Session
+Default/Bookmarks.bak
+Default/Bookmarks-journal
+Default/Favicons-journal
+Default/Top\ Sites-journal
+Default/Visited\ Links-journal
+Default/Web\ Data-journal
+Network\ Action\ Predictor-journal
+Shortcuts-journal
+Thumbnails-journal
+*.crdownload
+*.download
+*.part
+
+# Safari
+*.plist
+*.cache.db
+*.db-shm
+*.db-wal
+*.db
+*.sb
+*.sb2
+*.safariextz
+*.safariextension
+*.safari-bookmarks
+*.safari-history
+*.safari-tabstate
+*.safari-tabmanager
+*.safari-topSites
+*.safari-webhistory
+*.safari-readinglist
+*.safari-readinglist-index
+*.safari-readinglist-metadata
+*.safari-readinglist-tags
+*.safari-readinglist-tag-index
+*.safari-readinglist-tag-metadata
+*.safari-readinglist-tag-metadata-index
+*.safari-readinglist-tag-metadata-index-index
+*.safari-readinglist-tag-metadata-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index
+*.safari-readinglist-tag-metadata-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index......index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index......index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index-index......

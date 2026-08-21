@@ -18,13 +18,15 @@ export const PermissionProvider = ({ children }) => {
 
   const loadPermissions = async () => {
     try {
-      const userData = await authService.getMyData();
+      const userData = await authService.getMeusDados();
       setUser(userData);
       setPermissions(userData.permissions || []);
+      localStorage.setItem('permissions', JSON.stringify(userData.permissions || []));
     } catch (error) {
       console.error('Erro ao carregar permissões:', error);
       setPermissions([]);
       setUser(null);
+      localStorage.removeItem('permissions');
     } finally {
       setLoading(false);
     }

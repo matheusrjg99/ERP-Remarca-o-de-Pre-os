@@ -20,8 +20,10 @@ export const PermissionProvider = ({ children }) => {
     try {
       const userData = await authService.getMeusDados();
       setUser(userData);
-      setPermissions(userData.permissions || []);
-      localStorage.setItem('permissions', JSON.stringify(userData.permissions || []));
+      const perms = userData.permissions || [];
+      setPermissions(perms);
+      localStorage.setItem('permissions', JSON.stringify(perms));
+      console.log('✅ [PermissionContext] Permissões carregadas:', perms.length, 'permissões');
     } catch (error) {
       console.error('Erro ao carregar permissões:', error);
       setPermissions([]);

@@ -28,15 +28,7 @@ export default function Login({ onLoginSuccess }) {
       // Isso é necessário pois o endpoint /login não retorna permissões
       await loadPermissions();
       
-      // Verifica se as permissões foram carregadas
-      // Nota: acessamos permissions diretamente do hook após await
-      setTimeout(() => {
-        if (!permissions || permissions.length === 0) {
-          console.warn('⚠️ Permissões não carregadas após login');
-        } else {
-          console.log('✅ Permissões carregadas:', permissions);
-        }
-      }, 100);
+      console.log('✅ Permissões carregadas no contexto global.');
       
       onLoginSuccess();
     } catch (err) {

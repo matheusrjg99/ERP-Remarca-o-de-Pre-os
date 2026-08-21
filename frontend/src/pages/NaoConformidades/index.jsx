@@ -125,7 +125,7 @@ export default function NaoConformidades() {
                   <Users size={14} /> Operadores
                 </button>
               </Can>
-              <Can permission="comissoes:configurar">
+              <Can permission="cadastros:comissoes">
                 <button 
                   onClick={() => setAbaAtiva('configurar')} 
                   className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
@@ -137,7 +137,7 @@ export default function NaoConformidades() {
                   <Settings size={14} /> Configurar Comissões
                 </button>
               </Can>
-              <Can permission="comissoes:ver">
+              <Can permission="cadastros:comissoes">
                 <button 
                   onClick={() => setAbaAtiva('comissoes')} 
                   className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
@@ -196,12 +196,12 @@ export default function NaoConformidades() {
               </Can>
             )}
             {abaAtiva === 'configurar' && (
-              <Can permission="comissoes:configurar" fallback={<SemAcesso acao="configurar comissões" />}>
+              <Can permission="cadastros:comissoes" fallback={<SemAcesso acao="configurar comissões" />}>
                 <ConfiguracaoComissoes />
               </Can>
             )}
             {abaAtiva === 'comissoes' && (
-              <Can permission="comissoes:ver" fallback={<SemAcesso acao="ver relatório de comissões" />}>
+              <Can permission="cadastros:comissoes" fallback={<SemAcesso acao="ver relatório de comissões" />}>
                 <RelatorioComissoes />
               </Can>
             )}

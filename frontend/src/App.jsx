@@ -6,7 +6,6 @@ import Login from './pages/Login';
 import AppSelector from './pages/AppSelector';
 import Precificacao from './pages/Precificacao';
 import NaoConformidades from './pages/NaoConformidades';
-import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
   const navigate = useNavigate();
@@ -15,6 +14,9 @@ export default function App() {
     localStorage.clear();
     navigate('/login');
   };
+
+  // Verifica se o usuário está autenticado
+  const isAuthenticated = !!localStorage.getItem('access_token');
 
   return (
     <PermissionProvider>
@@ -40,38 +42,40 @@ export default function App() {
         />
 
         {/* 2. GRUPO DE ROTAS PROTEGIDAS */}
-        {/* Tudo o que estiver aqui dentro EXIGE o access_token */}
-        <Route element={<ProtectedRoute />}>
+        {/* Proteção manual baseada em isAuthenticated */}
+        {!isAuthenticated ? (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        ) : (
+          <>
+            {/* Rota do Portal (Cards) */}
+            <Route
+              path="/selector"
+              element={
+                <AppSelector
+                  onSelectRemarcacao={() => navigate('/remarcacao')}
+                  onLogout={handleLogout}
+                />
+              }
+            />
 
-          {/* Rota do Portal (Cards) */}
-          <Route
-            path="/selector"
-            element={
-              <AppSelector
-                onSelectRemarcacao={() => navigate('/remarcacao')}
-                onLogout={handleLogout}
-              />
-            }
-          />
+            {/* Rota de Precificação (Remarcação) */}
+            <Route
+              path="/remarcacao"
+              element={
+                <Precificacao
+                  onLogout={handleLogout}
+                  onVoltarMenu={() => navigate('/selector')}
+                />
+              }
+            />
 
-          {/* Rota de Precificação (Remarcação) */}
-          <Route
-            path="/remarcacao"
-            element={
-              <Precificacao
-                onLogout={handleLogout}
-                onVoltarMenu={() => navigate('/selector')}
-              />
-            }
-          />
-
-          {/* Rota de Não Conformidades */}
-          <Route
-            path="/nao-conformidades/*"
-            element={<NaoConformidades />}
-          />
-
-        </Route>
+            {/* Rota de Não Conformidades */}
+            <Route
+              path="/nao-conformidades/*"
+              element={<NaoConformidades />}
+            />
+          </>
+        )}
 
         {/* 3. FALLBACK: Se o usuário digitar qualquer coisa errada, volta pro login */}
         <Route path="*" element={<Navigate to="/" replace />} />

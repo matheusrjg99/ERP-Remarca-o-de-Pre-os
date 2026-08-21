@@ -22,17 +22,18 @@ export default function Login({ onLoginSuccess }) {
       localStorage.setItem('usuario', data.usuario);
       localStorage.setItem('nivel_acesso', data.nivel_acesso);
       
-      console.log('🔐 Permissões recebidas do login:', data.permissions);
+      console.log('🔐 Login realizado com sucesso. Token recebido.');
       
-      if (data.permissions && Array.isArray(data.permissions)) {
-        localStorage.setItem('permissoes', JSON.stringify(data.permissions));
-        console.log('✅ Permissões salvas no localStorage:', JSON.parse(localStorage.getItem('permissoes')));
-      } else {
-        console.warn('⚠️ Nenhuma permissão recebida ou formato inválido:', data.permissions);
-      }
-
-      // 🚀 CARREGA PERMISSÕES NO CONTEXT
+      // 🚀 CARREGA PERMISSÕES NO CONTEXT (busca /auth/meus-dados)
+      // Isso é necessário pois o endpoint /login não retorna permissões
       await loadPermissions();
+      
+      // Verifica se as permissões foram carregadas
+      if (permissions.length === 0 && !loading) {
+        console.warn('⚠️ Permissões não carregadas após login');
+      } else {
+        console.log('✅ Permissões carregadas:', permissions);
+      }
       
       onLoginSuccess();
     } catch (err) {

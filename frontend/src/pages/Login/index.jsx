@@ -7,7 +7,7 @@ export default function Login({ onLoginSuccess }) {
   const [form, setForm] = useState({ login: '', senha: '' });
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
-  const { loadPermissions } = usePermissions();
+  const { loadPermissions, permissions } = usePermissions();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -29,11 +29,14 @@ export default function Login({ onLoginSuccess }) {
       await loadPermissions();
       
       // Verifica se as permissões foram carregadas
-      if (permissions.length === 0 && !loading) {
-        console.warn('⚠️ Permissões não carregadas após login');
-      } else {
-        console.log('✅ Permissões carregadas:', permissions);
-      }
+      // Nota: acessamos permissions diretamente do hook após await
+      setTimeout(() => {
+        if (!permissions || permissions.length === 0) {
+          console.warn('⚠️ Permissões não carregadas após login');
+        } else {
+          console.log('✅ Permissões carregadas:', permissions);
+        }
+      }, 100);
       
       onLoginSuccess();
     } catch (err) {

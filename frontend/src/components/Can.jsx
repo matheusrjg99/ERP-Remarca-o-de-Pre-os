@@ -50,7 +50,7 @@ export const CanModule = ({
   children, 
   fallback = null 
 }) => {
-  const { canAny, loading } = usePermissions();
+  const { permissions, loading } = usePermissions();
 
   if (loading) {
     return null;
@@ -58,7 +58,9 @@ export const CanModule = ({
 
   // Verifica se o usuário tem alguma permissão que começa com o prefixo do módulo
   // Ex: module='nc' verifica se tem alguma permissão como 'nc:criar', 'nc:visualizar', etc.
-  const hasModuleAccess = canAny([`${module}:`]);
+  const hasModuleAccess = permissions.some(perm => perm.startsWith(`${module}:`));
+
+  console.log(`🔍 [CanModule] Módulo: ${module}, Permissões do usuário: ${permissions.length}, Tem acesso: ${hasModuleAccess}`);
 
   return hasModuleAccess ? children : fallback;
 };

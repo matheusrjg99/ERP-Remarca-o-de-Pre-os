@@ -3,22 +3,23 @@ import EditableCell from './EditableCell';
 import { formatNum, formatData } from '../utils/calculations';
 import { usePrecificacaoPermissions } from '../../../hooks/usePrecificacaoPermissions';
 
-const ProductRow = memo(function ProductRow({ produto, colunas, isSelected, onToggleCheck, onCellEdit, index, preferencias, podeEditarCelulas = true, podeVerCustos = true }) {
+const ProductRow = memo(function ProductRow({ produto, colunas, isSelected, onToggleCheck, onCellEdit, index, preferencias, podeEditarCelulas = true }) {
   const inputEstilo = "bg-transparent w-full outline-none hover:bg-zinc-800/50 focus:bg-zinc-700 focus:ring-1 focus:ring-blue-500 rounded px-1 transition-colors tabular-nums cursor-text border border-transparent hover:border-zinc-500 overflow-hidden text-ellipsis";
   
-  // Hook para permissões de edição por coluna
-  const { podeEditarColuna } = usePrecificacaoPermissions();
+  // Hook para permissões de edição
+  const { canEditar } = usePrecificacaoPermissions();
   
-  // Verifica se deve ocultar coluna de custos
-  const deveOcultarCusto = !podeVerCustos;
+  // Regra de Negócio:
+  // - Visualização: Liberada para todos com acesso à tela (precificacao:consultar)
+  // - Edição: Apenas para quem tem precificacao:editar
+  const podeEditar = podeEditarCelulas && canEditar();
 
   return (
     <tr className={`group transition-colors ${isSelected ? 'bg-blue-900/10' : 'hover:bg-[#202024]'}`}>
       {colunas.map((col) => {
-        // Oculta coluna de custo se não tiver permissão
-        if (deveOcultarCusto && col.key === 'custo') {
-          return null;
-        }
+        // REMOVIDA a lógica de ocultar colunas (deveOcultarCusto).
+        // Agora todos veem tudo, só bloqueia a edição.
+        
         const alignClass = col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left';
         const baseCellClass = `py-2 px-2 overflow-hidden text-ellipsis ${alignClass}`;
         const val = produto[col.key];
@@ -81,9 +82,9 @@ const ProductRow = memo(function ProductRow({ produto, colunas, isSelected, onTo
           case 'currency': return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums ${!activeText && 'text-zinc-400'}`}>{formatNum(val)}</td>;
           case 'percent':
           case 'percent-1': return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums ${!activeText && 'text-zinc-400'}`}>{formatNum(val, 1)}%</td>;
-          case 'editable-currency': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-300'}`}>{podeEditarCelulas && podeEditarColuna(col.key) ? <EditableCell className={`${inputEstilo} text-center`} value={val} colunaKey={col.key} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : formatNum(val)}</td>;
-          case 'editable-currency-highlight': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center font-medium ${!activeText && 'text-blue-400'}`}>{podeEditarCelulas && podeEditarColuna(col.key) ? <EditableCell className={`${inputEstilo} text-center text-blue-400`} value={val} colunaKey={col.key} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : formatNum(val)}</td>;
-          case 'editable-percent-1': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-400'}`}>{podeEditarCelulas && podeEditarColuna(col.key) ? <EditableCell className={`${inputEstilo} text-center`} value={val} colunaKey={col.key} isPercentage={true} decimals={1} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : `${formatNum(val, 1)}%`}</td>;
+          case 'editable-currency': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-300'}`}>{podeEditar ? <EditableCell className={`${inputEstilo} text-center`} value={val} colunaKey={col.key} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : formatNum(val)}</td>;
+          case 'editable-currency-highlight': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center font-medium ${!activeText && 'text-blue-400'}`}>{podeEditar ? <EditableCell className={`${inputEstilo} text-center text-blue-400`} value={val} colunaKey={col.key} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : formatNum(val)}</td>;
+          case 'editable-percent-1': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-400'}`}>{podeEditar ? <EditableCell className={`${inputEstilo} text-center`} value={val} colunaKey={col.key} isPercentage={true} decimals={1} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : `${formatNum(val, 1)}%`}</td>;
           case 'tag': return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums`}><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide ${val < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{val > 0 ? '+' : ''}{formatNum(val, 1)}%</span></td>;
           default: return <td key={col.key} style={customStyle} className={baseCellClass}>{val}</td>;
         }

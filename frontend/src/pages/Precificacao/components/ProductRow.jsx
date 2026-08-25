@@ -1,18 +1,18 @@
 import React, { memo } from 'react';
 import EditableCell from './EditableCell';
 import { formatNum, formatData } from '../utils/calculations';
-import { usePrecificacaoPermissions } from '../../../hooks/usePrecificacaoPermissions';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const ProductRow = memo(function ProductRow({ produto, colunas, isSelected, onToggleCheck, onCellEdit, index, preferencias, podeEditarCelulas = true }) {
   const inputEstilo = "bg-transparent w-full outline-none hover:bg-zinc-800/50 focus:bg-zinc-700 focus:ring-1 focus:ring-blue-500 rounded px-1 transition-colors tabular-nums cursor-text border border-transparent hover:border-zinc-500 overflow-hidden text-ellipsis";
   
-  // Hook para permissões de edição
-  const { canEditar } = usePrecificacaoPermissions();
+  // Hook padrão para permissões RBAC
+  const { can } = usePermissions();
   
   // Regra de Negócio:
   // - Visualização: Liberada para todos com acesso à tela (precificacao:consultar)
   // - Edição: Apenas para quem tem precificacao:editar
-  const podeEditar = podeEditarCelulas && canEditar();
+  const podeEditar = podeEditarCelulas && can('precificacao:editar');
 
   return (
     <tr className={`group transition-colors ${isSelected ? 'bg-blue-900/10' : 'hover:bg-[#202024]'}`}>

@@ -1,25 +1,25 @@
 import React, { memo } from 'react';
 import EditableCell from './EditableCell';
 import { formatNum, formatData } from '../utils/calculations';
-import { usePrecificacaoPermissions } from '../../../hooks/usePrecificacaoPermissions';
+import { usePermissions } from '../../../hooks/usePermissions'; // Usando o hook genérico
 
 const ProductRow = memo(function ProductRow({ produto, colunas, isSelected, onToggleCheck, onCellEdit, index, preferencias, podeEditarCelulas = true }) {
   const inputEstilo = "bg-transparent w-full outline-none hover:bg-zinc-800/50 focus:bg-zinc-700 focus:ring-1 focus:ring-blue-500 rounded px-1 transition-colors tabular-nums cursor-text border border-transparent hover:border-zinc-500 overflow-hidden text-ellipsis";
   
-  // Hook para permissões de edição
-  const { canEditar } = usePrecificacaoPermissions();
+  // Usando o hook genérico de permissões
+  const { can } = usePermissions();
+  
+  // Verifica se tem permissão de edição
+  const temPermissaoEdicao = can('precificacao:editar');
   
   // Regra de Negócio:
   // - Visualização: Liberada para todos com acesso à tela (precificacao:consultar)
   // - Edição: Apenas para quem tem precificacao:editar
-  const podeEditar = podeEditarCelulas && canEditar();
+  const podeEditar = podeEditarCelulas && temPermissaoEdicao;
 
   return (
     <tr className={`group transition-colors ${isSelected ? 'bg-blue-900/10' : 'hover:bg-[#202024]'}`}>
       {colunas.map((col) => {
-        // REMOVIDA a lógica de ocultar colunas (deveOcultarCusto).
-        // Agora todos veem tudo, só bloqueia a edição.
-        
         const alignClass = col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left';
         const baseCellClass = `py-2 px-2 overflow-hidden text-ellipsis ${alignClass}`;
         const val = produto[col.key];
@@ -68,25 +68,90 @@ const ProductRow = memo(function ProductRow({ produto, colunas, isSelected, onTo
           backgroundColor: activeBg || undefined,
           color: activeText || undefined,
           fontSize: activeSize ? `${activeSize}px` : undefined,
-          // ARMA NUCLEAR: Força o alinhamento para a esquerda na marra usando CSS puro
           textAlign: col.key === 'descricao' ? 'left' : undefined,
         };
 
         switch (col.type) {
-          case 'checkbox': return <td key={col.key} style={customStyle} className={baseCellClass}><input type="checkbox" checked={isSelected} onChange={() => onToggleCheck(produto.id)} className="w-3.5 h-3.5 rounded-sm border-zinc-700 bg-zinc-900 accent-blue-600 cursor-pointer" /></td>;
-          case 'date': return <td key={col.key} style={customStyle} className={`${baseCellClass} ${!activeText && 'text-zinc-500'}`}>{formatData(val)}</td>;
+          case 'checkbox': 
+            return <td key={col.key} style={customStyle} className={baseCellClass}>
+              <input type="checkbox" checked={isSelected} onChange={() => onToggleCheck(produto.id)} className="w-3.5 h-3.5 rounded-sm border-zinc-700 bg-zinc-900 accent-blue-600 cursor-pointer" />
+            </td>;
           
-          case 'text': return <td key={col.key} style={customStyle} className={`${baseCellClass} ${!activeText && (col.key === 'id' ? 'font-mono text-zinc-400' : 'text-zinc-200 truncate')}`} title={col.key === 'descricao' ? val : ''}>{val}</td>;
+          case 'date': 
+            return <td key={col.key} style={customStyle} className={`${baseCellClass} ${!activeText && 'text-zinc-500'}`}>
+              {formatData(val)}
+            </td>;
+          
+          case 'text': 
+            return <td key={col.key} style={customStyle} className={`${baseCellClass} ${!activeText && (col.key === 'id' ? 'font-mono text-zinc-400' : 'text-zinc-200 truncate')}`} title={col.key === 'descricao' ? val : ''}>
+              {val}
+            </td>;
           
           case 'number':
-          case 'currency': return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums ${!activeText && 'text-zinc-400'}`}>{formatNum(val)}</td>;
+          case 'currency': 
+            return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums ${!activeText && 'text-zinc-400'}`}>
+              {formatNum(val)}
+            </td>;
+          
           case 'percent':
-          case 'percent-1': return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums ${!activeText && 'text-zinc-400'}`}>{formatNum(val, 1)}%</td>;
-          case 'editable-currency': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-300'}`}>{podeEditar ? <EditableCell className={`${inputEstilo} text-center`} value={val} colunaKey={col.key} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : formatNum(val)}</td>;
-          case 'editable-currency-highlight': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center font-medium ${!activeText && 'text-blue-400'}`}>{podeEditar ? <EditableCell className={`${inputEstilo} text-center text-blue-400`} value={val} colunaKey={col.key} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : formatNum(val)}</td>;
-          case 'editable-percent-1': return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-400'}`}>{podeEditar ? <EditableCell className={`${inputEstilo} text-center`} value={val} colunaKey={col.key} isPercentage={true} decimals={1} onChange={(newVal) => onCellEdit(index, col.key, newVal)} /> : `${formatNum(val, 1)}%`}</td>;
-          case 'tag': return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums`}><span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide ${val < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{val > 0 ? '+' : ''}{formatNum(val, 1)}%</span></td>;
-          default: return <td key={col.key} style={customStyle} className={baseCellClass}>{val}</td>;
+          case 'percent-1': 
+            return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums ${!activeText && 'text-zinc-400'}`}>
+              {formatNum(val, 1)}%
+            </td>;
+          
+          case 'editable-currency': 
+            return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-300'}`}>
+              {podeEditar ? (
+                <EditableCell 
+                  className={`${inputEstilo} text-center`} 
+                  value={val} 
+                  colunaKey={col.key} 
+                  onChange={(newVal) => onCellEdit(index, col.key, newVal)} 
+                />
+              ) : (
+                <span className="cursor-default">{formatNum(val)}</span>
+              )}
+            </td>;
+          
+          case 'editable-currency-highlight': 
+            return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center font-medium ${!activeText && 'text-blue-400'}`}>
+              {podeEditar ? (
+                <EditableCell 
+                  className={`${inputEstilo} text-center text-blue-400`} 
+                  value={val} 
+                  colunaKey={col.key} 
+                  onChange={(newVal) => onCellEdit(index, col.key, newVal)} 
+                />
+              ) : (
+                <span className="cursor-default text-blue-400">{formatNum(val)}</span>
+              )}
+            </td>;
+          
+          case 'editable-percent-1': 
+            return <td key={col.key} style={customStyle} className={`py-1 px-1 text-center ${!activeText && 'text-zinc-400'}`}>
+              {podeEditar ? (
+                <EditableCell 
+                  className={`${inputEstilo} text-center`} 
+                  value={val} 
+                  colunaKey={col.key} 
+                  isPercentage={true} 
+                  decimals={1} 
+                  onChange={(newVal) => onCellEdit(index, col.key, newVal)} 
+                />
+              ) : (
+                <span className="cursor-default">{`${formatNum(val, 1)}%`}</span>
+              )}
+            </td>;
+          
+          case 'tag': 
+            return <td key={col.key} style={customStyle} className={`${baseCellClass} tabular-nums`}>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide ${val < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                {val > 0 ? '+' : ''}{formatNum(val, 1)}%
+              </span>
+            </td>;
+          
+          default: 
+            return <td key={col.key} style={customStyle} className={baseCellClass}>{val}</td>;
         }
       })}
     </tr>

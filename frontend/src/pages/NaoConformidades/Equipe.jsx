@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Trash2, UserPlus, Users, Edit3, Save, UserCheck } from 'lucide-react';
-import { Can } from '../../components/Can';
+import Can from '../../components/Can';
 
 export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoNome, setNovoNome] = useState("");

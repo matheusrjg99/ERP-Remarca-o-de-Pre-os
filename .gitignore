@@ -1,22 +1,32 @@
 ```
+# Dependencies
+node_modules/
+
+# Editors
+.vscode/
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Dependencies
-.venv/
-venv/
-env/
-lib/
-tmp/
+# Build outputs
+dist/
+build/
+*.min.js
+*.min.css
+bundle.js
+
+# Environment
+.env
+.env.local
+.env.*
 
 # Logs
 *.log
 
-# Environment variables
-.env
-.env.local
-.env.*
+# OS generated files
+.DS_Store
+Thumbs.db
 ```

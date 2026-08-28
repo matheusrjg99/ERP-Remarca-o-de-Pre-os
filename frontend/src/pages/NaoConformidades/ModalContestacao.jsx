@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { X, Send, MessageSquare, ShieldCheck, User, Lock, CheckCircle2, XCircle } from 'lucide-react';
+import { nonConformitiesService, disputesService } from '@/services';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista }) {
   const [texto, setTexto] = useState("");
@@ -11,11 +12,10 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
   // Estado para Admin trocar entre Responder (Auditoria) ou Contestar (Lado do Operador)
   const [modoContestador, setModoContestador] = useState(false);
 
-  const token = localStorage.getItem('access_token');
   const nomeUsuario = localStorage.getItem('usuario') || 'Usuário'; 
-  const nivelAcesso = localStorage.getItem('nivel_acesso') || 'OPERADOR'; 
-  const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const nivelAcesso = localStorage.getItem('nivel_acesso') || 'OPERADOR';
+  
+  const { can } = usePermissions();
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -24,18 +24,23 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
 
   const infrator = tratarNome(registro.nome_colaborador);
 
-  const buscarHistorico = useCallback(() => {
+  const buscarHistorico = useCallback(async () => {
     if (!registro?.id) return;
     setCarregando(true);
-    axios.get(`${API_URL}/contestacoes/${registro.id}`, config)
-      .then(res => setHistorico(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setHistorico([]))
-      .finally(() => setCarregando(false));
-  }, [registro?.id, API_URL]);
+    try {
+      const response = await disputesService.getByNcId(registro.id);
+      setHistorico(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error("Erro ao buscar histórico:", error);
+      setHistorico([]);
+    } finally {
+      setCarregando(false);
+    }
+  }, [registro?.id]);
 
   useEffect(() => { buscarHistorico(); }, [buscarHistorico]);
 
-  const enviar = () => {
+  const enviar = async () => {
     if (!texto.trim() || carregando) return;
 
     // Se o Admin estiver em modo contestador, adicionamos uma tag oculta [C]
@@ -47,15 +52,17 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
       usuario: tratarNome(nomeUsuario)
     };
 
-    axios.post(`${API_URL}/contestacoes`, payload, config)
-      .then(() => {
-        setTexto("");
-        buscarHistorico();
-        if (aoAtualizarLista) aoAtualizarLista();
-      });
+    try {
+      await disputesService.create(payload);
+      setTexto("");
+      buscarHistorico();
+      if (aoAtualizarLista) aoAtualizarLista();
+    } catch (error) {
+      console.error("Erro ao enviar contestação:", error);
+    }
   };
 
-  const resolverCaso = (decisao) => {
+  const resolverCaso = async (decisao) => {
     if (!window.confirm(`Aplicar veredicto: ${decisao}?`)) return;
     setCarregando(true);
     
@@ -64,15 +71,17 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
       'Aceita': 'Aceita'
     };
     
-    axios.put(`${API_URL}/nao-conformidades/${registro.id}`, { 
-      status: statusMap[decisao] || decisao, 
-      
-    }, config)
-      .then(() => {
-        setStatusLocal(statusMap[decisao] || decisao);
-        if (aoAtualizarLista) aoAtualizarLista();
-      })
-      .finally(() => setCarregando(false));
+    try {
+      await nonConformitiesService.updateById(registro.id, { 
+        status: statusMap[decisao] || decisao 
+      });
+      setStatusLocal(statusMap[decisao] || decisao);
+      if (aoAtualizarLista) aoAtualizarLista();
+    } catch (error) {
+      console.error("Erro ao aplicar veredicto:", error);
+    } finally {
+      setCarregando(false);
+    }
   };
 
   if (!registro) return null;

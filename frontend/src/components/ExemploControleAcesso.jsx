@@ -167,7 +167,7 @@ export const ExemploControleAcesso = () => {
             )}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
-            {JSON.parse(localStorage.getItem('permissoes') || '[]').map((perm, index) => (
+            {JSON.parse(localStorage.getItem('permissions') || '[]').map((perm, index) => (
               <span 
                 key={index} 
                 className="px-2 py-1 bg-blue-900/50 text-blue-300 text-xs rounded"

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import axios from 'axios';
 import { Search, Edit3, Trash2, MessageSquare, User, Calendar, ChevronUp, ChevronDown, ChevronsUpDown, ShieldCheck, XCircle, BarChart3 } from 'lucide-react';
 import ModalEdicao from "./ModalEdicao";
 import ModalContestacao from "./ModalContestacao";
-import { Can } from '../../components/Can';
+import Can from '../../components/Can';
+import { nonConformitiesService } from '@/services';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colaboradores }) => {
   const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -12,10 +13,9 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
   const [editando, setEditando] = useState(null);
   const [filtroColab, setFiltroColab] = useState("");
   const [ordem, setOrdem] = useState({ chave: 'id', direcao: 'desc' });
+  const [deletando, setDeletando] = useState(false);
 
-  const token = localStorage.getItem('access_token');
-  const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const { can } = usePermissions();
 
   const tratarNome = (n) => {
     if (!n) return '';
@@ -59,14 +59,18 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
     }));
   };
 
-  const acaoExcluir = (id) => {
+  const acaoExcluir = async (id) => {
     if (window.confirm("Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.")) {
-      axios.delete(`${API_URL}/nao-conformidades/${id}`, config)
-        .then(() => buscarRegistros())
-        .catch(err => {
-          console.error("Erro ao excluir:", err);
-          alert("Falha ao excluir registro.");
-        });
+      try {
+        setDeletando(true);
+        await nonConformitiesService.deleteById(id);
+        buscarRegistros();
+      } catch (error) {
+        console.error("Erro ao excluir:", error);
+        alert("Falha ao excluir registro.");
+      } finally {
+        setDeletando(false);
+      }
     }
   };
 
@@ -210,7 +214,14 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
                           <button onClick={() => setEditando(reg)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" title="Editar"><Edit3 size={16}/></button>
                         </Can>
                         <Can permission="nc:excluir">
-                          <button onClick={() => acaoExcluir(reg.id)} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Excluir"><Trash2 size={16}/></button>
+                          <button 
+                            onClick={() => acaoExcluir(reg.id)} 
+                            disabled={deletando}
+                            className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
+                            title={deletando ? "Excluindo..." : "Excluir"}
+                          >
+                            <Trash2 size={16}/>
+                          </button>
                         </Can>
                       </div>
                     </td>
@@ -237,11 +248,28 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
       </div>
 
       {/* MODAIS */}
-      {editando && <ModalEdicao registro={editando} colaboradores={colaboradores} aoFechar={() => setEditando(null)} aoSalvar={(d) => {
-          axios.put(`${API_URL}/nao-conformidades/${editando.id}`, d, config).then(() => { setEditando(null); buscarRegistros(); });
-      }} />}
+      {editando && (
+        <ModalEdicao 
+          registro={editando} 
+          colaboradores={colaboradores} 
+          aoFechar={() => setEditando(null)} 
+          aoSalvar={(dados) => {
+            nonConformitiesService.updateById(editando.id, dados)
+              .then(() => { 
+                setEditando(null); 
+                buscarRegistros(); 
+              });
+          }} 
+        />
+      )}
 
-      {selecionado && <ModalContestacao registro={selecionado} aoFechar={() => setSelecionado(null)} aoAtualizarLista={buscarRegistros} />}
+      {selecionado && (
+        <ModalContestacao 
+          registro={selecionado} 
+          aoFechar={() => setSelecionado(null)} 
+          aoAtualizarLista={buscarRegistros} 
+        />
+      )}
     </div>
   );
 };

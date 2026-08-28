@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Settings, Shield } from 'lucide-react';
-import RBACManager from './RBACManager';
+import { Settings } from 'lucide-react';
 
 const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, userPermissions = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
-  const [showRBAC, setShowRBAC] = useState(false);
   
   // Verifica se tem permissão de gestor de cargos (aceita múltiplos formatos)
   const temPermissao = (permissaoNecessaria) => {
@@ -107,7 +105,8 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, use
             <button
               onClick={() => {
                 setIsOpen(false);
-                setShowRBAC(true);
+                // Aqui você pode navegar para a rota de gestão de cargos/permissões
+                // Ex: window.location.href = '/admin/cargos';
               }}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-400 hover:text-blue-400 hover:bg-white/5 transition-colors border-b border-white/10"
               title="Gestão de Cargos e Permissões"
@@ -148,8 +147,6 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, use
         </div>,
         document.body
       )}
-
-      {showRBAC && <RBACManager onClose={() => setShowRBAC(false)} />}
     </>
   );
 };

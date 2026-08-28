@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { Save, User, FileText, Calendar } from 'lucide-react';
-import { Can } from '../../components/Can';
+import Can from '../../components/Can';
+import { nonConformitiesService } from '@/services';
 
 export default function NovoRegistro({ aoSalvar, colaboradores }) {
   const [colaborador_id, setColaboradorId] = useState('');
@@ -9,16 +9,12 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
   const [dataOcorrencia, setDataOcorrencia] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const token = localStorage.getItem('access_token');
-  const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
   const tratarNome = (n) => {
     if (!n) return '';
     return n.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!colaborador_id) return alert("Selecione um Colaborador.");
@@ -32,18 +28,18 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
       data_ocorrencia: dataOcorrencia ? new Date(dataOcorrencia).toISOString() : new Date().toISOString()
     };
 
-    axios.post(`${API_URL}/nao-conformidades`, payload, config)
-      .then(() => {
-        setColaboradorId('');
-        setDescricao('');
-        setDataOcorrencia('');
-        if (aoSalvar) aoSalvar();
-      })
-      .catch(err => {
-        console.error("Erro ao salvar:", err);
-        alert("Falha ao registrar ocorrência.");
-      })
-      .finally(() => setLoading(false));
+    try {
+      await nonConformitiesService.create(payload);
+      setColaboradorId('');
+      setDescricao('');
+      setDataOcorrencia('');
+      if (aoSalvar) aoSalvar();
+    } catch (error) {
+      console.error("Erro ao salvar:", error);
+      alert("Falha ao registrar ocorrência.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

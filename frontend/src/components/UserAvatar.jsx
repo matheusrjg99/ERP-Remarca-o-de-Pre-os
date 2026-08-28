@@ -1,41 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings } from 'lucide-react';
+import { usePermissions } from '../hooks/usePermissions';
 
-const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction, userPermissions = [] }) => {
+const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   
-  // Verifica se tem permissão de gestor de cargos (aceita múltiplos formatos)
-  const temPermissao = (permissaoNecessaria) => {
-    return userPermissions.some(p => {
-      const pStr = typeof p === 'string' ? p : (p.codigo || '');
-      
-      // Se tiver admin_total, tem todas as permissões
-      if (pStr === 'admin_total') return true;
-      
-      // Normaliza para comparar (troca . por : e vice-versa)
-      const normalizado = pStr.replace(/\./g, ':');
-      const necessario = permissaoNecessaria.replace(/\./g, ':');
-      
-      return normalizado === necessario || 
-             normalizado === 'admin:todos' ||
-             pStr === 'admin.todos';
-    });
-  };
+  // Usa o hook centralizado de permissões
+  const { canAny, loading } = usePermissions();
   
-  // Usuários com admin_total têm acesso total, incluindo gestão de cargos
-  const hasGestaoCargos = userPermissions.includes('admin_total') ||
-                          temPermissao('admin:cargos') || 
-                          temPermissao('admin.gestao_cargos') ||
-                          temPermissao('admin:configuracoes');
-  
-  useEffect(() => {
-    console.log('🔍 UserAvatar: Permissões recebidas:', userPermissions);
-    console.log('🔍 UserAvatar: Tem gestão de cargos?', hasGestaoCargos);
-  }, [userPermissions, hasGestaoCargos]);
+  // Verifica se tem permissão de gestor de cargos usando o hook
+  // Admin total tem acesso a tudo, então verificamos múltiplas permissões possíveis
+  const hasGestaoCargos = !loading && canAny([
+    'admin_total',
+    'admin:cargos',
+    'admin.gestao_cargos',
+    'admin:configuracoes'
+  ]);
   
   useEffect(() => {
     const handleClickOutside = (event) => {

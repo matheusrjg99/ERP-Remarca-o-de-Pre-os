@@ -10,11 +10,11 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) =
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   
   // Usa o hook centralizado de permissões
-  const { canAny } = usePermissions();
+  const { canAny, loading } = usePermissions();
   
   // Verifica se tem permissão de gestor de cargos usando o hook
   // Admin total tem acesso a tudo, então verificamos múltiplas permissões possíveis
-  const hasGestaoCargos = canAny([
+  const hasGestaoCargos = !loading && canAny([
     'admin_total',
     'admin:cargos',
     'admin.gestao_cargos',

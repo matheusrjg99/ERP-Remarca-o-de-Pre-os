@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { usePrecificacaoPermissions } from '../../../hooks/usePrecificacaoPermissions';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 export default function CustomizeModal({ isOpen, onClose, colunas, preferencias, onAtualizarPreferencias }) {
   // Inicializamos com 'custo', mas agora permitimos selecionar o cabeçalho
@@ -21,12 +21,14 @@ export default function CustomizeModal({ isOpen, onClose, colunas, preferencias,
   const [position, setPosition] = useState({ x: 20, y: 0 }); 
 
   // Hook de permissões para verificar acesso às funcionalidades do dashboard
-  const { 
-    hasPermission,
-    podeEditarRegras,
-    podePersonalizarVisual,
-    isLoading 
-  } = usePrecificacaoPermissions(); 
+  const {
+    can,
+    isLoading : loadingPermissoes 
+  } = usePermissions()
+
+  const podeEditarRegras = can('precificacao:editar')
+  const podePersonalizarVisual = can('precificacao:editar')
+
 
   useEffect(() => {
     if (isOpen) setPosition(pos => ({ ...pos, y: window.innerHeight * 0.1 }));

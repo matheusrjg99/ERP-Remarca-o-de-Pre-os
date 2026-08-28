@@ -161,7 +161,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         "nome": payload.get("nome"),
         "email": payload.get("email"),
         "cargo": payload.get("cargo"),
-        "permissoes": payload.get("permissoes", [])
+        "permissoes": payload.get("permissoes", []),
     }
 
 

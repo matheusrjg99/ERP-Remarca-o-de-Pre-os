@@ -6,7 +6,7 @@ import ResizableHeader from './components/ResizableHeader';
 import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
 import { ArrowLeftRight, UserCog, Scale,Loader2 } from 'lucide-react';
-import { usePrecificacaoPermissions } from '../../hooks/usePrecificacaoPermissions';
+import { usePermissions } from '../../hooks/usePermissions';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -27,13 +27,17 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   
   // Hook de permissões do dashboard
   const {
-    podeRecalcular,
-    podePersonalizarVisual,
-    podeSelecionarNota,
-    podeVerCustos,
+    can,
     isLoading: loadingPermissoes
-  } = usePrecificacaoPermissions();
-  
+  } = usePermissions();
+
+  // permissões especificas
+
+  const podeRecalcular = can('precificacao:editar')
+  const podePersonalizarVisual = can('precificacao:consultar')
+  const podeSelecionarNota = can('precificacao:consultar')
+  const podeVerCustos = can('precificacao:consultar')
+
   const [modalRecalculoOpen, setModalRecalculoOpen] = useState(false);
   const [registro, setRegistro] = useState('');
   const [produtos, setProdutos] = useState([]);

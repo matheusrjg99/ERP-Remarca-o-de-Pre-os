@@ -38,12 +38,12 @@ async def remarcar_preco(
     raise HTTPException(status_code=500, detail=f"Erro: {sucesso}")
 
 
-@router.put("/atualizar-custo", dependencies=[Depends(requer_permissao("precificacao:editar_custo"))])
+@router.put("/atualizar-custo", dependencies=[Depends(requer_permissao("precificacao:editar"))])
 async def atualizar_custo(
     codigo: str, 
     novo_custo: float, 
     ambiente: str = Query("treina", enum=["producao", "demo", "treina"]),
-    usuario: dict = Depends(requer_permissao("precificacao:editar_custo"))
+    usuario: dict = Depends(requer_permissao("precificacao:editar"))
 ):
     """Atualiza o custo de um produto."""
     db_name = AMBIENTES[ambiente]

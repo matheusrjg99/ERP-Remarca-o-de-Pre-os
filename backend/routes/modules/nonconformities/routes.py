@@ -14,7 +14,7 @@ from .services import NaoConformidadeService
 router = APIRouter(prefix="/nao-conformidades", tags=["Não Conformidades"])
 
 
-@router.get("", response_model=List[NaoConformidade], dependencies=[Depends(requer_permissao("nc:listar"))])
+@router.get("", response_model=List[NaoConformidade], dependencies=[Depends(requer_permissao("nc:visualizar"))])
 async def listar_ncs(
     colaborador_id: Optional[int] = None,
     status: Optional[str] = None,

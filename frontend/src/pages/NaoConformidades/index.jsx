@@ -53,9 +53,19 @@ export default function NaoConformidades() {
   };
 
   useEffect(() => { 
-    buscarRegistros(); 
+    // Só busca registros se tiver permissão de visualização
+    if (can('nc:visualizar')) {
+      buscarRegistros();
+    }
     buscarColabs(); 
   }, []);
+
+  // Efeito para buscar registros quando mês/ano mudar
+  useEffect(() => {
+    if (can('nc:visualizar') && abaAtiva === 'consulta') {
+      buscarRegistros();
+    }
+  }, [mes, ano]);
 
   const onLogout = () => {
     localStorage.removeItem('access_token');
@@ -91,16 +101,20 @@ export default function NaoConformidades() {
           {/* MENU DE NAVEGAÇÃO DO MÓDULO - Condicional por permissão */}
           <CanModule module="nc" fallback={null}>
             <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-md shadow-sm mr-2">
-              <button 
-                onClick={() => setAbaAtiva('consulta')} 
-                className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
-                  abaAtiva === 'consulta' 
-                    ? 'bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700' 
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                <LayoutDashboard size={14} /> Consulta
-              </button>
+              {/* Botão Consulta - visível apenas com nc:visualizar */}
+              <Can permission="nc:visualizar">
+                <button 
+                  onClick={() => setAbaAtiva('consulta')} 
+                  className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
+                    abaAtiva === 'consulta' 
+                      ? 'bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700' 
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  <LayoutDashboard size={14} /> Consulta
+                </button>
+              </Can>
+              
               <Can permission="nc:criar">
                 <button 
                   onClick={() => setAbaAtiva('novo')} 
@@ -113,6 +127,7 @@ export default function NaoConformidades() {
                   <UserPlus size={14} /> Registrar
                 </button>
               </Can>
+              
               <Can permission="cadastros:colaboradores">
                 <button 
                   onClick={() => setAbaAtiva('equipe')} 
@@ -125,6 +140,7 @@ export default function NaoConformidades() {
                   <Users size={14} /> Operadores
                 </button>
               </Can>
+              
               <Can permission="cadastros:comissoes">
                 <button 
                   onClick={() => setAbaAtiva('configurar')} 
@@ -137,6 +153,7 @@ export default function NaoConformidades() {
                   <Settings size={14} /> Configurar Comissões
                 </button>
               </Can>
+              
               <Can permission="cadastros:comissoes">
                 <button 
                   onClick={() => setAbaAtiva('comissoes')} 
@@ -169,7 +186,7 @@ export default function NaoConformidades() {
         ) : (
           <>
             {abaAtiva === 'consulta' && (
-              <CanModule module="nc" fallback={<SemAcesso modulo="Não Conformidades" />}>
+              <Can permission="nc:visualizar" fallback={<SemAcesso acao="visualizar não conformidades" />}>
                 <Consulta 
                   registros={registros} 
                   buscarRegistros={buscarRegistros} 
@@ -177,8 +194,9 @@ export default function NaoConformidades() {
                   ano={ano} setAno={setAno} 
                   colaboradores={colaboradores} 
                 />
-              </CanModule>
+              </Can>
             )}
+            
             {abaAtiva === 'novo' && (
               <Can permission="nc:criar" fallback={<SemAcesso acao="registrar não conformidades" />}>
                 <NovoRegistro 
@@ -187,6 +205,7 @@ export default function NaoConformidades() {
                 />
               </Can>
             )}
+            
             {abaAtiva === 'equipe' && (
               <Can permission="cadastros:colaboradores" fallback={<SemAcesso acao="gerenciar equipe" />}>
                 <Equipe 
@@ -195,11 +214,13 @@ export default function NaoConformidades() {
                 />
               </Can>
             )}
+            
             {abaAtiva === 'configurar' && (
               <Can permission="cadastros:comissoes" fallback={<SemAcesso acao="configurar comissões" />}>
                 <ConfiguracaoComissoes />
               </Can>
             )}
+            
             {abaAtiva === 'comissoes' && (
               <Can permission="cadastros:comissoes" fallback={<SemAcesso acao="ver relatório de comissões" />}>
                 <RelatorioComissoes />

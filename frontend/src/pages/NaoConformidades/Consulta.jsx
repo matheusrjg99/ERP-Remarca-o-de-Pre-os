@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Edit3, Trash2, MessageSquare, User, Calendar, ChevronUp, ChevronDown, ChevronsUpDown, ShieldCheck, XCircle, BarChart3 } from 'lucide-react';
+import { Search, Edit3, Trash2, MessageSquare, User, Calendar, ChevronUp, ChevronDown, ChevronsUpDown, ShieldCheck, XCircle, CheckCircle2, BarChart3, Eye, Lock } from 'lucide-react';
 import ModalEdicao from "./ModalEdicao";
 import ModalContestacao from "./ModalContestacao";
 import Can from '../../components/Can';
@@ -63,7 +63,7 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
     if (window.confirm("Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.")) {
       try {
         setDeletando(true);
-        await nonConformitiesService.deleteById(id);
+        await nonConformitiesService.delete(id);
         buscarRegistros();
       } catch (error) {
         console.error("Erro ao excluir:", error);
@@ -89,189 +89,212 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
   );
 
   return (
-    <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
-      
-      {/* HEADER: RESUMO (ESQUERDA) E FILTROS (DIREITA) */}
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6 bg-[#09090b] p-5 rounded-2xl border border-zinc-800/50 shadow-sm">
+    <Can 
+      permission="nc:visualizar" 
+      fallback={<SemPermissaoVisualizar />}
+    >
+      <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
         
-        {/* RESUMO (Preenche o vazio da esquerda) */}
-        <div className="flex items-center gap-6">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-              <BarChart3 size={14} className="text-[#3B8ED0]"/> Resumo
-            </span>
-            <div className="flex items-center gap-3">
-              <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-zinc-400">Total de Registros:</span>
-                <span className="text-xs font-black text-white">{stats.total}</span>
+        {/* HEADER: RESUMO (ESQUERDA) E FILTROS (DIREITA) */}
+        <div className="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6 bg-[#09090b] p-5 rounded-2xl border border-zinc-800/50 shadow-sm">
+          
+          {/* RESUMO (Preenche o vazio da esquerda) */}
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <BarChart3 size={14} className="text-[#3B8ED0]"/> Resumo
+              </span>
+              <div className="flex items-center gap-3">
+                <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-zinc-400">Total de Registros:</span>
+                  <span className="text-xs font-black text-white">{stats.total}</span>
+                </div>
+                <div className="bg-amber-500/5 px-4 py-2 rounded-xl border border-amber-500/20 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-amber-500/70">Pendentes:</span>
+                  <span className="text-xs font-black text-amber-500">{stats.pendentes}</span>
+                </div>
+                <div className="bg-emerald-500/5 px-4 py-2 rounded-xl border border-emerald-500/20 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-emerald-500/70">Resolvidos:</span>
+                  <span className="text-xs font-black text-emerald-500">{stats.resolvidos}</span>
+                </div>
               </div>
-              <div className="bg-amber-500/5 px-4 py-2 rounded-xl border border-amber-500/20 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-amber-500/70">Pendentes:</span>
-                <span className="text-xs font-black text-amber-500">{stats.pendentes}</span>
-              </div>
-              <div className="bg-emerald-500/5 px-4 py-2 rounded-xl border border-emerald-500/20 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-emerald-500/70">Resolvidos:</span>
-                <span className="text-xs font-black text-emerald-500">{stats.resolvidos}</span>
-              </div>
+            </div>
+          </div>
+
+          {/* FILTROS (Direita) */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-[#121215] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-[#3B8ED0]/50 transition-all shadow-inner">
+              <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><Calendar size={14} /></div>
+              <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none uppercase cursor-pointer" value={mes} onChange={e => setMes(e.target.value)}>
+                {mesesNomes.map((n, i) => <option key={n} value={i + 1} className="bg-[#09090b]">{n}</option>)}
+              </select>
+              <input type="number" className="bg-transparent border-l border-zinc-800 text-xs font-bold text-zinc-200 w-24 px-4 outline-none text-center" value={ano} onChange={e => setAno(e.target.value)} />
+            </div>
+
+            <div className="flex bg-[#121215] border border-zinc-800 rounded-xl overflow-hidden min-w-[280px] focus-within:border-[#3B8ED0]/50 transition-all shadow-inner">
+              <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><User size={14} /></div>
+              <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none w-full uppercase cursor-pointer" value={filtroColab} onChange={e => setFiltroColab(e.target.value)}>
+                <option value="" className="bg-[#09090b]">Todos os Operadores</option>
+                {colaboradores.map(c => <option key={c.id} value={c.id} className="bg-[#09090b]">{tratarNome(c.nome)}</option>)}
+              </select>
+            </div>
+
+            <button onClick={buscarRegistros} className="bg-[#3B8ED0] hover:bg-[#2d74ab] text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md shadow-[#3B8ED0]/20">
+              <Search size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* TABELA PREMIUM */}
+        <div className="flex-1 bg-[#09090b] rounded-2xl border border-zinc-800/80 overflow-hidden shadow-2xl flex flex-col">
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left border-collapse min-w-[1000px]">
+              <thead className="bg-[#121215] sticky top-0 z-10">
+                <tr className="border-b border-zinc-800/80">
+                  <Th label="ID" chave="id" width="w-[100px]" />
+                  <Th label="Data" chave="data_ocorrencia" width="w-[140px]" />
+                  <Th label="Colaborador" chave="nome_colaborador" width="w-[240px]" />
+                  <Th label="Ocorrência" chave="descricao" />
+                  <Th label="Status" chave="status" width="w-[160px]" />
+                  <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right w-[140px]">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/50">
+                {registrosProcessados.length === 0 ? (
+                  <tr><td colSpan="6" className="py-32 text-center text-zinc-600 font-black uppercase text-xs tracking-widest opacity-40">Nenhum dado processado</td></tr>
+                ) : (
+                  registrosProcessados.map(reg => (
+                    <tr key={reg.id} onDoubleClick={() => setSelecionado(reg)} className="hover:bg-white/[0.03] transition-colors group cursor-pointer">
+                      
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className="inline-flex items-center text-[11px] font-mono font-bold text-[#3B8ED0] bg-[#3B8ED0]/10 px-2.5 py-1 rounded-md border border-[#3B8ED0]/20">
+                          #{reg.id}
+                        </span>
+                      </td>
+                      
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className="text-[12px] font-mono text-zinc-500">{new Date(reg.data_ocorrencia).toLocaleDateString('pt-BR')}</span>
+                      </td>
+                      
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">{tratarNome(reg.nome_colaborador)}</span>
+                      </td>
+                      
+                      {/* OCORRÊNCIA EM ALTA DEFINIÇÃO */}
+                      <td className="px-6 py-5">
+                        <p className="text-[15px] text-white font-semibold leading-relaxed group-hover:drop-shadow-[0_0_1px_rgba(255,255,255,0.5)] transition-all">
+                          {reg.descricao}
+                        </p>
+                      </td>
+                      
+                      {/* STATUS CORRIGIDO */}
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        {reg.status === 'Resolvida' ? (
+                          <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
+                            <CheckCircle2 size={14} /> Resolvido
+                          </span>
+                        ) : reg.status === 'Aceita' ? (
+                          <span className="inline-flex items-center gap-1.5 text-blue-400 font-black text-[9px] uppercase tracking-widest">
+                            <ShieldCheck size={14} /> Aceita
+                          </span>
+                        ) : reg.status === 'Contestada' ? (
+                          <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-500 font-black px-2.5 py-1.5 rounded-lg border border-amber-500/20 text-[9px] uppercase tracking-widest animate-pulse">
+                            <MessageSquare size={13} fill="currentColor" /> Contestado
+                          </span>
+                        ) : reg.status === 'Recusada' ? (
+                          <span className="inline-flex items-center gap-1.5 text-red-500 font-black text-[9px] uppercase tracking-widest">
+                            <XCircle size={14} /> Recusada
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-zinc-500 font-black text-[9px] uppercase tracking-widest">
+                            <Eye size={14} /> Pendente
+                          </span>
+                        )}
+                      </td>
+                      
+                      <td className="px-6 py-5 whitespace-nowrap text-right">
+                        <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                          <Can permission="nc:contestar">
+                            <button onClick={() => setSelecionado(reg)} className="p-2 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all" title="Contestar"><MessageSquare size={16}/></button>
+                          </Can>
+                          <Can permission="nc:editar">
+                            <button onClick={() => setEditando(reg)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" title="Editar"><Edit3 size={16}/></button>
+                          </Can>
+                          <Can permission="nc:excluir">
+                            <button 
+                              onClick={() => acaoExcluir(reg.id)} 
+                              disabled={deletando}
+                              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
+                              title={deletando ? "Excluindo..." : "Excluir"}
+                            >
+                              <Trash2 size={16}/>
+                            </button>
+                          </Can>
+                        </div>
+                      </td>
+                      
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* RODAPÉ INTEGRADO */}
+          <div className="bg-[#121215] border-t border-zinc-800/80 px-6 py-3 flex justify-between items-center">
+            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+              Total do período: <span className="text-white">{registrosProcessados.length}</span> entradas
+            </p>
+            <div className="flex gap-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shadow-[0_0_8px_#f59e0b]"></div>
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Aguardando Auditoria</span>
+                </div>
             </div>
           </div>
         </div>
 
-        {/* FILTROS (Direita) */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-[#121215] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-[#3B8ED0]/50 transition-all shadow-inner">
-            <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><Calendar size={14} /></div>
-            <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none uppercase cursor-pointer" value={mes} onChange={e => setMes(e.target.value)}>
-              {mesesNomes.map((n, i) => <option key={n} value={i + 1} className="bg-[#09090b]">{n}</option>)}
-            </select>
-            <input type="number" className="bg-transparent border-l border-zinc-800 text-xs font-bold text-zinc-200 w-24 px-4 outline-none text-center" value={ano} onChange={e => setAno(e.target.value)} />
-          </div>
+        {/* MODAIS */}
+        {editando && (
+          <ModalEdicao 
+            registro={editando} 
+            colaboradores={colaboradores} 
+            aoFechar={() => setEditando(null)} 
+            aoSalvar={() => {
+              setEditando(null); 
+              buscarRegistros(); 
+            }}
+          />
+        )}
 
-          <div className="flex bg-[#121215] border border-zinc-800 rounded-xl overflow-hidden min-w-[280px] focus-within:border-[#3B8ED0]/50 transition-all shadow-inner">
-            <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><User size={14} /></div>
-            <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none w-full uppercase cursor-pointer" value={filtroColab} onChange={e => setFiltroColab(e.target.value)}>
-              <option value="" className="bg-[#09090b]">Todos os Operadores</option>
-              {colaboradores.map(c => <option key={c.id} value={c.id} className="bg-[#09090b]">{tratarNome(c.nome)}</option>)}
-            </select>
-          </div>
-
-          <button onClick={buscarRegistros} className="bg-[#3B8ED0] hover:bg-[#2d74ab] text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md shadow-[#3B8ED0]/20">
-            <Search size={20} />
-          </button>
-        </div>
+        {selecionado && (
+          <ModalContestacao 
+            registro={selecionado} 
+            aoFechar={() => setSelecionado(null)} 
+            aoAtualizarLista={buscarRegistros} 
+          />
+        )}
       </div>
-
-      {/* TABELA PREMIUM */}
-      <div className="flex-1 bg-[#09090b] rounded-2xl border border-zinc-800/80 overflow-hidden shadow-2xl flex flex-col">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead className="bg-[#121215] sticky top-0 z-10">
-              <tr className="border-b border-zinc-800/80">
-                <Th label="ID" chave="id" width="w-[100px]" />
-                <Th label="Data" chave="data_ocorrencia" width="w-[140px]" />
-                <Th label="Colaborador" chave="nome_colaborador" width="w-[240px]" />
-                <Th label="Ocorrência" chave="descricao" />
-                <Th label="Status" chave="status" width="w-[160px]" />
-                <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right w-[140px]">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/50">
-              {registrosProcessados.length === 0 ? (
-                <tr><td colSpan="6" className="py-32 text-center text-zinc-600 font-black uppercase text-xs tracking-widest opacity-40">Nenhum dado processado</td></tr>
-              ) : (
-                registrosProcessados.map(reg => (
-                  <tr key={reg.id} onDoubleClick={() => setSelecionado(reg)} className="hover:bg-white/[0.03] transition-colors group cursor-pointer">
-                    
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="inline-flex items-center text-[11px] font-mono font-bold text-[#3B8ED0] bg-[#3B8ED0]/10 px-2.5 py-1 rounded-md border border-[#3B8ED0]/20">
-                        #{reg.id}
-                      </span>
-                    </td>
-                    
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-[12px] font-mono text-zinc-500">{new Date(reg.data_ocorrencia).toLocaleDateString('pt-BR')}</span>
-                    </td>
-                    
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">{tratarNome(reg.nome_colaborador)}</span>
-                    </td>
-                    
-                    {/* OCORRÊNCIA EM ALTA DEFINIÇÃO (BRANCO PURO / SEM ITÁLICO / FONTE MAIOR) */}
-                    <td className="px-6 py-5">
-                      <p className="text-[15px] text-white font-semibold leading-relaxed group-hover:drop-shadow-[0_0_1px_rgba(255,255,255,0.5)] transition-all">
-                        {reg.descricao}
-                      </p>
-                    </td>
-                    
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      {reg.status === 'Resolvida' ? (
-                        <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
-                          <ShieldCheck size={14} /> Deferido
-                        </span>
-                      ) : reg.status === 'Aceita' ? (
-                        <span className="inline-flex items-center gap-1.5 text-red-500 font-black text-[9px] uppercase tracking-widest">
-                          <XCircle size={14} /> Indeferido
-                        </span>
-                      ) : reg.status === 'Contestada' ? (
-                        <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-500 font-black px-2.5 py-1.5 rounded-lg border border-amber-500/20 text-[9px] uppercase tracking-widest animate-pulse">
-                          <MessageSquare size={13} fill="currentColor" /> Contestado
-                        </span>
-                      ) : reg.status === 'Resolvida' ? (
-                        <span className="inline-flex items-center gap-1.5 text-emerald-500 font-black text-[9px] uppercase tracking-widest">
-                          <CheckCircle2 size={14} /> Resolvido
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-bold text-zinc-700 uppercase tracking-widest">Pendente</span>
-                      )}
-                    </td>
-                    
-                    <td className="px-6 py-5 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                        <Can permission="nc:contestar">
-                          <button onClick={() => setSelecionado(reg)} className="p-2 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all" title="Contestar"><MessageSquare size={16}/></button>
-                        </Can>
-                        <Can permission="nc:editar">
-                          <button onClick={() => setEditando(reg)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" title="Editar"><Edit3 size={16}/></button>
-                        </Can>
-                        <Can permission="nc:excluir">
-                          <button 
-                            onClick={() => acaoExcluir(reg.id)} 
-                            disabled={deletando}
-                            className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
-                            title={deletando ? "Excluindo..." : "Excluir"}
-                          >
-                            <Trash2 size={16}/>
-                          </button>
-                        </Can>
-                      </div>
-                    </td>
-                    
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* RODAPÉ INTEGRADO */}
-        <div className="bg-[#121215] border-t border-zinc-800/80 px-6 py-3 flex justify-between items-center">
-          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-            Total do período: <span className="text-white">{registrosProcessados.length}</span> entradas
-          </p>
-          <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shadow-[0_0_8px_#f59e0b]"></div>
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Aguardando Auditoria</span>
-              </div>
-          </div>
-        </div>
-      </div>
-
-      {/* MODAIS */}
-      {editando && (
-        <ModalEdicao 
-          registro={editando} 
-          colaboradores={colaboradores} 
-          aoFechar={() => setEditando(null)} 
-          aoSalvar={(dados) => {
-            nonConformitiesService.updateById(editando.id, dados)
-              .then(() => { 
-                setEditando(null); 
-                buscarRegistros(); 
-              });
-          }} 
-        />
-      )}
-
-      {selecionado && (
-        <ModalContestacao 
-          registro={selecionado} 
-          aoFechar={() => setSelecionado(null)} 
-          aoAtualizarLista={buscarRegistros} 
-        />
-      )}
-    </div>
+    </Can>
   );
 };
+
+// Componente de fallback para quando não há permissão de visualização
+function SemPermissaoVisualizar() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+        <Lock size={32} className="text-red-500" />
+      </div>
+      <h3 className="text-lg font-bold text-white mb-2">Acesso Negado</h3>
+      <p className="text-zinc-400 text-sm max-w-md">
+        Você não tem permissão para visualizar as não conformidades.
+      </p>
+      <p className="text-zinc-500 text-xs mt-4">
+        Contate o administrador do sistema para solicitar acesso.
+      </p>
+    </div>
+  );
+}
 
 export default Consulta;

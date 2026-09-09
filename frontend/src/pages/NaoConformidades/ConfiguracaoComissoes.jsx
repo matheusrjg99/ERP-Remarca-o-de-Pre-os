@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Plus, Edit, Trash2, Save, X, DollarSign, Percent } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, DollarSign, Percent, Lock } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { collaboratorsService, commissionsService } from '@/services';
 
-export default function ConfiguracaoComissoes({ config, API_URL }) {
+export default function ConfiguracaoComissoes() {
   const [configuracoes, setConfiguracoes] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [carregando, setCarregando] = useState(false);
+  const [carregandoColaboradores, setCarregandoColaboradores] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [novoRegistro, setNovoRegistro] = useState({
     colaborador_id: '',
@@ -14,13 +16,28 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
   });
   const [formularioAberto, setFormularioAberto] = useState(false);
 
+  const { permissions, loading: permissionsLoading } = usePermissions();
+
+  // Verificações de permissão
+  const podeConfigurar = permissions.includes('cadastros:comissoes') || 
+                         permissions.includes('admin_total') ||
+                         permissions.includes('cadastros:*') ||
+                         permissions.includes('*');
+
+  const podeEditar = podeConfigurar;
+  const podeExcluir = podeConfigurar;
+
   const buscarConfiguracoes = async () => {
     setCarregando(true);
     try {
-      const response = await axios.get(`${API_URL}/comissoes/configuracoes`, config);
-      setConfiguracoes(Array.isArray(response.data) ? response.data : []);
+      console.log('🔍 [DEBUG] Buscando configurações de comissões...');
+      const response = await commissionsService.getConfiguracoes();
+      console.log('✅ [DEBUG] Configurações carregadas:', response);
+      setConfiguracoes(Array.isArray(response) ? response : []);
     } catch (error) {
-      console.error("Erro ao buscar configurações:", error);
+      console.error('❌ [DEBUG] Erro ao buscar configurações:', error);
+      console.error('❌ [DEBUG] Status:', error?.response?.status);
+      console.error('❌ [DEBUG] Dados:', error?.response?.data);
       setConfiguracoes([]);
     } finally {
       setCarregando(false);
@@ -28,21 +45,43 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
   };
 
   const buscarColaboradores = async () => {
+    setCarregandoColaboradores(true);
     try {
-      const response = await axios.get(`${API_URL}/colaboradores`, config);
-      setColaboradores(Array.isArray(response.data) ? response.data : []);
+      console.log('🔍 [DEBUG] Buscando colaboradores...');
+      const response = await collaboratorsService.getAll();
+      console.log('✅ [DEBUG] Colaboradores carregados:', response);
+      
+      if (Array.isArray(response)) {
+        setColaboradores(response);
+      } else if (response?.data && Array.isArray(response.data)) {
+        setColaboradores(response.data);
+      } else {
+        console.warn('⚠️ [DEBUG] Formato inesperado:', response);
+        setColaboradores([]);
+      }
     } catch (error) {
-      console.error("Erro ao buscar colaboradores:", error);
+      console.error('❌ [DEBUG] Erro ao buscar colaboradores:', error);
+      console.error('❌ [DEBUG] Status:', error?.response?.status);
+      console.error('❌ [DEBUG] Dados:', error?.response?.data);
       setColaboradores([]);
+    } finally {
+      setCarregandoColaboradores(false);
     }
   };
 
   useEffect(() => {
-    buscarConfiguracoes();
-    buscarColaboradores();
-  }, []);
+    if (podeConfigurar) {
+      buscarConfiguracoes();
+      buscarColaboradores();
+    }
+  }, [podeConfigurar]);
 
   const handleSalvar = async () => {
+    if (!podeConfigurar) {
+      alert('Você não tem permissão para configurar comissões');
+      return;
+    }
+
     if (!novoRegistro.colaborador_id || !novoRegistro.salario_base || !novoRegistro.percentual_desconto) {
       alert('Preencha todos os campos obrigatórios');
       return;
@@ -50,15 +89,17 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
 
     try {
       const dadosEnvio = {
-        ...novoRegistro,
+        colaborador_id: parseInt(novoRegistro.colaborador_id),
         salario_base: parseFloat(novoRegistro.salario_base.replace(',', '.')),
         percentual_desconto: parseFloat(novoRegistro.percentual_desconto.replace(',', '.'))
       };
 
+      console.log('🔍 [DEBUG] Salvando configuração:', dadosEnvio);
+
       if (editandoId) {
-        await axios.put(`${API_URL}/comissoes/configuracoes/${editandoId}`, dadosEnvio, config);
+        await commissionsService.updateConfiguracao(editandoId, dadosEnvio);
       } else {
-        await axios.post(`${API_URL}/comissoes/configuracoes`, dadosEnvio, config);
+        await commissionsService.createConfiguracao(dadosEnvio);
       }
 
       setNovoRegistro({ colaborador_id: '', salario_base: '', percentual_desconto: '' });
@@ -66,12 +107,24 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
       setFormularioAberto(false);
       buscarConfiguracoes();
     } catch (error) {
-      console.error("Erro ao salvar configuração:", error);
-      alert('Erro ao salvar configuração. Verifique se o colaborador já possui configuração.');
+      console.error('❌ [DEBUG] Erro ao salvar configuração:', error);
+      console.error('❌ [DEBUG] Status:', error?.response?.status);
+      console.error('❌ [DEBUG] Dados:', error?.response?.data);
+      
+      if (error?.response?.status === 403) {
+        alert('Você não tem permissão para realizar esta ação');
+      } else {
+        alert('Erro ao salvar configuração. Verifique se o colaborador já possui configuração.');
+      }
     }
   };
 
   const handleEditar = (config) => {
+    if (!podeEditar) {
+      alert('Você não tem permissão para editar configurações');
+      return;
+    }
+
     setNovoRegistro({
       colaborador_id: config.colaborador_id,
       salario_base: config.salario_base.toString(),
@@ -82,14 +135,24 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
   };
 
   const handleExcluir = async (id) => {
+    if (!podeExcluir) {
+      alert('Você não tem permissão para excluir configurações');
+      return;
+    }
+
     if (!window.confirm('Tem certeza que deseja excluir esta configuração?')) return;
 
     try {
-      await axios.delete(`${API_URL}/comissoes/configuracoes/${id}`, config);
+      await commissionsService.deleteConfiguracao(id);
       buscarConfiguracoes();
     } catch (error) {
-      console.error("Erro ao excluir configuração:", error);
-      alert('Erro ao excluir configuração');
+      console.error('❌ [DEBUG] Erro ao excluir configuração:', error);
+      
+      if (error?.response?.status === 403) {
+        alert('Você não tem permissão para excluir configurações');
+      } else {
+        alert('Erro ao excluir configuração');
+      }
     }
   };
 
@@ -101,7 +164,7 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
 
   const getNomeColaborador = (id) => {
     const colab = colaboradores.find(c => c.id === id);
-    return colab ? colab.nome : 'Desconhecido';
+    return colab ? (colab.nome || colab.nome_colaborador || `Colaborador #${id}`) : 'Desconhecido';
   };
 
   const formatarMoeda = (valor) => {
@@ -111,6 +174,32 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
   const formatarPercentual = (valor) => {
     return `${(valor || 0).toFixed(2)}%`;
   };
+
+  // Fallback para quando não tem permissão
+  if (permissionsLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-zinc-500 text-xs font-black uppercase tracking-widest animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!podeConfigurar) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+          <Lock size={32} className="text-red-500" />
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">Acesso Negado</h3>
+        <p className="text-zinc-400 text-sm max-w-md">
+          Você não tem permissão para acessar as configurações de comissões.
+        </p>
+        <p className="text-zinc-500 text-xs mt-4">
+          Contate o administrador do sistema para solicitar acesso.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
@@ -126,7 +215,7 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
           </p>
         </div>
 
-        {!formularioAberto && (
+        {!formularioAberto && podeConfigurar && (
           <button 
             onClick={() => setFormularioAberto(true)} 
             className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-violet-600/20 flex items-center gap-2"
@@ -138,7 +227,7 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
       </div>
 
       {/* FORMULÁRIO DE CADASTRO/EDIÇÃO */}
-      {formularioAberto && (
+      {formularioAberto && podeConfigurar && (
         <div className="mb-6 bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-black text-zinc-200 uppercase tracking-wider">
@@ -156,11 +245,15 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
                 className="bg-[#09090b] border border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-zinc-200 outline-none focus:border-violet-500/50 transition-all"
                 value={novoRegistro.colaborador_id}
                 onChange={(e) => setNovoRegistro({...novoRegistro, colaborador_id: e.target.value})}
-                disabled={!!editandoId}
+                disabled={!!editandoId || carregandoColaboradores}
               >
-                <option value="">Selecione...</option>
+                <option value="">
+                  {carregandoColaboradores ? 'Carregando colaboradores...' : 'Selecione...'}
+                </option>
                 {colaboradores.map(colab => (
-                  <option key={colab.id} value={colab.id}>{colab.nome}</option>
+                  <option key={colab.id} value={colab.id}>
+                    {colab.nome || colab.nome_colaborador || `Colaborador #${colab.id}`}
+                  </option>
                 ))}
               </select>
             </div>
@@ -260,20 +353,24 @@ export default function ConfiguracaoComissoes({ config, API_URL }) {
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button 
-                            onClick={() => handleEditar(config)} 
-                            className="text-zinc-500 hover:text-violet-400 transition-colors p-1.5 rounded-lg hover:bg-violet-500/10"
-                            title="Editar"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button 
-                            onClick={() => handleExcluir(config.id)} 
-                            className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
-                            title="Excluir"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {podeEditar && (
+                            <button 
+                              onClick={() => handleEditar(config)} 
+                              className="text-zinc-500 hover:text-violet-400 transition-colors p-1.5 rounded-lg hover:bg-violet-500/10"
+                              title="Editar"
+                            >
+                              <Edit size={14} />
+                            </button>
+                          )}
+                          {podeExcluir && (
+                            <button 
+                              onClick={() => handleExcluir(config.id)} 
+                              className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                              title="Excluir"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

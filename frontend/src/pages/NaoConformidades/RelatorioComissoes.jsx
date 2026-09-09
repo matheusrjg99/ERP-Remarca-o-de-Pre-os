@@ -1,26 +1,44 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { DollarSign, Users, TrendingDown, Calendar, Search, Download } from 'lucide-react';
-import Can from '../../components/Can';
+import { DollarSign, Users, TrendingDown, Calendar, Search, Download, Lock } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { collaboratorsService, commissionsService } from '@/services';
 
-export default function RelatorioComissoes({ config, API_URL }) {
+export default function RelatorioComissoes() {
   const [relatorio, setRelatorio] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [configuracoes, setConfiguracoes] = useState([]);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
   const [carregando, setCarregando] = useState(false);
+  const [erroPermissao, setErroPermissao] = useState(null);
+
+  const { permissions, loading: permissionsLoading } = usePermissions();
+
+  // Verificação de permissão
+  const podeVisualizar = permissions.includes('cadastros:comissoes') || 
+                         permissions.includes('admin_total') ||
+                         permissions.includes('cadastros:*') ||
+                         permissions.includes('*');
 
   const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
   const buscarRelatorio = async () => {
     setCarregando(true);
     try {
-      const response = await axios.get(`${API_URL}/comissoes/relatorio?mes=${mes}&ano=${ano}`, config);
-      setRelatorio(Array.isArray(response.data) ? response.data : []);
+      console.log('🔍 [DEBUG] Buscando relatório de comissões...');
+      const response = await commissionsService.getRelatorio({ mes, ano });
+      console.log('✅ [DEBUG] Relatório carregado:', response);
+      setRelatorio(Array.isArray(response) ? response : []);
     } catch (error) {
-      console.error("Erro ao buscar relatório:", error);
-      setRelatorio([]);
+      console.error('❌ [DEBUG] Erro ao buscar relatório:', error);
+      console.error('❌ [DEBUG] Status:', error?.response?.status);
+      console.error('❌ [DEBUG] Dados:', error?.response?.data);
+      
+      if (error?.response?.status === 403) {
+        setErroPermissao('Você não tem permissão para acessar o relatório de comissões.');
+      } else {
+        setRelatorio([]);
+      }
     } finally {
       setCarregando(false);
     }
@@ -28,29 +46,40 @@ export default function RelatorioComissoes({ config, API_URL }) {
 
   const buscarColaboradores = async () => {
     try {
-      const response = await axios.get(`${API_URL}/colaboradores`, config);
-      setColaboradores(Array.isArray(response.data) ? response.data : []);
+      console.log('🔍 [DEBUG] Buscando colaboradores...');
+      const response = await collaboratorsService.getAll();
+      console.log('✅ [DEBUG] Colaboradores carregados:', response);
+      
+      if (Array.isArray(response)) {
+        setColaboradores(response);
+      } else if (response?.data && Array.isArray(response.data)) {
+        setColaboradores(response.data);
+      }
     } catch (error) {
-      console.error("Erro ao buscar colaboradores:", error);
+      console.error('❌ [DEBUG] Erro ao buscar colaboradores:', error);
       setColaboradores([]);
     }
   };
 
   const buscarConfiguracoes = async () => {
     try {
-      const response = await axios.get(`${API_URL}/comissoes/configuracoes`, config);
-      setConfiguracoes(Array.isArray(response.data) ? response.data : []);
+      console.log('🔍 [DEBUG] Buscando configurações...');
+      const response = await commissionsService.getConfiguracoes();
+      console.log('✅ [DEBUG] Configurações carregadas:', response);
+      setConfiguracoes(Array.isArray(response) ? response : []);
     } catch (error) {
-      console.error("Erro ao buscar configurações:", error);
+      console.error('❌ [DEBUG] Erro ao buscar configurações:', error);
       setConfiguracoes([]);
     }
   };
 
   useEffect(() => {
-    buscarRelatorio();
-    buscarColaboradores();
-    buscarConfiguracoes();
-  }, [mes, ano]);
+    if (podeVisualizar) {
+      buscarRelatorio();
+      buscarColaboradores();
+      buscarConfiguracoes();
+    }
+  }, [mes, ano, podeVisualizar]);
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
@@ -63,6 +92,41 @@ export default function RelatorioComissoes({ config, API_URL }) {
   const getTotalGeral = () => {
     return relatorio.reduce((acc, item) => acc + (item.salario_final || 0), 0);
   };
+
+  const getTotalDescontos = () => {
+    return relatorio.reduce((acc, item) => acc + (item.valor_total_desconto || 0), 0);
+  };
+
+  const getTotalNCs = () => {
+    return relatorio.reduce((acc, item) => acc + (item.total_ncs || 0), 0);
+  };
+
+  // Fallback para loading de permissões
+  if (permissionsLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-zinc-500 text-xs font-black uppercase tracking-widest animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
+
+  // Fallback para erro de permissão
+  if (erroPermissao || !podeVisualizar) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+          <Lock size={32} className="text-red-500" />
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">Acesso Negado</h3>
+        <p className="text-zinc-400 text-sm max-w-md">
+          {erroPermissao || 'Você não tem permissão para acessar o relatório de comissões.'}
+        </p>
+        <p className="text-zinc-500 text-xs mt-4">
+          Contate o administrador do sistema para solicitar acesso.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
@@ -77,20 +141,21 @@ export default function RelatorioComissoes({ config, API_URL }) {
               <DollarSign size={14} className="text-emerald-500"/> Resumo do Mês
             </span>
             <div className="flex items-center gap-3">
-              <Can permission="cadastros:comissoes" fallback={
-                <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
-                  <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>
-                </div>
-              }>
-                <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
-                  <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>
-                </div>
-              </Can>
+              <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
+                <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
+                <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>
+              </div>
               <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
                 <span className="text-[11px] font-bold text-zinc-400">Colaboradores:</span>
                 <span className="text-xs font-black text-white">{relatorio.length}</span>
+              </div>
+              <div className="bg-red-500/5 px-4 py-2 rounded-xl border border-red-500/20 flex items-center gap-2">
+                <span className="text-[11px] font-bold text-red-500/70">Descontos:</span>
+                <span className="text-xs font-black text-red-500">{formatarMoeda(getTotalDescontos())}</span>
+              </div>
+              <div className="bg-amber-500/5 px-4 py-2 rounded-xl border border-amber-500/20 flex items-center gap-2">
+                <span className="text-[11px] font-bold text-amber-500/70">NCs:</span>
+                <span className="text-xs font-black text-amber-500">{getTotalNCs()}</span>
               </div>
             </div>
           </div>

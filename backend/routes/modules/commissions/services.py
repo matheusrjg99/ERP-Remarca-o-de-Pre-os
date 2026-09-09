@@ -215,3 +215,185 @@ class ComissaoService:
             usuario="SISTEMA",
             endpoint="/comissoes/relatorio"
         )
+
+    # ========================================================================
+    # NOVOS MÉTODOS - MINHA COMISSÃO (VISÃO DO COLABORADOR)
+    # ========================================================================
+
+    @staticmethod
+    async def calcular_minha_comissao(
+        usuario_id: int,
+        mes: Optional[int] = None,
+        ano: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Calcula a comissão do usuário logado.
+        
+        Args:
+            usuario_id: Pode ser o ID numérico OU o login do usuário
+            mes: Mês para filtro (opcional)
+            ano: Ano para filtro (opcional)
+        
+        Returns:
+            Dict com os dados da comissão calculada
+        """
+        # 1. Primeiro, resolve o ID numérico do usuário
+        # Se 'usuario_id' for string (login), busca o ID real
+        if isinstance(usuario_id, str):
+            query_resolve_usuario = """
+                SELECT id 
+                FROM dbo.API_USUARIOS 
+                WHERE login = ? AND ativo = 1
+            """
+            
+            resultado_resolve = await executar_query(
+                banco="Bddemo",
+                query=query_resolve_usuario,
+                params=(usuario_id,),
+                usuario="SISTEMA",
+                endpoint="/minha-comissao/resolver-usuario"
+            )
+            
+            if not resultado_resolve or isinstance(resultado_resolve, dict) or len(resultado_resolve) == 0:
+                return {
+                    "erro": "Usuário não encontrado",
+                    "colaborador_id": None,
+                    "nome_colaborador": None,
+                    "salario_base": 0,
+                    "percentual_desconto": 0,
+                    "valor_por_nc": 0,
+                    "total_ncs": 0,
+                    "valor_total_desconto": 0,
+                    "salario_final": 0,
+                    "periodo": {"mes": mes, "ano": ano},
+                    "ncs": []
+                }
+            
+            usuario_id_numerico = resultado_resolve[0]['id']
+        else:
+            usuario_id_numerico = usuario_id
+        
+        # 2. Busca o colaborador vinculado ao usuário
+        query_colaborador = """
+            SELECT 
+                id,
+                nome,
+                usuario_id,
+                ativo
+            FROM dbo.COLABORADORES
+            WHERE usuario_id = ? AND ativo = 1
+        """
+        
+        colaborador_resultado = await executar_query(
+            banco="Bddemo",
+            query=query_colaborador,
+            params=(usuario_id_numerico,),
+            usuario="SISTEMA",
+            endpoint="/minha-comissao/colaborador"
+        )
+        
+        if not colaborador_resultado or isinstance(colaborador_resultado, dict) or len(colaborador_resultado) == 0:
+            return {
+                "erro": "Nenhum colaborador vinculado ao seu usuário",
+                "colaborador_id": None,
+                "nome_colaborador": None,
+                "salario_base": 0,
+                "percentual_desconto": 0,
+                "valor_por_nc": 0,
+                "total_ncs": 0,
+                "valor_total_desconto": 0,
+                "salario_final": 0,
+                "periodo": {"mes": mes, "ano": ano},
+                "ncs": []
+            }
+        
+        colaborador = colaborador_resultado[0]
+        colaborador_id = colaborador['id']
+        nome_colaborador = colaborador['nome']
+        
+        # 3. Busca a configuração de comissão
+        query_config = """
+            SELECT 
+                id,
+                colaborador_id,
+                salario_base,
+                percentual_desconto
+            FROM dbo.comissoes_config
+            WHERE colaborador_id = ?
+        """
+        
+        config_resultado = await executar_query(
+            banco="Bddemo",
+            query=query_config,
+            params=(colaborador_id,),
+            usuario="SISTEMA",
+            endpoint="/minha-comissao/configuracao"
+        )
+        
+        salario_base = 0.0
+        percentual_desconto = 0.0
+        
+        if config_resultado and not isinstance(config_resultado, dict) and len(config_resultado) > 0:
+            configuracao = config_resultado[0]
+            salario_base = float(configuracao.get('salario_base', 0) or 0)
+            percentual_desconto = float(configuracao.get('percentual_desconto', 0) or 0)
+        
+        # 4. Busca as NCs do colaborador
+        query_ncs = """
+            SELECT 
+                id,
+                descricao,
+                data_ocorrencia,
+                status
+            FROM dbo.nao_conformidades_v2
+            WHERE colaborador_id = ?
+        """
+        params_ncs = [colaborador_id]
+        
+        if mes and ano:
+            query_ncs += " AND MONTH(data_ocorrencia) = ? AND YEAR(data_ocorrencia) = ?"
+            params_ncs.extend([mes, ano])
+        elif mes:
+            query_ncs += " AND MONTH(data_ocorrencia) = ?"
+            params_ncs.append(mes)
+        elif ano:
+            query_ncs += " AND YEAR(data_ocorrencia) = ?"
+            params_ncs.append(ano)
+        
+        query_ncs += " ORDER BY data_ocorrencia DESC"
+        
+        ncs_resultado = await executar_query(
+            banco="Bddemo",
+            query=query_ncs,
+            params=tuple(params_ncs),
+            usuario="SISTEMA",
+            endpoint="/minha-comissao/ncs"
+        )
+        
+        ncs = ncs_resultado if isinstance(ncs_resultado, list) else []
+        
+        # Filtra NCs que NÃO debitam (status 'Deferido')
+        ncs_debitadas = [nc for nc in ncs if nc.get('status') != 'Deferido']
+        
+        total_ncs = len(ncs_debitadas)
+        
+        # 5. Calcula o desconto
+        valor_por_nc = (salario_base * percentual_desconto) / 100 if salario_base > 0 and percentual_desconto > 0 else 0
+        valor_total_desconto = valor_por_nc * total_ncs
+        salario_final = salario_base - valor_total_desconto
+        
+        return {
+            "colaborador_id": colaborador_id,
+            "nome_colaborador": nome_colaborador,
+            "salario_base": salario_base,
+            "percentual_desconto": percentual_desconto,
+            "valor_por_nc": valor_por_nc,
+            "total_ncs": total_ncs,
+            "valor_total_desconto": valor_total_desconto,
+            "salario_final": salario_final,
+            "periodo": {
+                "mes": mes,
+                "ano": ano
+            },
+            "ncs": ncs_debitadas
+        }

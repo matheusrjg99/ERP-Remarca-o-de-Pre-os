@@ -128,7 +128,7 @@ export default function NaoConformidades() {
                 </button>
               </Can>
               
-              <Can permission="cadastros:colaboradores">
+              <Can permission="cadastros:colaboradores:visualizar">
                 <button 
                   onClick={() => setAbaAtiva('equipe')} 
                   className={`px-4 py-1.5 flex items-center gap-2 rounded text-xs font-medium transition-all ${
@@ -137,7 +137,7 @@ export default function NaoConformidades() {
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  <Users size={14} /> Operadores
+                  <Users size={14} /> Colaboradores
                 </button>
               </Can>
               
@@ -207,7 +207,7 @@ export default function NaoConformidades() {
             )}
             
             {abaAtiva === 'equipe' && (
-              <Can permission="cadastros:colaboradores" fallback={<SemAcesso acao="gerenciar equipe" />}>
+              <Can permission="cadastros:colaboradores:visualizar" fallback={<SemAcesso acao="gerenciar equipe" />}>
                 <Equipe 
                   colaboradores={colaboradores} 
                   buscarColabs={buscarColabs} 

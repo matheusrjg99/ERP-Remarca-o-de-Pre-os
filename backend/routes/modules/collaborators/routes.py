@@ -14,7 +14,7 @@ from .services import ColaboradorService
 router = APIRouter(prefix="/colaboradores", tags=["Colaboradores"])
 
 
-@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("nc:criar"))])
+@router.get("", response_model=List[Colaborador], dependencies=[Depends(requer_permissao("nc:criar","cadastros:colaboradores:visualizar"))])
 async def listar_colaboradores():
     """Lista todos os colaboradores cadastrados"""
     resultado = await ColaboradorService.listar_todos()

@@ -3,11 +3,16 @@ Rotas de Comissões
 Apenas definição de endpoints, injeção de dependências e retorno de respostas HTTP
 Regra de negócio delegada para services.py
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 
-from auth.seguranca import requer_permissao
-from .schemas import ComissaoConfig, ComissaoConfigCreate, ComissaoRelatorioItem
+from auth.seguranca import requer_permissao, get_current_user
+from .schemas import (
+    ComissaoConfig, 
+    ComissaoConfigCreate, 
+    ComissaoRelatorioItem,
+    MinhaComissaoResponse  # ADICIONADO
+)
 from .services import ComissaoService
 
 
@@ -102,7 +107,7 @@ async def deletar_configuracao_comissao(config_id: int):
 # --- Rotas de Relatório de Comissões ---
 
 @router.get("/relatorio", response_model=List[ComissaoRelatorioItem], 
-            dependencies=[Depends(requer_permissao("comissoes:ver"))])
+            dependencies=[Depends(requer_permissao("nc:relatorios"))])
 async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int] = None):
     """Gera relatório de comissões com base nas NCs do período
     
@@ -117,3 +122,43 @@ async def gerar_relatorio_comissoes(mes: Optional[int] = None, ano: Optional[int
         raise HTTPException(status_code=500, detail=resultado["erro"])
     
     return resultado if resultado else []
+
+
+# --- Rota de Minha Comissão (Visão do Colaborador) ---
+
+@router.get("/minha-comissao", response_model=MinhaComissaoResponse)
+async def get_minha_comissao(
+    mes: Optional[int] = Query(None, description="Mês para filtro"),
+    ano: Optional[int] = Query(None, description="Ano para filtro"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Retorna a comissão do usuário logado.
+    O usuário vê apenas sua própria comissão, baseada no vínculo com colaborador.
+    
+    Permissão: Qualquer usuário autenticado pode ver sua própria comissão.
+    """
+    # Obtém o ID do usuário do token
+    usuario_id = current_user.get("usuario_id")
+    
+    if not usuario_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Usuário não identificado"
+        )
+    
+    # Busca a comissão
+    resultado = await ComissaoService.calcular_minha_comissao(
+        usuario_id=usuario_id,
+        mes=mes,
+        ano=ano
+    )
+    
+    # Se houver erro de vínculo, retorna 404
+    if "erro" in resultado and resultado.get("colaborador_id") is None:
+        raise HTTPException(
+            status_code=404,
+            detail=resultado["erro"]
+        )
+    
+    return resultado

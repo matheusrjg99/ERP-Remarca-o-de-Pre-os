@@ -25,10 +25,13 @@ async def listar_contestacoes(nc_id: int):
     return resultado if resultado else []
 
 
-@router.post("", response_model=NCContestacao, status_code=status.HTTP_201_CREATED, 
-             dependencies=[Depends(requer_permissao("nc:contestar"))])
+@router.post("", response_model=NCContestacao, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(requer_permissao("nc:auditoria", "nc:contestar"))])
 async def adicionar_contestacao(contestacao: NCContestacaoCreate):
-    """Adiciona mensagem ao chat da NC"""
+    """
+    Adiciona mensagem ao chat da NC.
+    Aceita tanto nc:auditoria quanto nc:contestar.
+    """
     sucesso = await ContestacaoService.criar(
         nao_conformidade_id=contestacao.nao_conformidade_id,
         mensagem=contestacao.mensagem,

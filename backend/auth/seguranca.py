@@ -5,6 +5,7 @@ from functools import wraps
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from typing import List, Optional
+import logging
 
 # Configurações de Segurança
 SECRET_KEY = "chave_secreta_provisoria_mudar_depois"
@@ -21,6 +22,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 NIVEIS_PRIVILEGIO = {
     "excluir": 4,
     "editar": 3,
+    "criar": 3,
     "remarcar": 2,
     "consultar": 1,
     "visualizar": 1,
@@ -31,12 +33,13 @@ def verificar_hierarquia_permissao(permissao_requerida: str, permissoes_usuario:
     """
     Verifica se o usuário possui a permissão requerida, considerando:
     1. Permissão exata
-    2. Curinga do módulo (ex: 'precificacao:*')
-    3. Admin total
-    4. Hierarquia implícita (ações de nível superior incluem inferiores)
+    2. Curinga do módulo (ex: 'precificacao:*' ou 'cadastros:colaboradores:*')
+    3. Permissão de módulo sem ação (ex: 'cadastros:colaboradores')
+    4. Admin total
+    5. Hierarquia implícita (ações de nível superior incluem inferiores)
     
     Args:
-        permissao_requerida: String no formato "modulo:acao" (ex: "precificacao:consultar")
+        permissao_requerida: String no formato "modulo:acao" ou "modulo:submodulo:acao"
         permissoes_usuario: Lista de permissões do usuário
     
     Returns:
@@ -50,16 +53,27 @@ def verificar_hierarquia_permissao(permissao_requerida: str, permissoes_usuario:
     if permissao_requerida in permissoes_usuario:
         return True
     
-    # Curinga do módulo (ex: "precificacao:*")
-    modulo = permissao_requerida.split(":")[0] if ":" in permissao_requerida else permissao_requerida
-    if f"{modulo}:*" in permissoes_usuario:
-        return True
-    
     # Verificar hierarquia implícita
     if ":" not in permissao_requerida:
         return False
     
-    modulo_requerido, acao_requerida = permissao_requerida.split(":", 1)
+    # Divide a permissão requerida em partes
+    partes_requerida = permissao_requerida.split(":")
+    acao_requerida = partes_requerida[-1]  # Última parte é a ação
+    modulo_requerido = ":".join(partes_requerida[:-1])  # Tudo antes da ação é o módulo
+    
+    # Verifica se o usuário tem acesso total ao módulo (permissão sem ação específica)
+    if modulo_requerido in permissoes_usuario:
+        return True
+    
+    # Curinga do módulo completo (ex: "cadastros:colaboradores:*")
+    if f"{modulo_requerido}:*" in permissoes_usuario:
+        return True
+    
+    # Curinga do primeiro nível (ex: "cadastros:*")
+    if f"{partes_requerida[0]}:*" in permissoes_usuario:
+        return True
+    
     nivel_requerido = NIVEIS_PRIVILEGIO.get(acao_requerida.lower(), 0)
     
     # Se não há nível definido, não aplica hierarquia
@@ -71,17 +85,23 @@ def verificar_hierarquia_permissao(permissao_requerida: str, permissoes_usuario:
         if ":" not in permissao:
             continue
         
-        usuario_modulo, usuario_acao = permissao.split(":", 1)
+        partes_usuario = permissao.split(":")
+        acao_usuario = partes_usuario[-1]  # Última parte é a ação
+        modulo_usuario = ":".join(partes_usuario[:-1])  # Tudo antes da ação é o módulo
         
         # Só compara permissões do mesmo módulo
-        if usuario_modulo != modulo_requerido:
+        if modulo_usuario != modulo_requerido:
             continue
         
         # Ignora curingas (já tratados acima)
-        if usuario_acao == "*":
+        if acao_usuario == "*":
             continue
         
-        nivel_usuario = NIVEIS_PRIVILEGIO.get(usuario_acao.lower(), 0)
+        nivel_usuario = NIVEIS_PRIVILEGIO.get(acao_usuario.lower(), 0)
+        
+        # Se a ação do usuário também não está no dicionário, não concede hierarquia
+        if nivel_usuario == 0:
+            continue
         
         # Se o usuário tem uma permissão de nível superior no mesmo módulo, autoriza
         if nivel_usuario > nivel_requerido:
@@ -89,16 +109,18 @@ def verificar_hierarquia_permissao(permissao_requerida: str, permissoes_usuario:
     
     return False
 
-def requer_permissao(permissao_necessaria: str):
+
+def requer_permissao(*permissoes_necessarias: str):
     """
-    Decorador que valida se o usuário possui a permissão necessária.
+    Decorador que valida se o usuário possui QUALQUER UMA das permissões necessárias.
     Implementa hierarquia implícita: níveis superiores herdam inferiores.
     
-    Uso: @requer_permissao("precificacao:consultar")
+    Uso: 
+        @requer_permissao("precificacao:consultar")
+        @requer_permissao("nc:criar", "cadastros:colaboradores:visualizar")  # OR lógico
     
     Returns uma dependência do FastAPI que pode ser usada com Depends().
     """
-    import logging
     
     async def verificar(current_user: dict = Depends(get_current_user)):
         permissoes_usuario = current_user.get("permissoes", [])
@@ -107,7 +129,7 @@ def requer_permissao(permissao_necessaria: str):
         
         # LOG: Entrada da verificação
         logging.warning(f"[DEBUG PERMISSAO] Usuário: {username} | Cargo: {cargo}")
-        logging.warning(f"[DEBUG PERMISSAO] Permissão requerida: {permissao_necessaria}")
+        logging.warning(f"[DEBUG PERMISSAO] Permissões requeridas: {permissoes_necessarias}")
         logging.warning(f"[DEBUG PERMISSAO] Permissões do usuário: {permissoes_usuario}")
         
         # Admin total (cargos especiais) tem acesso a tudo
@@ -115,20 +137,23 @@ def requer_permissao(permissao_necessaria: str):
             logging.warning(f"[DEBUG PERMISSAO] Acesso concedido (ADMIN/CARGO ESPECIAL)")
             return current_user
         
-        # Verifica permissão explícita ou hierárquica
-        tem_permissao = verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario)
+        # Verifica cada permissão necessária (OR lógico)
+        for permissao_necessaria in permissoes_necessarias:
+            tem_permissao = verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario)
+            
+            logging.warning(f"[DEBUG PERMISSAO] Verificando '{permissao_necessaria}': {tem_permissao}")
+            
+            if tem_permissao:
+                logging.warning(f"[DEBUG PERMISSAO] Acesso concedido para {username} via '{permissao_necessaria}'")
+                return current_user
         
-        logging.warning(f"[DEBUG PERMISSAO] Resultado da verificação hierárquica: {tem_permissao}")
-        
-        if not tem_permissao:
-            logging.error(f"[ACESSO NEGADO] {username} não tem {permissao_necessaria}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Permissão insuficiente. Requer: {permissao_necessaria}"
-            )
-        
-        logging.warning(f"[DEBUG PERMISSAO] Acesso concedido para {username}")
-        return current_user
+        # Se nenhuma permissão foi satisfeita
+        permissoes_formatadas = " OU ".join(permissoes_necessarias)
+        logging.error(f"[ACESSO NEGADO] {username} não tem nenhuma das permissões: {permissoes_formatadas}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permissão insuficiente. Requer uma das: {permissoes_formatadas}"
+        )
     
     return verificar
 
@@ -149,20 +174,39 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        usuario_id: int = payload.get("sub")
+        
+        # LOG: Payload completo do token
+        logging.warning(f"[DEBUG TOKEN] Payload completo: {payload}")
+        
+        usuario_id = payload.get("sub")
+        
+        # LOG: Detalhes do payload
+        logging.warning(f"[DEBUG TOKEN] 'sub' (usuario_id): {usuario_id}")
+        logging.warning(f"[DEBUG TOKEN] Tipo de 'sub': {type(usuario_id)}")
+        logging.warning(f"[DEBUG TOKEN] 'nome': {payload.get('nome')}")
+        logging.warning(f"[DEBUG TOKEN] 'email': {payload.get('email')}")
+        logging.warning(f"[DEBUG TOKEN] 'cargo': {payload.get('cargo')}")
+        logging.warning(f"[DEBUG TOKEN] 'permissoes': {payload.get('permissoes', [])}")
+        
         if usuario_id is None:
+            logging.error("[DEBUG TOKEN] 'sub' é None - token inválido")
             raise credentials_exception
     except JWTError:
+        logging.error("[DEBUG TOKEN] JWTError ao decodificar token")
         raise credentials_exception
     
-    # Retorna o payload completo do token
-    return {
+    # LOG: Dados retornados
+    user_data = {
         "usuario_id": payload.get("sub"),
         "nome": payload.get("nome"),
         "email": payload.get("email"),
         "cargo": payload.get("cargo"),
         "permissoes": payload.get("permissoes", []),
     }
+    
+    logging.warning(f"[DEBUG TOKEN] Retornando usuário: {user_data}")
+    
+    return user_data
 
 
 async def get_current_user_with_db(token: str = Depends(oauth2_scheme), db=None) -> dict:
@@ -180,8 +224,11 @@ async def get_current_user_with_db(token: str = Depends(oauth2_scheme), db=None)
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        usuario_id: int = payload.get("sub")
+        usuario_id = payload.get("sub")
         login = payload.get("sub")  # Assume que 'sub' é o login
+        
+        logging.warning(f"[DEBUG TOKEN DB] 'sub': {usuario_id} | login: {login}")
+        
         if usuario_id is None and login is None:
             raise credentials_exception
     except JWTError:
@@ -261,7 +308,6 @@ async def obter_permissoes_usuario(login: str) -> list:
         return ["admin_total"]
     
     # Busca dados do usuário incluindo cargo_id
-    # NOTA: A coluna nivel_acesso foi removida em favor do sistema RBAC baseado em cargos
     query_usuario_completo = """
         SELECT login, nome, cargo_id 
         FROM dbo.API_USUARIOS 
@@ -286,7 +332,6 @@ async def obter_permissoes_usuario(login: str) -> list:
         
         print(f"DEBUG: Usuário '{login}' - cargo_id={cargo_id}")
         
-        # Se não tiver cargo atribuído, retorna vazio
         if cargo_id is None:
             print(f"DEBUG: Usuário '{login}' não tem cargo atribuído (cargo_id=None)")
             return []
@@ -312,8 +357,6 @@ async def obter_permissoes_usuario(login: str) -> list:
         print(f"DEBUG: Cargo ativo confirmado para usuário '{login}'")
         
         # Query otimizada: busca permissões do cargo ativo
-        # NOTA: Removido ORDER BY pois não é compatível com SELECT DISTINCT no SQL Server
-        # a menos que a coluna esteja na lista de seleção
         query = """
             SELECT DISTINCT LTRIM(RTRIM(p.codigo)) as codigo
             FROM dbo.cargo_permissoes cp

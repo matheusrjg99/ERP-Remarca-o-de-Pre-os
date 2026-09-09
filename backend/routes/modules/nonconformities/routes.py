@@ -93,19 +93,19 @@ async def atualizar_nc(nc_id: int, nc_update: NaoConformidadeUpdate):
     return resultado[0]
 
 
-@router.post("/{nc_id}/deferir", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:deferir"))])
+@router.post("/{nc_id}/deferir", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:auditoria"))])
 async def deferir_nc(nc_id: int):
     """Marca NC como Deferida"""
     return await _atualizar_status_nc(nc_id, "Deferido")
 
 
-@router.post("/{nc_id}/indeferir", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:indeferir"))])
+@router.post("/{nc_id}/indeferir", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:auditoria"))])
 async def indeferir_nc(nc_id: int):
     """Marca NC como Indeferida"""
     return await _atualizar_status_nc(nc_id, "Indeferido")
 
 
-@router.post("/{nc_id}/resolver", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:resolver"))])
+@router.post("/{nc_id}/resolver", response_model=NaoConformidade, dependencies=[Depends(requer_permissao("nc:auditoria"))])
 async def resolver_nc(nc_id: int):
     """Marca NC como Resolvida"""
     return await _atualizar_status_nc(nc_id, "Resolvido")

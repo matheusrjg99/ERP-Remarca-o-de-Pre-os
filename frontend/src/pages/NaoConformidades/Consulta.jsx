@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Search, Edit3, Trash2, MessageSquare, User, Calendar, ChevronUp, ChevronDown, ChevronsUpDown, ShieldCheck, XCircle, CheckCircle2, BarChart3, Eye, Lock } from 'lucide-react';
 import ModalEdicao from "./ModalEdicao";
 import ModalContestacao from "./ModalContestacao";
+import MinhaComissaoBar from "./MinhaComissaoBar"; // ADICIONADO
 import Can from '../../components/Can';
 import { nonConformitiesService } from '@/services';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -15,19 +16,29 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
   const [ordem, setOrdem] = useState({ chave: 'id', direcao: 'desc' });
   const [deletando, setDeletando] = useState(false);
 
-  const { can } = usePermissions();
+  const { can, permissions } = usePermissions();
 
-  const tratarNome = (n) => {
+  // Verificações EXATAS para permissões específicas
+  const podeContestar = permissions.includes('nc:contestar') || 
+                        permissions.includes('admin_total') ||
+                        permissions.includes('nc:*');
+
+  const podeAuditar = permissions.includes('nc:auditoria') || 
+                      permissions.includes('admin_total') ||
+                      permissions.includes('nc:*');
+
+  const tratarNome = useCallback((n) => {
     if (!n) return '';
     return n.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-  };
+  }, []);
 
-  // --- LÓGICA DE ESTATÍSTICAS (CAPITALIZE) ---
+  // --- LÓGICA DE ESTATÍSTICAS ---
   const stats = useMemo(() => {
     return {
       total: registros.length,
       pendentes: registros.filter(r => r.status === 'Pendente').length,
-      resolvidos: registros.filter(r => r.status !== 'Pendente').length
+      contestadas: registros.filter(r => r.status === 'Contestada' || r.status === 'Contestado').length,
+      resolvidos: registros.filter(r => ['Resolvida', 'Resolvido', 'Aceita', 'Deferido', 'Indeferido'].includes(r.status)).length
     };
   }, [registros]);
 
@@ -67,11 +78,32 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
         buscarRegistros();
       } catch (error) {
         console.error("Erro ao excluir:", error);
-        alert("Falha ao excluir registro.");
+        
+        if (error?.response?.status === 403) {
+          alert("Você não tem permissão para excluir este registro.");
+        } else {
+          alert("Falha ao excluir registro.");
+        }
       } finally {
         setDeletando(false);
       }
     }
+  };
+
+  const getStatusInfo = (status) => {
+    const statusMap = {
+      'Pendente': { icon: <Eye size={14} />, label: 'Pendente', className: 'text-zinc-500' },
+      'Resolvida': { icon: <CheckCircle2 size={14} />, label: 'Resolvido', className: 'text-emerald-400' },
+      'Resolvido': { icon: <CheckCircle2 size={14} />, label: 'Resolvido', className: 'text-emerald-400' },
+      'Aceita': { icon: <ShieldCheck size={14} />, label: 'Aceita', className: 'text-blue-400' },
+      'Deferido': { icon: <CheckCircle2 size={14} />, label: 'Deferido', className: 'text-emerald-400' },
+      'Indeferido': { icon: <XCircle size={14} />, label: 'Indeferido', className: 'text-red-500' },
+      'Contestada': { icon: <MessageSquare size={13} fill="currentColor" />, label: 'Contestado', className: 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse' },
+      'Contestado': { icon: <MessageSquare size={13} fill="currentColor" />, label: 'Contestado', className: 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse' },
+      'Recusada': { icon: <XCircle size={14} />, label: 'Recusada', className: 'text-red-500' },
+    };
+
+    return statusMap[status] || { icon: <Eye size={14} />, label: status || 'Pendente', className: 'text-zinc-500' };
   };
 
   const Th = ({ label, chave, width = "auto" }) => (
@@ -95,23 +127,30 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
     >
       <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
         
+        {/* MINHA COMISSÃO BAR - ADICIONADO AQUI */}
+        <MinhaComissaoBar mes={mes} ano={ano} />
+        
         {/* HEADER: RESUMO (ESQUERDA) E FILTROS (DIREITA) */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6 bg-[#09090b] p-5 rounded-2xl border border-zinc-800/50 shadow-sm">
           
-          {/* RESUMO (Preenche o vazio da esquerda) */}
+          {/* RESUMO */}
           <div className="flex items-center gap-6">
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
                 <BarChart3 size={14} className="text-[#3B8ED0]"/> Resumo
               </span>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-zinc-400">Total de Registros:</span>
+                  <span className="text-[11px] font-bold text-zinc-400">Total:</span>
                   <span className="text-xs font-black text-white">{stats.total}</span>
                 </div>
                 <div className="bg-amber-500/5 px-4 py-2 rounded-xl border border-amber-500/20 flex items-center gap-2">
                   <span className="text-[11px] font-bold text-amber-500/70">Pendentes:</span>
                   <span className="text-xs font-black text-amber-500">{stats.pendentes}</span>
+                </div>
+                <div className="bg-blue-500/5 px-4 py-2 rounded-xl border border-blue-500/20 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-blue-500/70">Contestadas:</span>
+                  <span className="text-xs font-black text-blue-500">{stats.contestadas}</span>
                 </div>
                 <div className="bg-emerald-500/5 px-4 py-2 rounded-xl border border-emerald-500/20 flex items-center gap-2">
                   <span className="text-[11px] font-bold text-emerald-500/70">Resolvidos:</span>
@@ -121,25 +160,45 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
             </div>
           </div>
 
-          {/* FILTROS (Direita) */}
+          {/* FILTROS */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex bg-[#121215] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-[#3B8ED0]/50 transition-all shadow-inner">
               <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><Calendar size={14} /></div>
-              <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none uppercase cursor-pointer" value={mes} onChange={e => setMes(e.target.value)}>
+              <select 
+                className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none uppercase cursor-pointer" 
+                value={mes} 
+                onChange={e => setMes(parseInt(e.target.value))}
+              >
                 {mesesNomes.map((n, i) => <option key={n} value={i + 1} className="bg-[#09090b]">{n}</option>)}
               </select>
-              <input type="number" className="bg-transparent border-l border-zinc-800 text-xs font-bold text-zinc-200 w-24 px-4 outline-none text-center" value={ano} onChange={e => setAno(e.target.value)} />
+              <input 
+                type="number" 
+                className="bg-transparent border-l border-zinc-800 text-xs font-bold text-zinc-200 w-24 px-4 outline-none text-center" 
+                value={ano} 
+                onChange={e => setAno(parseInt(e.target.value))} 
+              />
             </div>
 
             <div className="flex bg-[#121215] border border-zinc-800 rounded-xl overflow-hidden min-w-[280px] focus-within:border-[#3B8ED0]/50 transition-all shadow-inner">
               <div className="flex items-center px-4 border-r border-zinc-800 bg-black/20 text-[#3B8ED0]"><User size={14} /></div>
-              <select className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none w-full uppercase cursor-pointer" value={filtroColab} onChange={e => setFiltroColab(e.target.value)}>
+              <select 
+                className="bg-transparent text-xs font-bold text-zinc-200 px-4 py-3 outline-none w-full uppercase cursor-pointer" 
+                value={filtroColab} 
+                onChange={e => setFiltroColab(e.target.value)}
+              >
                 <option value="" className="bg-[#09090b]">Todos os Operadores</option>
-                {colaboradores.map(c => <option key={c.id} value={c.id} className="bg-[#09090b]">{tratarNome(c.nome)}</option>)}
+                {colaboradores.map(c => (
+                  <option key={c.id} value={c.id} className="bg-[#09090b]">
+                    {tratarNome(c.nome || c.nome_colaborador)}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <button onClick={buscarRegistros} className="bg-[#3B8ED0] hover:bg-[#2d74ab] text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md shadow-[#3B8ED0]/20">
+            <button 
+              onClick={buscarRegistros} 
+              className="bg-[#3B8ED0] hover:bg-[#2d74ab] text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md shadow-[#3B8ED0]/20"
+            >
               <Search size={20} />
             </button>
           </div>
@@ -156,100 +215,128 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
                   <Th label="Colaborador" chave="nome_colaborador" width="w-[240px]" />
                   <Th label="Ocorrência" chave="descricao" />
                   <Th label="Status" chave="status" width="w-[160px]" />
-                  <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right w-[140px]">Ações</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-zinc-500 uppercase tracking-widest text-right w-[180px]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 {registrosProcessados.length === 0 ? (
-                  <tr><td colSpan="6" className="py-32 text-center text-zinc-600 font-black uppercase text-xs tracking-widest opacity-40">Nenhum dado processado</td></tr>
+                  <tr>
+                    <td colSpan="6" className="py-32 text-center text-zinc-600 font-black uppercase text-xs tracking-widest opacity-40">
+                      Nenhum dado processado
+                    </td>
+                  </tr>
                 ) : (
-                  registrosProcessados.map(reg => (
-                    <tr key={reg.id} onDoubleClick={() => setSelecionado(reg)} className="hover:bg-white/[0.03] transition-colors group cursor-pointer">
-                      
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <span className="inline-flex items-center text-[11px] font-mono font-bold text-[#3B8ED0] bg-[#3B8ED0]/10 px-2.5 py-1 rounded-md border border-[#3B8ED0]/20">
-                          #{reg.id}
-                        </span>
-                      </td>
-                      
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <span className="text-[12px] font-mono text-zinc-500">{new Date(reg.data_ocorrencia).toLocaleDateString('pt-BR')}</span>
-                      </td>
-                      
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">{tratarNome(reg.nome_colaborador)}</span>
-                      </td>
-                      
-                      {/* OCORRÊNCIA EM ALTA DEFINIÇÃO */}
-                      <td className="px-6 py-5">
-                        <p className="text-[15px] text-white font-semibold leading-relaxed group-hover:drop-shadow-[0_0_1px_rgba(255,255,255,0.5)] transition-all">
-                          {reg.descricao}
-                        </p>
-                      </td>
-                      
-                      {/* STATUS CORRIGIDO */}
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        {reg.status === 'Resolvida' ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
-                            <CheckCircle2 size={14} /> Resolvido
+                  registrosProcessados.map(reg => {
+                    const statusInfo = getStatusInfo(reg.status);
+                    
+                    return (
+                      <tr 
+                        key={reg.id} 
+                        onDoubleClick={() => setSelecionado(reg)} 
+                        className="hover:bg-white/[0.03] transition-colors group cursor-pointer"
+                      >
+                        
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className="inline-flex items-center text-[11px] font-mono font-bold text-[#3B8ED0] bg-[#3B8ED0]/10 px-2.5 py-1 rounded-md border border-[#3B8ED0]/20">
+                            #{reg.id}
                           </span>
-                        ) : reg.status === 'Aceita' ? (
-                          <span className="inline-flex items-center gap-1.5 text-blue-400 font-black text-[9px] uppercase tracking-widest">
-                            <ShieldCheck size={14} /> Aceita
+                        </td>
+                        
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className="text-[12px] font-mono text-zinc-500">
+                            {new Date(reg.data_ocorrencia).toLocaleDateString('pt-BR')}
                           </span>
-                        ) : reg.status === 'Contestada' ? (
-                          <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-500 font-black px-2.5 py-1.5 rounded-lg border border-amber-500/20 text-[9px] uppercase tracking-widest animate-pulse">
-                            <MessageSquare size={13} fill="currentColor" /> Contestado
+                        </td>
+                        
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className="text-sm font-black text-zinc-200 uppercase tracking-tight">
+                            {tratarNome(reg.nome_colaborador)}
                           </span>
-                        ) : reg.status === 'Recusada' ? (
-                          <span className="inline-flex items-center gap-1.5 text-red-500 font-black text-[9px] uppercase tracking-widest">
-                            <XCircle size={14} /> Recusada
+                        </td>
+                        
+                        {/* OCORRÊNCIA */}
+                        <td className="px-6 py-5">
+                          <p className="text-[15px] text-white font-semibold leading-relaxed group-hover:drop-shadow-[0_0_1px_rgba(255,255,255,0.5)] transition-all">
+                            {reg.descricao}
+                          </p>
+                        </td>
+                        
+                        {/* STATUS */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest px-2.5 py-1.5 rounded-lg ${statusInfo.className}`}>
+                            {statusInfo.icon} {statusInfo.label}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-zinc-500 font-black text-[9px] uppercase tracking-widest">
-                            <Eye size={14} /> Pendente
-                          </span>
-                        )}
-                      </td>
-                      
-                      <td className="px-6 py-5 whitespace-nowrap text-right">
-                        <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                          <Can permission="nc:contestar">
-                            <button onClick={() => setSelecionado(reg)} className="p-2 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all" title="Contestar"><MessageSquare size={16}/></button>
-                          </Can>
-                          <Can permission="nc:editar">
-                            <button onClick={() => setEditando(reg)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" title="Editar"><Edit3 size={16}/></button>
-                          </Can>
-                          <Can permission="nc:excluir">
-                            <button 
-                              onClick={() => acaoExcluir(reg.id)} 
-                              disabled={deletando}
-                              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
-                              title={deletando ? "Excluindo..." : "Excluir"}
-                            >
-                              <Trash2 size={16}/>
-                            </button>
-                          </Can>
-                        </div>
-                      </td>
-                      
-                    </tr>
-                  ))
+                        </td>
+                        
+                        {/* AÇÕES */}
+                        <td className="px-6 py-5 whitespace-nowrap text-right">
+                          <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                            
+                            {/* Botão de Contestar */}
+                            {podeContestar && (
+                              <button 
+                                onClick={() => setSelecionado(reg)} 
+                                className="p-2 text-zinc-400 hover:text-[#3B8ED0] hover:bg-[#3B8ED0]/10 rounded-lg transition-all" 
+                                title="Contestar"
+                              >
+                                <MessageSquare size={16}/>
+                              </button>
+                            )}
+                            
+                            {/* Botão de Auditar */}
+                            {podeAuditar && (
+                              <button 
+                                onClick={() => setSelecionado(reg)} 
+                                className="p-2 text-zinc-400 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all" 
+                                title="Auditar"
+                              >
+                                <ShieldCheck size={16}/>
+                              </button>
+                            )}
+                            
+                            {/* Botão de Editar */}
+                            <Can permission="nc:editar">
+                              <button 
+                                onClick={() => setEditando(reg)} 
+                                className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-all" 
+                                title="Editar"
+                              >
+                                <Edit3 size={16}/>
+                              </button>
+                            </Can>
+                            
+                            {/* Botão de Excluir */}
+                            <Can permission="nc:excluir">
+                              <button 
+                                onClick={() => acaoExcluir(reg.id)} 
+                                disabled={deletando}
+                                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
+                                title={deletando ? "Excluindo..." : "Excluir"}
+                              >
+                                <Trash2 size={16}/>
+                              </button>
+                            </Can>
+                          </div>
+                        </td>
+                        
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
           
-          {/* RODAPÉ INTEGRADO */}
+          {/* RODAPÉ */}
           <div className="bg-[#121215] border-t border-zinc-800/80 px-6 py-3 flex justify-between items-center">
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               Total do período: <span className="text-white">{registrosProcessados.length}</span> entradas
             </p>
             <div className="flex gap-4">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shadow-[0_0_8px_#f59e0b]"></div>
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Aguardando Auditoria</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shadow-[0_0_8px_#f59e0b]"></div>
+                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Aguardando Auditoria</span>
+              </div>
             </div>
           </div>
         </div>

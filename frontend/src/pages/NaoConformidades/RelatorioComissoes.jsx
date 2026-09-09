@@ -77,7 +77,7 @@ export default function RelatorioComissoes({ config, API_URL }) {
               <DollarSign size={14} className="text-emerald-500"/> Resumo do Mês
             </span>
             <div className="flex items-center gap-3">
-              <Can permission="comissoes:ver_resumo_total" fallback={
+              <Can permission="cadastros:comissoes" fallback={
                 <div className="bg-zinc-900/50 px-4 py-2 rounded-xl border border-zinc-800 flex items-center gap-2">
                   <span className="text-[11px] font-bold text-zinc-400">Total a Pagar:</span>
                   <span className="text-xs font-black text-emerald-500">{formatarMoeda(getTotalGeral())}</span>

@@ -21,7 +21,7 @@ const ModalUsuarios = lazy(() => import('../../components/ModalUsuarios'));
 const ModalLogs = lazy(() => import('../../components/ModalLogs'));
 
 export default function Precificacao({ onLogout, onVoltarMenu }) {
-  const usuarioLogadoId = localStorage.getItem('usuario') || "matheus"; 
+  const usuarioLogadoId = localStorage.getItem('usuario') || "Sistema"; 
   const usuarioLogado = localStorage.getItem('nome_usuario') || localStorage.getItem('usuario') || 'Usuário';
   const btnRecalculoRef = useRef(null);
   
@@ -34,6 +34,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   // permissões especificas
 
   const podeRecalcular = can('precificacao:editar')
+  const podeRemarcar = can('precificacao:editar')
   const podePersonalizarVisual = can('precificacao:consultar')
   const podeSelecionarNota = can('precificacao:consultar')
   const podeVerCustos = can('precificacao:consultar')
@@ -319,6 +320,12 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
   }, []);
 
   const handleRemarcarSelecionados = async () => {
+
+    if (!podeRemarcar) {
+      alert('Você não tem permissão para remarcar produtos.');
+      return;
+    }
+    
     if (selecionados.length === 0) return;
     setLoadingAcao(true);
     let erros = 0;

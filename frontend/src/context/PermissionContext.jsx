@@ -16,6 +16,19 @@ export const PermissionProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
+  // Carrega as permissões ao montar o componente se houver token válido
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      loadPermissions();
+    } else {
+      // Se não há token, garante que loading seja false e permissões vazias
+      setLoading(false);
+      setPermissions([]);
+      setUser(null);
+    }
+  }, []);
+
   const loadPermissions = async () => {
     try {
       const userData = await authService.getMeusDados();

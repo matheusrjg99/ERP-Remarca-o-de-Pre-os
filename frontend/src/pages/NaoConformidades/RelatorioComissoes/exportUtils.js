@@ -4,12 +4,13 @@
  */
 
 /**
- * Exporta os dados do relatório para CSV
+ * Exporta os dados do relatório para CSV com separação fiscal/dinheiro
  * @param {Array} dados - Array de objetos com os dados do relatório
  * @param {number} mes - Mês de referência (1-12)
  * @param {number} ano - Ano de referência
+ * @param {object} percentuais - Objeto com percentualFiscal e percentualDinheiro
  */
-export const exportarParaCSV = (dados, mes, ano) => {
+export const exportarParaCSV = (dados, mes, ano, percentuais = { percentualFiscal: 100, percentualDinheiro: 0 }) => {
   if (!dados || dados.length === 0) {
     console.warn('Nenhum dado para exportar');
     return;
@@ -20,25 +21,39 @@ export const exportarParaCSV = (dados, mes, ano) => {
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
 
-  // Cabeçalho do CSV
+  // Cabeçalho do CSV com colunas separadas para fiscal e dinheiro
   const cabecalho = [
     'ID',
     'Colaborador',
     'Salário Base',
     'Total NCs',
     'Valor Desconto',
-    'Salário Final'
+    'Salário Final',
+    'Percentual Fiscal (%)',
+    'Valor Fiscal',
+    'Percentual Dinheiro (%)',
+    'Valor Dinheiro'
   ];
 
-  // Linhas de dados
-  const linhas = dados.map(item => [
-    item.colaborador_id,
-    `"${item.nome_colaborador}"`,
-    item.salario_base.toFixed(2).replace('.', ','),
-    item.total_ncs || 0,
-    (item.valor_total_desconto || 0).toFixed(2).replace('.', ','),
-    (item.salario_final || 0).toFixed(2).replace('.', ',')
-  ]);
+  // Linhas de dados com separação fiscal/dinheiro
+  const linhas = dados.map(item => {
+    const salarioFinal = item.salario_final || 0;
+    const valorFiscal = salarioFinal * ((percentuais?.percentualFiscal || 100) / 100);
+    const valorDinheiro = salarioFinal * ((percentuais?.percentualDinheiro || 0) / 100);
+
+    return [
+      item.colaborador_id,
+      `"${item.nome_colaborador}"`,
+      (item.salario_base || 0).toFixed(2).replace('.', ','),
+      item.total_ncs || 0,
+      (item.valor_total_desconto || 0).toFixed(2).replace('.', ','),
+      salarioFinal.toFixed(2).replace('.', ','),
+      (percentuais?.percentualFiscal || 100).toFixed(2).replace('.', ','),
+      valorFiscal.toFixed(2).replace('.', ','),
+      (percentuais?.percentualDinheiro || 0).toFixed(2).replace('.', ','),
+      valorDinheiro.toFixed(2).replace('.', ',')
+    ];
+  });
 
   // Monta o conteúdo CSV
   const conteudoCSV = [
@@ -66,12 +81,14 @@ export const exportarParaCSV = (dados, mes, ano) => {
 
 /**
  * Exporta os dados do relatório para PDF (usando window.print como fallback)
+ * com separação fiscal/dinheiro
  * @param {Array} dados - Array de objetos com os dados do relatório
  * @param {number} mes - Mês de referência (1-12)
  * @param {number} ano - Ano de referência
  * @param {Function} formatarMoeda - Função para formatar valores monetários
+ * @param {object} percentuais - Objeto com percentualFiscal e percentualDinheiro
  */
-export const exportarParaPDF = (dados, mes, ano, formatarMoeda) => {
+export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { percentualFiscal: 100, percentualDinheiro: 0 }) => {
   if (!dados || dados.length === 0) {
     console.warn('Nenhum dado para exportar');
     return;
@@ -86,6 +103,10 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda) => {
   const totalGeral = dados.reduce((acc, item) => acc + (item.salario_final || 0), 0);
   const totalDescontos = dados.reduce((acc, item) => acc + (item.valor_total_desconto || 0), 0);
   const totalNCs = dados.reduce((acc, item) => acc + (item.total_ncs || 0), 0);
+  
+  // Calcula totais fiscal e dinheiro
+  const totalFiscal = totalGeral * ((percentuais?.percentualFiscal || 100) / 100);
+  const totalDinheiro = totalGeral * ((percentuais?.percentualDinheiro || 0) / 100);
 
   // Gera HTML para impressão
   const htmlConteudo = `
@@ -134,6 +155,9 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda) => {
           color: #1a1a1a;
           margin-top: 5px;
         }
+        .resumo-destaque {
+          color: #10b981;
+        }
         table {
           width: 100%;
           border-collapse: collapse;
@@ -169,6 +193,45 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda) => {
           text-align: right;
           font-weight: bold;
         }
+        .separacao-fiscal-dinheiro {
+          margin-top: 20px;
+          padding: 15px;
+          background: #f0fdf4;
+          border: 1px solid #86efac;
+          border-radius: 8px;
+        }
+        .separacao-fiscal-dinheiro h3 {
+          font-size: 14px;
+          color: #166534;
+          margin-bottom: 10px;
+          text-transform: uppercase;
+        }
+        .separacao-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+        }
+        .separacao-item {
+          background: white;
+          padding: 12px;
+          border-radius: 6px;
+          border-left: 4px solid #10b981;
+        }
+        .separacao-item.fiscal {
+          border-left-color: #3B8ED0;
+        }
+        .separacao-label {
+          font-size: 11px;
+          color: #666;
+          text-transform: uppercase;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .separacao-valor {
+          font-size: 16px;
+          font-weight: bold;
+          color: #1a1a1a;
+        }
         @media print {
           body { padding: 20px; }
           .no-print { display: none; }
@@ -198,6 +261,21 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda) => {
         </div>
       </div>
 
+      <!-- Seção de Separação Fiscal/Dinheiro -->
+      <div class="separacao-fiscal-dinheiro">
+        <h3>📊 Distribuição da Comissão</h3>
+        <div class="separacao-grid">
+          <div class="separacao-item fiscal">
+            <div class="separacao-label">Valor Fiscal (${(percentuais?.percentualFiscal || 100).toFixed(2)}%)</div>
+            <div class="separacao-valor resumo-destaque">${formatarMoeda(totalFiscal)}</div>
+          </div>
+          <div class="separacao-item">
+            <div class="separacao-label">Valor em Dinheiro (${(percentuais?.percentualDinheiro || 0).toFixed(2)}%)</div>
+            <div class="separacao-valor resumo-destaque">${formatarMoeda(totalDinheiro)}</div>
+          </div>
+        </div>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -224,7 +302,9 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda) => {
       </table>
 
       <div class="total-geral">
-        Total: ${formatarMoeda(totalGeral)}
+        Total: ${formatarMoeda(totalGeral)} | 
+        Fiscal: ${formatarMoeda(totalFiscal)} | 
+        Dinheiro: ${formatarMoeda(totalDinheiro)}
       </div>
 
       <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">

@@ -3,6 +3,7 @@ import { DollarSign, Users, TrendingDown, Calendar, Search, Download, Lock } fro
 import { usePermissions } from '@/hooks/usePermissions';
 import { collaboratorsService, commissionsService } from '@/services';
 import { exportarParaCSV, exportarParaPDF } from './exportUtils';
+import ModalPercentuaisComissao from './components/ModalPercentuaisComissao';
 
 export default function RelatorioComissoes() {
   const [relatorio, setRelatorio] = useState([]);
@@ -12,6 +13,11 @@ export default function RelatorioComissoes() {
   const [ano, setAno] = useState(new Date().getFullYear());
   const [carregando, setCarregando] = useState(false);
   const [erroPermissao, setErroPermissao] = useState(null);
+  
+  // Estado para controle do modal de percentuais
+  const [modalPercentuaisAberto, setModalPercentuaisAberto] = useState(false);
+  const [acaoExportacao, setAcaoExportacao] = useState(null); // 'csv' ou 'pdf'
+  const [percentuais, setPercentuais] = useState({ percentualFiscal: 100, percentualDinheiro: 0 });
   
   const { permissions, loading: permissionsLoading } = usePermissions();
   
@@ -103,11 +109,24 @@ export default function RelatorioComissoes() {
   };
 
   const handleExportarCSV = () => {
-    exportarParaCSV(relatorio, mes, ano);
+    setAcaoExportacao('csv');
+    setModalPercentuaisAberto(true);
   };
 
   const handleExportarPDF = () => {
-    exportarParaPDF(relatorio, mes, ano, formatarMoeda);
+    setAcaoExportacao('pdf');
+    setModalPercentuaisAberto(true);
+  };
+
+  // Callback chamado quando o usuário confirma os percentuais no modal
+  const handleConfirmarPercentuais = (percentuaisInformados) => {
+    setPercentuais(percentuaisInformados);
+    
+    if (acaoExportacao === 'csv') {
+      exportarParaCSV(relatorio, mes, ano, percentuaisInformados);
+    } else if (acaoExportacao === 'pdf') {
+      exportarParaPDF(relatorio, mes, ano, formatarMoeda, percentuaisInformados);
+    }
   };
 
   // Fallback para loading de permissões
@@ -295,6 +314,14 @@ export default function RelatorioComissoes() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Percentuais */}
+      <ModalPercentuaisComissao
+        isOpen={modalPercentuaisAberto}
+        onClose={() => setModalPercentuaisAberto(false)}
+        onConfirm={handleConfirmarPercentuais}
+        valoresIniciais={percentuais}
+      />
     </div>
   );
 }

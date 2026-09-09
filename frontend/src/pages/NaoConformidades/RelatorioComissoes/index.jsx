@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { DollarSign, Users, TrendingDown, Calendar, Search, Download, Lock } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { collaboratorsService, commissionsService } from '@/services';
+import { exportarParaCSV, exportarParaPDF } from './exportUtils';
 
 export default function RelatorioComissoes() {
   const [relatorio, setRelatorio] = useState([]);
@@ -11,9 +12,9 @@ export default function RelatorioComissoes() {
   const [ano, setAno] = useState(new Date().getFullYear());
   const [carregando, setCarregando] = useState(false);
   const [erroPermissao, setErroPermissao] = useState(null);
-
+  
   const { permissions, loading: permissionsLoading } = usePermissions();
-
+  
   // Verificação de permissão
   const podeVisualizar = permissions.includes('cadastros:comissoes') || 
                          permissions.includes('admin_total') ||
@@ -101,6 +102,14 @@ export default function RelatorioComissoes() {
     return relatorio.reduce((acc, item) => acc + (item.total_ncs || 0), 0);
   };
 
+  const handleExportarCSV = () => {
+    exportarParaCSV(relatorio, mes, ano);
+  };
+
+  const handleExportarPDF = () => {
+    exportarParaPDF(relatorio, mes, ano, formatarMoeda);
+  };
+
   // Fallback para loading de permissões
   if (permissionsLoading) {
     return (
@@ -185,6 +194,27 @@ export default function RelatorioComissoes() {
             className="bg-[#3B8ED0] hover:bg-[#2d74ab] text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md shadow-[#3B8ED0]/20"
           >
             <Search size={20} />
+          </button>
+
+          {/* Botões de Exportação */}
+          <button 
+            onClick={handleExportarCSV}
+            disabled={relatorio.length === 0}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md flex items-center gap-2"
+            title="Exportar CSV"
+          >
+            <Download size={20} />
+            <span className="text-xs font-bold hidden lg:inline">CSV</span>
+          </button>
+
+          <button 
+            onClick={handleExportarPDF}
+            disabled={relatorio.length === 0}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md flex items-center gap-2"
+            title="Exportar PDF"
+          >
+            <Download size={20} />
+            <span className="text-xs font-bold hidden lg:inline">PDF</span>
           </button>
         </div>
       </div>

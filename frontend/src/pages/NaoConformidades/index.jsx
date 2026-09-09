@@ -8,7 +8,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Consulta from './Consulta';
 import NovoRegistro from './NovoRegistro';
 import Equipe from './Equipe';
-import RelatorioComissoes from './RelatorioComissoes';
+import RelatorioComissoes from './RelatorioComissoes/index';
 import ConfiguracaoComissoes from './ConfiguracaoComissoes';
 
 // Componentes Universais do Sophon

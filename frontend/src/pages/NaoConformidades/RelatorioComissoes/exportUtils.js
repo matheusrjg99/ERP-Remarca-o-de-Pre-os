@@ -21,17 +21,14 @@ export const exportarParaCSV = (dados, mes, ano, percentuais = { percentualFisca
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
 
-  // Cabeçalho do CSV com colunas separadas para fiscal e dinheiro
+  // Cabeçalho do CSV com colunas separadas para fiscal e dinheiro (apenas valores, sem percentuais repetidos)
   const cabecalho = [
-    'ID',
     'Colaborador',
     'Salário Base',
     'Total NCs',
     'Valor Desconto',
     'Salário Final',
-    'Percentual Fiscal (%)',
     'Valor Fiscal',
-    'Percentual Dinheiro (%)',
     'Valor Dinheiro'
   ];
 
@@ -42,15 +39,12 @@ export const exportarParaCSV = (dados, mes, ano, percentuais = { percentualFisca
     const valorDinheiro = salarioFinal * ((percentuais?.percentualDinheiro || 0) / 100);
 
     return [
-      item.colaborador_id,
       `"${item.nome_colaborador}"`,
       (item.salario_base || 0).toFixed(2).replace('.', ','),
       item.total_ncs || 0,
       (item.valor_total_desconto || 0).toFixed(2).replace('.', ','),
       salarioFinal.toFixed(2).replace('.', ','),
-      (percentuais?.percentualFiscal || 100).toFixed(2).replace('.', ','),
       valorFiscal.toFixed(2).replace('.', ','),
-      (percentuais?.percentualDinheiro || 0).toFixed(2).replace('.', ','),
       valorDinheiro.toFixed(2).replace('.', ',')
     ];
   });
@@ -155,17 +149,17 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         /* Cards de resumo - estilo dashboard */
         .resumo-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
           margin-bottom: 30px;
         }
         
         .resumo-card {
-          background: #fff;
-          border: 1px solid #e0e0e0;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
           border-radius: 8px;
-          padding: 16px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+          padding: 20px;
+          text-align: center;
         }
         
         .resumo-label {
@@ -174,11 +168,11 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
           text-transform: uppercase;
           font-weight: 600;
           letter-spacing: 0.5px;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
         
         .resumo-valor {
-          font-size: 22px;
+          font-size: 26px;
           font-weight: 700;
           color: #1a1a1a;
         }
@@ -189,20 +183,20 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         
         /* Seção de distribuição fiscal/dinheiro */
         .distribuicao-section {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
+          background: #fff;
+          border: 2px solid #1a1a1a;
           border-radius: 8px;
-          padding: 20px;
+          padding: 24px;
           margin-bottom: 30px;
         }
         
         .distribuicao-titulo {
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           color: #1a1a1a;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          margin-bottom: 16px;
+          margin-bottom: 20px;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -211,41 +205,36 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         .distribuicao-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
+          gap: 24px;
         }
         
         .distribuicao-card {
-          background: #fff;
-          border: 2px solid #e5e7eb;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
           border-radius: 8px;
-          padding: 16px;
+          padding: 20px;
+          text-align: center;
         }
         
         .distribuicao-card.fiscal {
-          border-left: 4px solid #2563eb;
+          border-top: 4px solid #2563eb;
         }
         
         .distribuicao-card.dinheiro {
-          border-left: 4px solid #059669;
+          border-top: 4px solid #059669;
         }
         
         .distribuicao-label {
-          font-size: 10px;
+          font-size: 11px;
           color: #666;
           text-transform: uppercase;
           font-weight: 600;
-          margin-bottom: 8px;
-        }
-        
-        .distribuicao-percentual {
-          font-size: 12px;
-          color: #999;
-          font-weight: 500;
-          margin-bottom: 4px;
+          margin-bottom: 12px;
+          letter-spacing: 0.5px;
         }
         
         .distribuicao-valor {
-          font-size: 20px;
+          font-size: 28px;
           font-weight: 700;
           color: #1a1a1a;
         }
@@ -267,19 +256,19 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         }
         
         th {
-          padding: 12px 16px;
+          padding: 14px 16px;
           text-align: left;
           font-size: 10px;
           font-weight: 700;
           color: #666;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          border-bottom: 2px solid #e5e7eb;
+          border-bottom: 2px solid #1a1a1a;
         }
         
         td {
-          padding: 12px 16px;
-          border-bottom: 1px solid #f0f0f0;
+          padding: 14px 16px;
+          border-bottom: 1px solid #e5e7eb;
           font-size: 12px;
           color: #1a1a1a;
         }
@@ -298,37 +287,37 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         
         /* Colunas fiscais/dinheiro na tabela */
         .col-fiscal {
-          color: #2563eb;
+          color: #1a1a1a;
           font-weight: 600;
         }
         
         .col-dinheiro {
-          color: #059669;
+          color: #1a1a1a;
           font-weight: 600;
         }
         
         /* Rodapé de totais */
         .totais-footer {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 16px 20px;
+          background: #fff;
+          border-top: 2px solid #1a1a1a;
+          border-radius: 0;
+          padding: 20px 0 0 0;
           display: flex;
           justify-content: space-between;
           align-items: center;
           flex-wrap: wrap;
-          gap: 16px;
+          gap: 20px;
         }
         
         .totais-info {
-          font-size: 11px;
+          font-size: 12px;
           color: #666;
           font-weight: 500;
         }
         
         .totais-valores {
           display: flex;
-          gap: 24px;
+          gap: 32px;
           flex-wrap: wrap;
         }
         
@@ -341,17 +330,17 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
           color: #999;
           text-transform: uppercase;
           font-weight: 600;
-          margin-bottom: 2px;
+          margin-bottom: 4px;
         }
         
         .total-valor {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 700;
           color: #1a1a1a;
         }
         
         .total-geral-destaque {
-          font-size: 18px;
+          font-size: 22px;
           color: #059669;
         }
         
@@ -385,22 +374,29 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
             display: none !important;
           }
           
-          /* Remove sombras e gradientes para economizar tinta */
+          /* Remove fundos coloridos para economizar tinta */
           .resumo-card,
           .distribuicao-card,
           .distribuicao-section,
-          .totais-footer {
-            box-shadow: none !important;
+          thead {
             background: #fff !important;
           }
-          
-          /* Usa bordas mais sutis */
+
+          /* Bordas sutis em cinza */
           .resumo-card,
-          .distribuicao-card {
+          .distribuicao-card,
+          .distribuicao-section {
             border: 1px solid #ccc !important;
           }
-          
-          /* Texto sempre preto */
+
+          /* Mantém borda superior preta na seção de distribuição e footer */
+          .distribuicao-section,
+          .totais-footer {
+            border-top: 2px solid #000 !important;
+            border-bottom: none !important;
+          }
+
+          /* Texto sempre preto puro */
           * {
             color: #000 !important;
             -webkit-print-color-adjust: exact !important;
@@ -445,13 +441,11 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         <div class="distribuicao-grid">
           <div class="distribuicao-card fiscal">
             <div class="distribuicao-label">Valor Fiscal</div>
-            <div class="distribuicao-percentual">(${(percentuais?.percentualFiscal || 100).toFixed(2)}%)</div>
-            <div class="distribuicao-valor resumo-destaque">${formatarMoeda(totalFiscal)}</div>
+            <div class="distribuicao-valor">${formatarMoeda(totalFiscal)}</div>
           </div>
           <div class="distribuicao-card dinheiro">
             <div class="distribuicao-label">Valor em Dinheiro</div>
-            <div class="distribuicao-percentual">(${(percentuais?.percentualDinheiro || 0).toFixed(2)}%)</div>
-            <div class="distribuicao-valor resumo-destaque">${formatarMoeda(totalDinheiro)}</div>
+            <div class="distribuicao-valor">${formatarMoeda(totalDinheiro)}</div>
           </div>
         </div>
       </div>
@@ -461,15 +455,12 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         <table>
           <thead>
             <tr>
-              <th>ID</th>
               <th>Colaborador</th>
               <th class="texto-direita">Salário Base</th>
               <th class="texto-centro">NCs</th>
               <th class="texto-direita">Desconto</th>
               <th class="texto-direita">Salário Final</th>
-              <th class="texto-direita col-fiscal">% Fiscal</th>
               <th class="texto-direita col-fiscal">Valor Fiscal</th>
-              <th class="texto-direita col-dinheiro">% Dinheiro</th>
               <th class="texto-direita col-dinheiro">Valor Dinheiro</th>
             </tr>
           </thead>
@@ -481,15 +472,12 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
               
               return `
               <tr>
-                <td>#${item.colaborador_id}</td>
                 <td>${item.nome_colaborador}</td>
                 <td class="texto-direita">${formatarMoeda(item.salario_base)}</td>
                 <td class="texto-centro">${item.total_ncs || 0}</td>
                 <td class="texto-direita">${formatarMoeda(item.valor_total_desconto)}</td>
                 <td class="texto-direita"><strong>${formatarMoeda(item.salario_final)}</strong></td>
-                <td class="texto-direita col-fiscal">${(percentuais?.percentualFiscal || 100).toFixed(2)}%</td>
                 <td class="texto-direita col-fiscal">${formatarMoeda(valorFiscal)}</td>
-                <td class="texto-direita col-dinheiro">${(percentuais?.percentualDinheiro || 0).toFixed(2)}%</td>
                 <td class="texto-direita col-dinheiro">${formatarMoeda(valorDinheiro)}</td>
               </tr>
             `}).join('')}

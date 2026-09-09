@@ -146,33 +146,33 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
           font-weight: 500;
         }
         
-        /* Cards de resumo - estilo dashboard */
+        /* Cards de resumo - estilo dashboard compacto */
         .resumo-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 20px;
-          margin-bottom: 30px;
+          gap: 12px;
+          margin-bottom: 20px;
         }
         
         .resumo-card {
           background: #f9fafb;
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 20px;
+          border-radius: 6px;
+          padding: 12px 16px;
           text-align: center;
         }
         
         .resumo-label {
-          font-size: 10px;
+          font-size: 9px;
           color: #666;
           text-transform: uppercase;
           font-weight: 600;
-          letter-spacing: 0.5px;
-          margin-bottom: 10px;
+          letter-spacing: 0.3px;
+          margin-bottom: 6px;
         }
         
         .resumo-valor {
-          font-size: 26px;
+          font-size: 18px;
           font-weight: 700;
           color: #1a1a1a;
         }
@@ -185,56 +185,56 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
         .distribuicao-section {
           background: #fff;
           border: 2px solid #1a1a1a;
-          border-radius: 8px;
-          padding: 24px;
-          margin-bottom: 30px;
+          border-radius: 6px;
+          padding: 16px;
+          margin-bottom: 20px;
         }
         
         .distribuicao-titulo {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 700;
           color: #1a1a1a;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          margin-bottom: 20px;
+          margin-bottom: 14px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
         }
         
         .distribuicao-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 24px;
+          gap: 16px;
         }
         
         .distribuicao-card {
           background: #f9fafb;
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 20px;
+          border-radius: 6px;
+          padding: 14px;
           text-align: center;
         }
         
         .distribuicao-card.fiscal {
-          border-top: 4px solid #2563eb;
+          border-top: 3px solid #2563eb;
         }
         
         .distribuicao-card.dinheiro {
-          border-top: 4px solid #059669;
+          border-top: 3px solid #059669;
         }
         
         .distribuicao-label {
-          font-size: 11px;
+          font-size: 10px;
           color: #666;
           text-transform: uppercase;
           font-weight: 600;
-          margin-bottom: 12px;
-          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+          letter-spacing: 0.3px;
         }
         
         .distribuicao-valor {
-          font-size: 28px;
+          font-size: 20px;
           font-weight: 700;
           color: #1a1a1a;
         }
@@ -435,8 +435,7 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
       <!-- Distribuição Fiscal/Dinheiro -->
       <div class="distribuicao-section">
         <div class="distribuicao-titulo">
-          <span>📊</span>
-          Distribuição da Comissão por Tipo
+          Distribuição da Comissão por Tipo (${percentuais?.percentualFiscal || 100}% fiscal / ${percentuais?.percentualDinheiro || 0}% dinheiro)
         </div>
         <div class="distribuicao-grid">
           <div class="distribuicao-card fiscal">

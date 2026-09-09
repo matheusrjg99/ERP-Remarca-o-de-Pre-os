@@ -81,7 +81,8 @@ export const exportarParaCSV = (dados, mes, ano, percentuais = { percentualFisca
 
 /**
  * Exporta os dados do relatório para PDF (usando window.print como fallback)
- * com separação fiscal/dinheiro
+ * com separação fiscal/dinheiro POR COLABORADOR
+ * Design otimizado para impressão econômica (baixo consumo de tinta)
  * @param {Array} dados - Array de objetos com os dados do relatório
  * @param {number} mes - Mês de referência (1-12)
  * @param {number} ano - Ano de referência
@@ -108,7 +109,7 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
   const totalFiscal = totalGeral * ((percentuais?.percentualFiscal || 100) / 100);
   const totalDinheiro = totalGeral * ((percentuais?.percentualDinheiro || 0) / 100);
 
-  // Gera HTML para impressão
+  // Gera HTML para impressão com design dashboard econômico
   const htmlConteudo = `
     <!DOCTYPE html>
     <html>
@@ -116,199 +117,410 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
       <meta charset="utf-8">
       <title>Relatório de Comissões - ${mesesNomes[mes - 1]} ${ano}</title>
       <style>
-        body {
-          font-family: Arial, sans-serif;
-          padding: 40px;
-          color: #333;
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          padding: 30px;
+          color: #1a1a1a;
+          background: #fff;
+          line-height: 1.5;
+        }
+        
+        /* Cabeçalho */
+        .header {
+          border-bottom: 2px solid #1a1a1a;
+          padding-bottom: 20px;
+          margin-bottom: 30px;
+        }
+        
         h1 {
           color: #1a1a1a;
-          font-size: 24px;
-          margin-bottom: 10px;
+          font-size: 26px;
+          font-weight: 700;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
         }
+        
         .periodo {
           color: #666;
           font-size: 14px;
+          font-weight: 500;
+        }
+        
+        /* Cards de resumo - estilo dashboard */
+        .resumo-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px;
           margin-bottom: 30px;
         }
-        .resumo {
-          display: flex;
-          gap: 20px;
-          margin-bottom: 30px;
-          flex-wrap: wrap;
-        }
-        .resumo-item {
-          background: #f5f5f5;
-          padding: 15px 20px;
+        
+        .resumo-card {
+          background: #fff;
+          border: 1px solid #e0e0e0;
           border-radius: 8px;
-          min-width: 150px;
+          padding: 16px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
+        
         .resumo-label {
-          font-size: 11px;
+          font-size: 10px;
           color: #666;
           text-transform: uppercase;
-          font-weight: bold;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
         }
+        
         .resumo-valor {
-          font-size: 18px;
-          font-weight: bold;
+          font-size: 22px;
+          font-weight: 700;
           color: #1a1a1a;
-          margin-top: 5px;
         }
+        
         .resumo-destaque {
-          color: #10b981;
+          color: #059669;
         }
+        
+        /* Seção de distribuição fiscal/dinheiro */
+        .distribuicao-section {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 30px;
+        }
+        
+        .distribuicao-titulo {
+          font-size: 13px;
+          font-weight: 700;
+          color: #1a1a1a;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 16px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .distribuicao-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        
+        .distribuicao-card {
+          background: #fff;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 16px;
+        }
+        
+        .distribuicao-card.fiscal {
+          border-left: 4px solid #2563eb;
+        }
+        
+        .distribuicao-card.dinheiro {
+          border-left: 4px solid #059669;
+        }
+        
+        .distribuicao-label {
+          font-size: 10px;
+          color: #666;
+          text-transform: uppercase;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+        
+        .distribuicao-percentual {
+          font-size: 12px;
+          color: #999;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+        
+        .distribuicao-valor {
+          font-size: 20px;
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+        
+        /* Tabela */
+        .tabela-container {
+          margin-bottom: 30px;
+          overflow-x: auto;
+        }
+        
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background: #1a1a1a;
-          color: white;
-          padding: 12px;
-          text-align: left;
           font-size: 12px;
+        }
+        
+        thead {
+          background: #f9fafb;
+        }
+        
+        th {
+          padding: 12px 16px;
+          text-align: left;
+          font-size: 10px;
+          font-weight: 700;
+          color: #666;
           text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 2px solid #e5e7eb;
         }
+        
         td {
-          padding: 10px 12px;
-          border-bottom: 1px solid #e0e0e0;
-          font-size: 13px;
+          padding: 12px 16px;
+          border-bottom: 1px solid #f0f0f0;
+          font-size: 12px;
+          color: #1a1a1a;
         }
-        tr:nth-child(even) {
-          background: #f9f9f9;
+        
+        tbody tr:hover {
+          background: #f9fafb;
         }
+        
         .texto-direita {
           text-align: right;
         }
+        
         .texto-centro {
           text-align: center;
         }
-        .total-geral {
-          margin-top: 20px;
-          padding: 15px;
-          background: #f5f5f5;
+        
+        /* Colunas fiscais/dinheiro na tabela */
+        .col-fiscal {
+          color: #2563eb;
+          font-weight: 600;
+        }
+        
+        .col-dinheiro {
+          color: #059669;
+          font-weight: 600;
+        }
+        
+        /* Rodapé de totais */
+        .totais-footer {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
           border-radius: 8px;
-          text-align: right;
-          font-weight: bold;
+          padding: 16px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
         }
-        .separacao-fiscal-dinheiro {
-          margin-top: 20px;
-          padding: 15px;
-          background: #f0fdf4;
-          border: 1px solid #86efac;
-          border-radius: 8px;
-        }
-        .separacao-fiscal-dinheiro h3 {
-          font-size: 14px;
-          color: #166534;
-          margin-bottom: 10px;
-          text-transform: uppercase;
-        }
-        .separacao-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 15px;
-        }
-        .separacao-item {
-          background: white;
-          padding: 12px;
-          border-radius: 6px;
-          border-left: 4px solid #10b981;
-        }
-        .separacao-item.fiscal {
-          border-left-color: #3B8ED0;
-        }
-        .separacao-label {
+        
+        .totais-info {
           font-size: 11px;
           color: #666;
-          text-transform: uppercase;
-          font-weight: bold;
-          margin-bottom: 5px;
+          font-weight: 500;
         }
-        .separacao-valor {
+        
+        .totais-valores {
+          display: flex;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+        
+        .total-item {
+          text-align: right;
+        }
+        
+        .total-label {
+          font-size: 10px;
+          color: #999;
+          text-transform: uppercase;
+          font-weight: 600;
+          margin-bottom: 2px;
+        }
+        
+        .total-valor {
           font-size: 16px;
-          font-weight: bold;
+          font-weight: 700;
           color: #1a1a1a;
         }
+        
+        .total-geral-destaque {
+          font-size: 18px;
+          color: #059669;
+        }
+        
+        /* Botão de impressão - escondido na impressão */
+        .btn-imprimir {
+          display: inline-block;
+          margin-top: 20px;
+          padding: 12px 24px;
+          background: #1a1a1a;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        
+        .btn-imprimir:hover {
+          background: #333;
+        }
+        
+        /* Otimização para impressão econômica */
         @media print {
-          body { padding: 20px; }
-          .no-print { display: none; }
+          body { 
+            padding: 15px;
+            background: #fff;
+          }
+          
+          .no-print { 
+            display: none !important;
+          }
+          
+          /* Remove sombras e gradientes para economizar tinta */
+          .resumo-card,
+          .distribuicao-card,
+          .distribuicao-section,
+          .totais-footer {
+            box-shadow: none !important;
+            background: #fff !important;
+          }
+          
+          /* Usa bordas mais sutis */
+          .resumo-card,
+          .distribuicao-card {
+            border: 1px solid #ccc !important;
+          }
+          
+          /* Texto sempre preto */
+          * {
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
       </style>
     </head>
     <body>
-      <h1>Relatório de Comissões</h1>
-      <p class="periodo">${mesesNomes[mes - 1]} de ${ano}</p>
+      <!-- Cabeçalho -->
+      <div class="header">
+        <h1>Relatório de Comissões</h1>
+        <p class="periodo">${mesesNomes[mes - 1]} de ${ano}</p>
+      </div>
       
-      <div class="resumo">
-        <div class="resumo-item">
+      <!-- Resumo Dashboard -->
+      <div class="resumo-grid">
+        <div class="resumo-card">
           <div class="resumo-label">Total a Pagar</div>
-          <div class="resumo-valor">${formatarMoeda(totalGeral)}</div>
+          <div class="resumo-valor resumo-destaque">${formatarMoeda(totalGeral)}</div>
         </div>
-        <div class="resumo-item">
+        <div class="resumo-card">
           <div class="resumo-label">Colaboradores</div>
           <div class="resumo-valor">${dados.length}</div>
         </div>
-        <div class="resumo-item">
+        <div class="resumo-card">
           <div class="resumo-label">Descontos</div>
           <div class="resumo-valor">${formatarMoeda(totalDescontos)}</div>
         </div>
-        <div class="resumo-item">
+        <div class="resumo-card">
           <div class="resumo-label">Total NCs</div>
           <div class="resumo-valor">${totalNCs}</div>
         </div>
       </div>
 
-      <!-- Seção de Separação Fiscal/Dinheiro -->
-      <div class="separacao-fiscal-dinheiro">
-        <h3>📊 Distribuição da Comissão</h3>
-        <div class="separacao-grid">
-          <div class="separacao-item fiscal">
-            <div class="separacao-label">Valor Fiscal (${(percentuais?.percentualFiscal || 100).toFixed(2)}%)</div>
-            <div class="separacao-valor resumo-destaque">${formatarMoeda(totalFiscal)}</div>
+      <!-- Distribuição Fiscal/Dinheiro -->
+      <div class="distribuicao-section">
+        <div class="distribuicao-titulo">
+          <span>📊</span>
+          Distribuição da Comissão por Tipo
+        </div>
+        <div class="distribuicao-grid">
+          <div class="distribuicao-card fiscal">
+            <div class="distribuicao-label">Valor Fiscal</div>
+            <div class="distribuicao-percentual">(${(percentuais?.percentualFiscal || 100).toFixed(2)}%)</div>
+            <div class="distribuicao-valor resumo-destaque">${formatarMoeda(totalFiscal)}</div>
           </div>
-          <div class="separacao-item">
-            <div class="separacao-label">Valor em Dinheiro (${(percentuais?.percentualDinheiro || 0).toFixed(2)}%)</div>
-            <div class="separacao-valor resumo-destaque">${formatarMoeda(totalDinheiro)}</div>
+          <div class="distribuicao-card dinheiro">
+            <div class="distribuicao-label">Valor em Dinheiro</div>
+            <div class="distribuicao-percentual">(${(percentuais?.percentualDinheiro || 0).toFixed(2)}%)</div>
+            <div class="distribuicao-valor resumo-destaque">${formatarMoeda(totalDinheiro)}</div>
           </div>
         </div>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Colaborador</th>
-            <th class="texto-direita">Salário Base</th>
-            <th class="texto-centro">NCs</th>
-            <th class="texto-direita">Desconto</th>
-            <th class="texto-direita">Salário Final</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${dados.map(item => `
+      <!-- Tabela Detalhada -->
+      <div class="tabela-container">
+        <table>
+          <thead>
             <tr>
-              <td>#${item.colaborador_id}</td>
-              <td>${item.nome_colaborador}</td>
-              <td class="texto-direita">${formatarMoeda(item.salario_base)}</td>
-              <td class="texto-centro">${item.total_ncs || 0}</td>
-              <td class="texto-direita">${formatarMoeda(item.valor_total_desconto)}</td>
-              <td class="texto-direita">${formatarMoeda(item.salario_final)}</td>
+              <th>ID</th>
+              <th>Colaborador</th>
+              <th class="texto-direita">Salário Base</th>
+              <th class="texto-centro">NCs</th>
+              <th class="texto-direita">Desconto</th>
+              <th class="texto-direita">Salário Final</th>
+              <th class="texto-direita col-fiscal">% Fiscal</th>
+              <th class="texto-direita col-fiscal">Valor Fiscal</th>
+              <th class="texto-direita col-dinheiro">% Dinheiro</th>
+              <th class="texto-direita col-dinheiro">Valor Dinheiro</th>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <div class="total-geral">
-        Total: ${formatarMoeda(totalGeral)} | 
-        Fiscal: ${formatarMoeda(totalFiscal)} | 
-        Dinheiro: ${formatarMoeda(totalDinheiro)}
+          </thead>
+          <tbody>
+            ${dados.map(item => {
+              const salarioFinal = item.salario_final || 0;
+              const valorFiscal = salarioFinal * ((percentuais?.percentualFiscal || 100) / 100);
+              const valorDinheiro = salarioFinal * ((percentuais?.percentualDinheiro || 0) / 100);
+              
+              return `
+              <tr>
+                <td>#${item.colaborador_id}</td>
+                <td>${item.nome_colaborador}</td>
+                <td class="texto-direita">${formatarMoeda(item.salario_base)}</td>
+                <td class="texto-centro">${item.total_ncs || 0}</td>
+                <td class="texto-direita">${formatarMoeda(item.valor_total_desconto)}</td>
+                <td class="texto-direita"><strong>${formatarMoeda(item.salario_final)}</strong></td>
+                <td class="texto-direita col-fiscal">${(percentuais?.percentualFiscal || 100).toFixed(2)}%</td>
+                <td class="texto-direita col-fiscal">${formatarMoeda(valorFiscal)}</td>
+                <td class="texto-direita col-dinheiro">${(percentuais?.percentualDinheiro || 0).toFixed(2)}%</td>
+                <td class="texto-direita col-dinheiro">${formatarMoeda(valorDinheiro)}</td>
+              </tr>
+            `}).join('')}
+          </tbody>
+        </table>
       </div>
 
-      <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">
-        Imprimir / Salvar como PDF
+      <!-- Totais Footer -->
+      <div class="totais-footer">
+        <div class="totais-info">
+          Total de colaboradores: <strong>${dados.length}</strong>
+        </div>
+        <div class="totais-valores">
+          <div class="total-item">
+            <div class="total-label">Total Geral</div>
+            <div class="total-valor total-geral-destaque">${formatarMoeda(totalGeral)}</div>
+          </div>
+          <div class="total-item">
+            <div class="total-label">Total Fiscal</div>
+            <div class="total-valor col-fiscal">${formatarMoeda(totalFiscal)}</div>
+          </div>
+          <div class="total-item">
+            <div class="total-label">Total Dinheiro</div>
+            <div class="total-valor col-dinheiro">${formatarMoeda(totalDinheiro)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botão de Impressão -->
+      <button class="no-print btn-imprimir" onclick="window.print()">
+        🖨️ Imprimir / Salvar como PDF
       </button>
     </body>
     </html>
@@ -319,5 +531,5 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
   novaJanela.document.write(htmlConteudo);
   novaJanela.document.close();
 
-  console.log('✅ PDF pronto para impressão');
+  console.log('✅ PDF pronto para impressão (design econômico)');
 };

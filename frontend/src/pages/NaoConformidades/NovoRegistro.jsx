@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Save, User, FileText, Calendar } from 'lucide-react';
 import Can from '../../components/Can';
 import { nonConformitiesService } from '@/services';
+import { error as logError } from '@/utils/logger';
 
 export default function NovoRegistro({ aoSalvar, colaboradores }) {
   const [colaborador_id, setColaboradorId] = useState('');
@@ -34,8 +35,8 @@ export default function NovoRegistro({ aoSalvar, colaboradores }) {
       setDescricao('');
       setDataOcorrencia('');
       if (aoSalvar) aoSalvar();
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
+    } catch (err) {
+      logError("Erro ao salvar:", err);
       alert("Falha ao registrar ocorrência.");
     } finally {
       setLoading(false);

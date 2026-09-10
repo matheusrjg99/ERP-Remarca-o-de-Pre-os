@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { formatNum } from '../utils/calculations';
+import { debug } from '@/utils/logger';
 
 // EditableCell sem usePermissions
 export default function EditableCell({ value, onChange, className, isPercentage = false, decimals = 2 }) {
@@ -14,7 +15,7 @@ export default function EditableCell({ value, onChange, className, isPercentage 
   };
 
   const handleBlur = () => {
-    console.log('💾 [EditableCell] Salvando valor:', { localValue, valorAntes: value });
+    debug('[EditableCell] Salvando valor:', { localValue, valorAntes: value });
     setIsEditing(false);
     onChange(localValue);
   };

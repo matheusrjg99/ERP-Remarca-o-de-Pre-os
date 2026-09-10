@@ -7,6 +7,7 @@ import ProductRow from './components/ProductRow';
 import UserAvatar from '../../components/UserAvatar';
 import { ArrowLeftRight, UserCog, Scale,Loader2 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
+import { error as logError } from '@/utils/logger';
 
 import { adaptarProdutoDeEntrada } from './utils/adapters';
 import { COLUNAS } from './utils/columnsConfig';
@@ -85,7 +86,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
           if (cache) setPreferencias(JSON.parse(cache));
         }
       } catch (e) {
-        console.error("Modo offline para preferências.");
+        logError("Modo offline para preferências.");
         const cache = localStorage.getItem(`prefs_${usuarioLogadoId}`);
         if (cache) setPreferencias(JSON.parse(cache));
       }
@@ -100,8 +101,8 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
     
     try {
       await api.put('/settings/preferencias', { preferencias: novasPreferencias });
-    } catch (error) {
-      console.error("Erro ao sincronizar preferências com o banco de dados.", error);
+    } catch (err) {
+      logError("Erro ao sincronizar preferências com o banco de dados.", err);
     }
   }, [usuarioLogadoId]);
 
@@ -196,8 +197,8 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         setProdutos([]);
         // Sem alerta de "nenhum produto"
       }
-    } catch (error) {
-      console.error('Erro ao buscar divergências:', error);
+    } catch (err) {
+      logError('Erro ao buscar divergências:', err);
       alert('Erro ao carregar divergências de markup');
     } finally {
       setLoading(false);
@@ -334,8 +335,6 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
 
     for (let p of produtosMarcados) {
       try {
-        // 🔍 LOG PARA DEBUG - VERIFICA O ESTADO DAS FLAGS DE EDIÇÃO
-        
         // 🆕 Aplica arredondamento nos valores antes de enviar
         let mkpFinal = p.markup;
         let custoFinal = p.custo;
@@ -363,20 +362,18 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
         // ✅ SÓ ENVIA ATUALIZAÇÃO DE MKP SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
         if (opcoes.mkp && markupEditado) {
           await api.put(`/precificacao/atualizar-mkp`, null, { params: { codigo: p.id, novo_mkp: mkpFinal.toFixed(4), ambiente } });
-        } else {
         }
         
         // ✅ SÓ ENVIA ATUALIZAÇÃO DE CUSTO SE O USUÁRIO EDITOU MANUALMENTE E MARCOU A OPÇÃO
         if (opcoes.custo && custoEditado) {
           await api.put(`/precificacao/atualizar-custo`, null, { params: { codigo: p.id, novo_custo: custoFinal.toFixed(4), ambiente } });
-        } else {
         }
         
         // ✅ ENVIA REMARCAÇÃO SEMPRE (usando o preço editado ou sugerido)
         await api.put(`/precificacao/remarcar`, null, { params: { codigo: p.id, novo_preco: precoRemarcacao.toFixed(4), ambiente } });
 
-      } catch (error) { 
-        console.error(`Erro ao processar o produto ${p.id}:`, error);
+      } catch (err) { 
+        logError(`Erro ao processar o produto ${p.id}:`, err);
         erros++; 
       }
     }
@@ -403,7 +400,7 @@ export default function Precificacao({ onLogout, onVoltarMenu }) {
           return p;
         }));
       } catch (err) {
-        console.error("Erro ao dar refresh nos itens atualizados", err);
+        logError("Erro ao dar refresh nos itens atualizados", err);
       }
     }
 

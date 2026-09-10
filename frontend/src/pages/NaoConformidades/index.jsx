@@ -3,6 +3,7 @@ import { LayoutDashboard, UserPlus, Users, DollarSign, Settings } from 'lucide-r
 import { useNavigate } from 'react-router-dom';
 import { nonConformitiesService, collaboratorsService } from '@/services';
 import { usePermissions } from '@/hooks/usePermissions';
+import { error as logError } from '@/utils/logger';
 
 // Importando os componentes do módulo
 import Consulta from './Consulta';
@@ -34,8 +35,8 @@ export default function NaoConformidades() {
       setLoading(true);
       const response = await nonConformitiesService.getByMonth(mes, ano);
       setRegistros(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error("Erro ao buscar registros:", error);
+    } catch (err) {
+      logError("Erro ao buscar registros:", err);
       setRegistros([]);
     } finally {
       setLoading(false);
@@ -46,8 +47,8 @@ export default function NaoConformidades() {
     try {
       const response = await collaboratorsService.getAll();
       setColaboradores(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error("Erro ao buscar colaboradores:", error);
+    } catch (err) {
+      logError("Erro ao buscar colaboradores:", err);
       setColaboradores([]);
     }
   };

@@ -1,3 +1,5 @@
+import { debug } from '@/utils/logger';
+
 // Formata números para o padrão brasileiro
 export const formatNum = (val, digits = 2) => 
   new Intl.NumberFormat('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(val || 0);
@@ -67,7 +69,7 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado, 
   const valorMudou = valorRealmenteMudou(valorFloat, valorOriginal, tolerancia);
   
   // LOG detalhado para debug
-  console.log('✏️ [recalcularProduto] Detalhes:', { 
+  debug('[recalcularProduto] Detalhes:', { 
     produto: p.id,
     campo: campoEditado,
     valorDigitado,
@@ -86,7 +88,7 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado, 
 
   // SE NÃO MUDOU E NÃO ESTÁ FORÇANDO, RETORNA O ORIGINAL
   if (!valorMudou && !forcarEdicao) {
-    console.log('⏭️ [recalcularProduto] Valor não mudou, ignorando edição');
+    debug('[recalcularProduto] Valor não mudou, ignorando edição');
     return produtoOriginal; // Retorna o original intacto
   }
 
@@ -109,7 +111,7 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado, 
     // Se o custo mudou, reseta as flags de preço sugerido e atual
     if (valorMudou) {
       // Não reseta automaticamente, mantém as flags do usuário
-      console.log('🔄 Custo alterado, recalculando valores dependentes');
+      debug('Custo alterado, recalculando valores dependentes');
     }
   } 
   
@@ -141,14 +143,14 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado, 
     // ⭐ CRÍTICO: Só marca como editado se realmente mudou
     if (valorMudou) {
       p.precoAtualEditado = true;
-      console.log('✅ Preço atual marcado como editado (valor mudou)');
+      debug('Preço atual marcado como editado (valor mudou)');
     } else if (forcarEdicao) {
       p.precoAtualEditado = true;
-      console.log('⚠️ Preço atual marcado como editado (forçado)');
+      debug('Preço atual marcado como editado (forçado)');
     } else {
       // Garante que não marca como editado se não mudou
       p.precoAtualEditado = false;
-      console.log('⏭️ Preço atual NÃO marcado como editado (valor não mudou)');
+      debug('Preço atual NÃO marcado como editado (valor não mudou)');
     }
   }
 
@@ -163,7 +165,7 @@ export const recalcularProduto = (produtoOriginal, campoEditado, valorDigitado, 
   p.difMarkup = round1(p.markupReal - p.markup);
 
   // LOG FINAL
-  console.log('✅ [recalcularProduto] Resultado:', {
+  debug('[recalcularProduto] Resultado:', {
     produto: p.id,
     campo: campoEditado,
     novoValor: p[campoEditado],
@@ -216,7 +218,7 @@ export const handleBlur = (produto, campo, valor, callback) => {
   
   // Se o valor não mudou, NÃO marca como editado
   if (!valorRealmenteMudou(valorNormalizado, valorOriginal)) {
-    console.log('🔵 [handleBlur] Blur sem alteração, ignorando');
+    debug('[handleBlur] Blur sem alteração, ignorando');
     return produto;
   }
   

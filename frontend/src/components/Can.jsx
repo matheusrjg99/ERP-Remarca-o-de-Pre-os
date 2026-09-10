@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePermissions } from '../hooks/usePermissions';
+import { debug } from '@/utils/logger';
 
 /**
  * Componente para renderização condicional baseada em permissões
@@ -60,7 +61,7 @@ export const CanModule = ({
   // Ex: module='nc' verifica se tem alguma permissão como 'nc:criar', 'nc:visualizar', etc.
   const hasModuleAccess = permissions.some(perm => perm.startsWith(`${module}:`));
 
-  console.log(`🔍 [CanModule] Módulo: ${module}, Permissões do usuário: ${permissions.length}, Tem acesso: ${hasModuleAccess}`);
+  debug(`[CanModule] Módulo: ${module}, Permissões: ${permissions.length}, Acesso: ${hasModuleAccess}`);
 
   return hasModuleAccess ? children : fallback;
 };

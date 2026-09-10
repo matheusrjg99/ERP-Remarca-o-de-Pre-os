@@ -2,6 +2,7 @@
 Rotas para o módulo de Consultas de Precificação.
 Define os endpoints da API e delega a lógica para os serviços.
 """
+import logging
 from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import List, Dict, Any
 
@@ -9,6 +10,8 @@ from auth.seguranca import requer_permissao
 from .schemas import LoteRequisicao, ProdutoSearchRequest
 from .services import QueriesService
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/precificacao", tags=["Precificação - Consultas"])
 
@@ -30,13 +33,11 @@ async def buscar_registro_inteligente(
     current_user: dict = Depends(requer_permissao("precificacao:consultar"))
 ):
     """Busca inteligente de produtos por código ou nota fiscal."""
-    # Extrai o username do dicionário injetado pelo decorador
-    usuario_nome = current_user.get("username", "desconhecido")
-    print(f"DEBUG Rota: Usuário '{usuario_nome}' acessando produto {registro}")
+    usuario_nome = current_user.get("nome", "desconhecido")
+    logger.debug(f"Usuário '{usuario_nome}' acessando produto {registro}")
     
     resultado = await QueriesService.buscar_registro_inteligente(registro, ambiente, is_numord)
     
-    # Mantém compatibilidade com o formato de resposta original
     if resultado.get("action") == "select_note":
         return resultado
     elif resultado.get("action") == "found":

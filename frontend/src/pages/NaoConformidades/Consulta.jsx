@@ -6,6 +6,7 @@ import MinhaComissaoBar from "./MinhaComissaoBar"; // ADICIONADO
 import Can from '../../components/Can';
 import { nonConformitiesService } from '@/services';
 import { usePermissions } from '@/hooks/usePermissions';
+import { error as logError } from '@/utils/logger';
 
 const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colaboradores }) => {
   const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -76,10 +77,10 @@ const Consulta = ({ registros, buscarRegistros, mes, setMes, ano, setAno, colabo
         setDeletando(true);
         await nonConformitiesService.delete(id);
         buscarRegistros();
-      } catch (error) {
-        console.error("Erro ao excluir:", error);
+      } catch (err) {
+        logError("Erro ao excluir:", err);
         
-        if (error?.response?.status === 403) {
+        if (err?.response?.status === 403) {
           alert("Você não tem permissão para excluir este registro.");
         } else {
           alert("Falha ao excluir registro.");

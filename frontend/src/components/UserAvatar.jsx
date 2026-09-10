@@ -2,9 +2,17 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { ModalRBAC } from '../components/rbac';
 
-const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) => {
+const UserAvatar = ({ 
+  usuarioLogado, 
+  onLogout, 
+  showName = true, 
+  extraAction,
+  mostrarGestaoAcesso = false,  // ← DESATIVADO por padrão
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [modalRBAC, setModalRBAC] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
@@ -12,14 +20,19 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) =
   // Usa o hook centralizado de permissões
   const { canAny, loading } = usePermissions();
   
-  // Verifica se tem permissão de gestor de cargos usando o hook
-  // Admin total tem acesso a tudo, então verificamos múltiplas permissões possíveis
-  const hasGestaoCargos = !loading && canAny([
+  // Verifica se tem permissão de gestor de cargos
+  const temPermissaoRBAC = !loading && canAny([
     'admin_total',
     'admin:cargos',
     'admin.gestao_cargos',
-    'admin:configuracoes'
+    'admin:configuracoes',
+    'rbac:cargo_visualizar'
   ]);
+  
+  // Só mostra se AMBAS as condições forem verdadeiras:
+  // 1. O pai permitiu (mostrarGestaoAcesso = true)
+  // 2. O usuário tem a permissão necessária
+  const hasGestaoCargos = mostrarGestaoAcesso && temPermissaoRBAC;
   
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -45,6 +58,11 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) =
     setIsOpen(!isOpen);
   };
 
+  const handleAbrirRBAC = () => {
+    setIsOpen(false);
+    setModalRBAC(true);
+  };
+
   const inicial = usuarioLogado?.charAt(0).toUpperCase() || 'U';
 
   return (
@@ -60,7 +78,10 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) =
             {inicial}
           </span>
           {hasGestaoCargos && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-[#121215]" title="Administrador com acesso à gestão de cargos"></span>
+            <span 
+              className="absolute -top-1 -right-1 w-3 h-3 bg-[#3B8ED0] rounded-full border-2 border-[#121215]" 
+              title="Administrador com acesso à gestão de cargos"
+            ></span>
           )}
         </div>
         
@@ -84,18 +105,14 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) =
             </div>
           )}
           
-          {/* Botão discreto de Gestão de Acessos - só aparece para admins */}
+          {/* Botão de Gestão de Acessos - só aparece se o pai habilitar */}
           {hasGestaoCargos && (
             <button
-              onClick={() => {
-                setIsOpen(false);
-                // Aqui você pode navegar para a rota de gestão de cargos/permissões
-                // Ex: window.location.href = '/admin/cargos';
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-400 hover:text-blue-400 hover:bg-white/5 transition-colors border-b border-white/10"
+              onClick={handleAbrirRBAC}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-400 hover:text-[#3B8ED0] hover:bg-white/5 transition-colors border-b border-white/10"
               title="Gestão de Cargos e Permissões"
             >
-              <Settings size={16} className="text-blue-500"/>
+              <Settings size={16} className="text-[#3B8ED0]"/>
               <span className="text-xs">Configurações de Acesso</span>
             </button>
           )}
@@ -130,6 +147,11 @@ const UserAvatar = ({ usuarioLogado, onLogout, showName = true, extraAction }) =
           </button>
         </div>,
         document.body
+      )}
+
+      {/* Modal RBAC */}
+      {modalRBAC && hasGestaoCargos && (
+        <ModalRBAC aoFechar={() => setModalRBAC(false)} />
       )}
     </>
   );

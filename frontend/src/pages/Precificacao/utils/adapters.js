@@ -1,4 +1,5 @@
 import { toFloat, round1 } from './calculations';
+import { debug } from '@/utils/logger';
 
 // Este é o ÚNICO lugar do sistema inteiro que precisa saber os nomes das colunas do banco de dados.
 export const adaptarProdutoDeEntrada = (p) => {
@@ -26,7 +27,7 @@ export const adaptarProdutoDeEntrada = (p) => {
     markupEditado: false
   };
   
-  console.log('📥 [adaptarProdutoDeEntrada] Produto adaptado:', {
+  debug('[adaptarProdutoDeEntrada] Produto adaptado:', {
     id: produto.id,
     custo: produto.custo,
     markup: produto.markup,

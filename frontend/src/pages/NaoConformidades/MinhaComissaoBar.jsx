@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, AlertCircle, ChevronDown, ChevronUp, TrendingDown } from 'lucide-react';
 import { commissionsService } from '@/services';
+import { error as logError } from '@/utils/logger';
 
 /**
  * Componente MinhaComissaoBar - Versão Minimalista
@@ -27,10 +28,10 @@ export default function MinhaComissaoBar({ mes, ano }) {
       } else {
         setComissao(response);
       }
-    } catch (error) {
-      console.error('Erro ao buscar comissão:', error);
+    } catch (err) {
+      logError('Erro ao buscar comissão:', err);
       
-      if (error?.response?.status === 404) {
+      if (err?.response?.status === 404) {
         setErro('Nenhum colaborador vinculado ao seu usuário.');
       } else {
         setErro('Erro ao carregar sua comissão.');

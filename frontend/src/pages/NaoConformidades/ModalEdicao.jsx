@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit3, Save, User, FileText, Lock } from 'lucide-react';
 import Can from '../../components/Can';
 import { nonConformitiesService } from '@/services';
+import { error as logError } from '@/utils/logger';
 
 const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
   const [form, setForm] = useState({
@@ -33,8 +34,8 @@ const ModalEdicao = ({ registro, colaboradores, aoFechar, aoSalvar }) => {
     try {
       await nonConformitiesService.updateById(registro.id, dadosParaSalvar);
       aoSalvar();
-    } catch (error) {
-      console.error("Erro ao atualizar:", error);
+    } catch (err) {
+      logError("Erro ao atualizar:", err);
       alert("Falha ao salvar alterações.");
     }
   };

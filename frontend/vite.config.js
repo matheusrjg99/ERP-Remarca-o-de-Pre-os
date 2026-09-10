@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000, // Mantive a porta que você já tinha configurado
+    port: 3000, 
     proxy: {
       // Túnel para o backend local (Python)
       '/api': {

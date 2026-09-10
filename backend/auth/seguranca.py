@@ -324,16 +324,13 @@ async def obter_permissoes_usuario(login: str) -> list:
         )
         
         if not resultado_usuario or isinstance(resultado_usuario, dict) or len(resultado_usuario) == 0:
-            print(f"DEBUG: Usuário '{login}' não encontrado ou inativo")
             return []
         
         usuario_info = resultado_usuario[0]
         cargo_id = usuario_info.get('cargo_id')
         
-        print(f"DEBUG: Usuário '{login}' - cargo_id={cargo_id}")
         
         if cargo_id is None:
-            print(f"DEBUG: Usuário '{login}' não tem cargo atribuído (cargo_id=None)")
             return []
         
         # Verifica se o cargo está ativo
@@ -351,10 +348,8 @@ async def obter_permissoes_usuario(login: str) -> list:
         )
         
         if not resultado_cargo or isinstance(resultado_cargo, dict) or len(resultado_cargo) == 0:
-            print(f"DEBUG: Cargo {cargo_id} do usuário '{login}' está inativo ou não existe")
             return []
         
-        print(f"DEBUG: Cargo ativo confirmado para usuário '{login}'")
         
         # Query otimizada: busca permissões do cargo ativo
         query = """
@@ -375,7 +370,6 @@ async def obter_permissoes_usuario(login: str) -> list:
             endpoint="/auth/permissoes"
         )
         
-        print(f"DEBUG: Permissões brutas do banco para {login} (cargo_id={cargo_id}): {resultado}")
         
         if not resultado or isinstance(resultado, dict):
             return []
@@ -388,11 +382,9 @@ async def obter_permissoes_usuario(login: str) -> list:
                 permissoes.append(codigo.strip())
         
         permissoes_finais = list(set(permissoes))  # Remove duplicatas extras
-        print(f"DEBUG: Permissões finais para {login}: {permissoes_finais}")
         return permissoes_finais
         
     except Exception as e:
-        print(f"Erro ao buscar permissões para {login}: {e}")
         import traceback
         traceback.print_exc()
         return []

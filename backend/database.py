@@ -66,7 +66,17 @@ async def executar_query(
             resultado = [dict(zip(columns, row)) for row in linhas]
         
         # 3. REGISTRO DE LOG (AUDITORIA INTELIGENTE E LEGÍVEL)
-        deve_gravar_log = (not is_select) or ("/nf/" in endpoint) or ("/notas" in endpoint)
+        # ⚠️ EXCEÇÃO: cadastro de usuário NÃO é auditado
+        # (evita bug do driver ODBC legado {SQL Server} com strings longas/hash)
+        ENDPOINTS_SEM_AUDITORIA = (
+            "/api/usuarios/cadastro",
+            "/api/usuarios/status",
+            "/api/usuarios/atualizar",
+        )
+
+        deve_gravar_log = (
+            (not is_select) or ("/nf/" in endpoint) or ("/notas" in endpoint)
+        ) and not any(ep in endpoint for ep in ENDPOINTS_SEM_AUDITORIA)
         
         if deve_gravar_log:
             # TRADUTOR DE LOGS: Transforma a ação em um texto humano
@@ -82,9 +92,6 @@ async def executar_query(
                 elif "/api/atualizar-mkp" in endpoint:
                     detalhes_log = f"Produto: {params[2]} | Alterou Markup para {params[0]}%"
                 
-                elif "/api/usuarios/cadastro" in endpoint:
-                    detalhes_log = f"Cadastrou o usuário: {params[0]} (Nível: {params[3]})"
-                    
                 elif "/api/usuarios/status" in endpoint:
                     status_str = "ATIVO" if params[0] == 1 else "INATIVO"
                     detalhes_log = f"Alterou o status do usuário '{params[1]}' para {status_str}"

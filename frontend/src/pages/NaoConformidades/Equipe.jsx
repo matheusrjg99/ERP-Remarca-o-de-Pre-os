@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Trash2, UserPlus, Users, Edit3, Save, UserCheck } from 'lucide-react';
 import Can from '../../components/Can';
+import { error as logError } from '@/utils/logger';
 
 export default function Equipe({ colaboradores, buscarColabs }) {
   const [novoNome, setNovoNome] = useState("");
@@ -26,7 +27,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
           setUsuariosSistema(response.data);
         }
       } catch (err) {
-        console.error("Erro ao buscar usuários:", err);
+        logError("Erro ao buscar usuários:", err);
       }
     };
     buscarUsuarios();
@@ -55,7 +56,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
         buscarColabs();
       })
       .catch(err => {
-        console.error("Erro ao adicionar:", err);
+        logError("Erro ao adicionar:", err);
         alert("Falha ao adicionar Colaborador.");
       })
       .finally(() => setLoading(false));
@@ -82,7 +83,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
         buscarColabs();
       })
       .catch(err => {
-        console.error("Erro ao editar:", err);
+        logError("Erro ao editar:", err);
         alert("Falha ao editar colaborador.");
       })
       .finally(() => setLoading(false));
@@ -99,7 +100,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
       axios.delete(`${API_URL}/colaboradores/${id}`, config)
         .then(() => buscarColabs())
         .catch(err => {
-          console.error("Erro ao excluir:", err);
+          logError("Erro ao excluir:", err);
           alert("Falha ao excluir colaborador.");
         })
         .finally(() => setLoading(false));

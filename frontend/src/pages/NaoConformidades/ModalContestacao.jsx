@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Send, MessageSquare, ShieldCheck, User, Lock, CheckCircle2, XCircle } from 'lucide-react';
 import { nonConformitiesService, disputesService } from '@/services';
 import { usePermissions } from '@/hooks/usePermissions';
+import { log, error as logError } from '@/utils/logger';
 
 export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista }) {
   const [texto, setTexto] = useState("");
@@ -66,8 +67,8 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
       if (temContestacao && statusLocal === 'Pendente') {
         setStatusLocal('Contestada');
       }
-    } catch (error) {
-      console.error("Erro ao buscar histórico:", error);
+    } catch (err) {
+      logError("Erro ao buscar histórico:", err);
       setHistorico([]);
     } finally {
       setCarregando(false);
@@ -130,12 +131,12 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
       if (aoAtualizarLista) aoAtualizarLista();
       
       // Sucesso silencioso - não fecha o modal
-      console.log('✅ Mensagem enviada com sucesso');
-    } catch (error) {
-      console.error("Erro ao enviar mensagem:", error);
+      log('✅ Mensagem enviada com sucesso');
+    } catch (err) {
+      logError("Erro ao enviar mensagem:", err);
       
       // Verifica se é erro de permissão (403)
-      if (error?.response?.status === 403) {
+      if (err?.response?.status === 403) {
         setErroPermissao('Você não tem permissão para realizar esta ação.');
       } else {
         alert('Erro ao enviar mensagem. Tente novamente.');
@@ -161,11 +162,11 @@ export default function ModalContestacao({ registro, aoFechar, aoAtualizarLista 
       
       setStatusLocal(decisao);
       if (aoAtualizarLista) aoAtualizarLista();
-    } catch (error) {
-      console.error("Erro ao aplicar veredicto:", error);
+    } catch (err) {
+      logError("Erro ao aplicar veredicto:", err);
       
       // Verifica se é erro de permissão (403)
-      if (error?.response?.status === 403) {
+      if (err?.response?.status === 403) {
         setErroPermissao('Você não tem permissão para aplicar veredicto.');
       } else {
         alert('Erro ao aplicar veredicto. Tente novamente.');

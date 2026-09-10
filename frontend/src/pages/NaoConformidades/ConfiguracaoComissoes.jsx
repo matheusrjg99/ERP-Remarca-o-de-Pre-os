@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X, DollarSign, Percent, Lock } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { collaboratorsService, commissionsService } from '@/services';
+import { log, warn, error as logError } from '@/utils/logger';
 
 export default function ConfiguracaoComissoes() {
   const [configuracoes, setConfiguracoes] = useState([]);
@@ -30,14 +31,14 @@ export default function ConfiguracaoComissoes() {
   const buscarConfiguracoes = async () => {
     setCarregando(true);
     try {
-      console.log('🔍 [DEBUG] Buscando configurações de comissões...');
+      log('🔍 [DEBUG] Buscando configurações de comissões...');
       const response = await commissionsService.getConfiguracoes();
-      console.log('✅ [DEBUG] Configurações carregadas:', response);
+      log('✅ [DEBUG] Configurações carregadas:', response);
       setConfiguracoes(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao buscar configurações:', error);
-      console.error('❌ [DEBUG] Status:', error?.response?.status);
-      console.error('❌ [DEBUG] Dados:', error?.response?.data);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao buscar configurações:', err);
+      logError('❌ [DEBUG] Status:', err?.response?.status);
+      logError('❌ [DEBUG] Dados:', err?.response?.data);
       setConfiguracoes([]);
     } finally {
       setCarregando(false);
@@ -47,22 +48,22 @@ export default function ConfiguracaoComissoes() {
   const buscarColaboradores = async () => {
     setCarregandoColaboradores(true);
     try {
-      console.log('🔍 [DEBUG] Buscando colaboradores...');
+      log('🔍 [DEBUG] Buscando colaboradores...');
       const response = await collaboratorsService.getAll();
-      console.log('✅ [DEBUG] Colaboradores carregados:', response);
+      log('✅ [DEBUG] Colaboradores carregados:', response);
       
       if (Array.isArray(response)) {
         setColaboradores(response);
       } else if (response?.data && Array.isArray(response.data)) {
         setColaboradores(response.data);
       } else {
-        console.warn('⚠️ [DEBUG] Formato inesperado:', response);
+        warn('⚠️ [DEBUG] Formato inesperado:', response);
         setColaboradores([]);
       }
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao buscar colaboradores:', error);
-      console.error('❌ [DEBUG] Status:', error?.response?.status);
-      console.error('❌ [DEBUG] Dados:', error?.response?.data);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao buscar colaboradores:', err);
+      logError('❌ [DEBUG] Status:', err?.response?.status);
+      logError('❌ [DEBUG] Dados:', err?.response?.data);
       setColaboradores([]);
     } finally {
       setCarregandoColaboradores(false);
@@ -94,7 +95,7 @@ export default function ConfiguracaoComissoes() {
         percentual_desconto: parseFloat(novoRegistro.percentual_desconto.replace(',', '.'))
       };
 
-      console.log('🔍 [DEBUG] Salvando configuração:', dadosEnvio);
+      log('🔍 [DEBUG] Salvando configuração:', dadosEnvio);
 
       if (editandoId) {
         await commissionsService.updateConfiguracao(editandoId, dadosEnvio);
@@ -106,12 +107,12 @@ export default function ConfiguracaoComissoes() {
       setEditandoId(null);
       setFormularioAberto(false);
       buscarConfiguracoes();
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao salvar configuração:', error);
-      console.error('❌ [DEBUG] Status:', error?.response?.status);
-      console.error('❌ [DEBUG] Dados:', error?.response?.data);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao salvar configuração:', err);
+      logError('❌ [DEBUG] Status:', err?.response?.status);
+      logError('❌ [DEBUG] Dados:', err?.response?.data);
       
-      if (error?.response?.status === 403) {
+      if (err?.response?.status === 403) {
         alert('Você não tem permissão para realizar esta ação');
       } else {
         alert('Erro ao salvar configuração. Verifique se o colaborador já possui configuração.');
@@ -145,10 +146,10 @@ export default function ConfiguracaoComissoes() {
     try {
       await commissionsService.deleteConfiguracao(id);
       buscarConfiguracoes();
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao excluir configuração:', error);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao excluir configuração:', err);
       
-      if (error?.response?.status === 403) {
+      if (err?.response?.status === 403) {
         alert('Você não tem permissão para excluir configurações');
       } else {
         alert('Erro ao excluir configuração');

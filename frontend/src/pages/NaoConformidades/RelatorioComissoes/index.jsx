@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { DollarSign, Users, TrendingDown, Calendar, Search, Download, Lock } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { collaboratorsService, commissionsService } from '@/services';
+import { log, error as logError } from '@/utils/logger';
+import { exportarParaCSV, exportarParaPDF } from './exportUtils';
+import ModalPercentuaisComissao from './components/ModalPercentuaisComissao';
 
 export default function RelatorioComissoes() {
   const [relatorio, setRelatorio] = useState([]);
@@ -11,9 +14,14 @@ export default function RelatorioComissoes() {
   const [ano, setAno] = useState(new Date().getFullYear());
   const [carregando, setCarregando] = useState(false);
   const [erroPermissao, setErroPermissao] = useState(null);
-
+  
+  // Estado para controle do modal de percentuais
+  const [modalPercentuaisAberto, setModalPercentuaisAberto] = useState(false);
+  const [acaoExportacao, setAcaoExportacao] = useState(null); // 'csv' ou 'pdf'
+  const [percentuais, setPercentuais] = useState({ percentualFiscal: 100, percentualDinheiro: 0 });
+  
   const { permissions, loading: permissionsLoading } = usePermissions();
-
+  
   // Verificação de permissão
   const podeVisualizar = permissions.includes('cadastros:comissoes') || 
                          permissions.includes('admin_total') ||
@@ -25,16 +33,16 @@ export default function RelatorioComissoes() {
   const buscarRelatorio = async () => {
     setCarregando(true);
     try {
-      console.log('🔍 [DEBUG] Buscando relatório de comissões...');
+      log('🔍 [DEBUG] Buscando relatório de comissões...');
       const response = await commissionsService.getRelatorio({ mes, ano });
-      console.log('✅ [DEBUG] Relatório carregado:', response);
+      log('✅ [DEBUG] Relatório carregado:', response);
       setRelatorio(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao buscar relatório:', error);
-      console.error('❌ [DEBUG] Status:', error?.response?.status);
-      console.error('❌ [DEBUG] Dados:', error?.response?.data);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao buscar relatório:', err);
+      logError('❌ [DEBUG] Status:', err?.response?.status);
+      logError('❌ [DEBUG] Dados:', err?.response?.data);
       
-      if (error?.response?.status === 403) {
+      if (err?.response?.status === 403) {
         setErroPermissao('Você não tem permissão para acessar o relatório de comissões.');
       } else {
         setRelatorio([]);
@@ -46,29 +54,29 @@ export default function RelatorioComissoes() {
 
   const buscarColaboradores = async () => {
     try {
-      console.log('🔍 [DEBUG] Buscando colaboradores...');
+      log('🔍 [DEBUG] Buscando colaboradores...');
       const response = await collaboratorsService.getAll();
-      console.log('✅ [DEBUG] Colaboradores carregados:', response);
+      log('✅ [DEBUG] Colaboradores carregados:', response);
       
       if (Array.isArray(response)) {
         setColaboradores(response);
       } else if (response?.data && Array.isArray(response.data)) {
         setColaboradores(response.data);
       }
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao buscar colaboradores:', error);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao buscar colaboradores:', err);
       setColaboradores([]);
     }
   };
 
   const buscarConfiguracoes = async () => {
     try {
-      console.log('🔍 [DEBUG] Buscando configurações...');
+      log('🔍 [DEBUG] Buscando configurações...');
       const response = await commissionsService.getConfiguracoes();
-      console.log('✅ [DEBUG] Configurações carregadas:', response);
+      log('✅ [DEBUG] Configurações carregadas:', response);
       setConfiguracoes(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao buscar configurações:', error);
+    } catch (err) {
+      logError('❌ [DEBUG] Erro ao buscar configurações:', err);
       setConfiguracoes([]);
     }
   };
@@ -99,6 +107,27 @@ export default function RelatorioComissoes() {
 
   const getTotalNCs = () => {
     return relatorio.reduce((acc, item) => acc + (item.total_ncs || 0), 0);
+  };
+
+  const handleExportarCSV = () => {
+    setAcaoExportacao('csv');
+    setModalPercentuaisAberto(true);
+  };
+
+  const handleExportarPDF = () => {
+    setAcaoExportacao('pdf');
+    setModalPercentuaisAberto(true);
+  };
+
+  // Callback chamado quando o usuário confirma os percentuais no modal
+  const handleConfirmarPercentuais = (percentuaisInformados) => {
+    setPercentuais(percentuaisInformados);
+    
+    if (acaoExportacao === 'csv') {
+      exportarParaCSV(relatorio, mes, ano, percentuaisInformados);
+    } else if (acaoExportacao === 'pdf') {
+      exportarParaPDF(relatorio, mes, ano, formatarMoeda, percentuaisInformados);
+    }
   };
 
   // Fallback para loading de permissões
@@ -186,6 +215,27 @@ export default function RelatorioComissoes() {
           >
             <Search size={20} />
           </button>
+
+          {/* Botões de Exportação */}
+          <button 
+            onClick={handleExportarCSV}
+            disabled={relatorio.length === 0}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md flex items-center gap-2"
+            title="Exportar CSV"
+          >
+            <Download size={20} />
+            <span className="text-xs font-bold hidden lg:inline">CSV</span>
+          </button>
+
+          <button 
+            onClick={handleExportarPDF}
+            disabled={relatorio.length === 0}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white p-3.5 rounded-xl transition-all active:scale-95 shadow-md flex items-center gap-2"
+            title="Exportar PDF"
+          >
+            <Download size={20} />
+            <span className="text-xs font-bold hidden lg:inline">PDF</span>
+          </button>
         </div>
       </div>
 
@@ -265,6 +315,14 @@ export default function RelatorioComissoes() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Percentuais */}
+      <ModalPercentuaisComissao
+        isOpen={modalPercentuaisAberto}
+        onClose={() => setModalPercentuaisAberto(false)}
+        onConfirm={handleConfirmarPercentuais}
+        valoresIniciais={percentuais}
+      />
     </div>
   );
 }

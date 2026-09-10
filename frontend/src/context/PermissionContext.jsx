@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services';
+import { log, error } from '@/utils/logger';
 
 const PermissionContext = createContext(null);
 
@@ -47,9 +48,9 @@ export const PermissionProvider = ({ children }) => {
       const perms = userData.permissions || [];
       setPermissions(perms);
       localStorage.setItem('permissions', JSON.stringify(perms));
-      console.log('✅ [PermissionContext] Permissões carregadas:', perms.length, 'permissões');
-    } catch (error) {
-      console.error('Erro ao carregar permissões:', error);
+      log('✅ [PermissionContext] Permissões carregadas:', perms.length, 'permissões');
+    } catch (err) {
+      error('Erro ao carregar permissões:', err);
       setPermissions([]);
       setUser(null);
       localStorage.removeItem('permissions');

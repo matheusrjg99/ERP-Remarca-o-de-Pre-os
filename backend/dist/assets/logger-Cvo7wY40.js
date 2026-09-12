@@ -1,0 +1,1 @@
+var e=(...e)=>{},t=(...e)=>{},n=(...e)=>{console.error(...e)};export{n,e as r,t};

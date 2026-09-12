@@ -4,79 +4,9 @@
  */
 
 /**
- * Exporta os dados do relatório para CSV com separação fiscal/dinheiro
- * @param {Array} dados - Array de objetos com os dados do relatório
- * @param {number} mes - Mês de referência (1-12)
- * @param {number} ano - Ano de referência
- * @param {object} percentuais - Objeto com percentualFiscal e percentualDinheiro
- */
-export const exportarParaCSV = (dados, mes, ano, percentuais = { percentualFiscal: 100, percentualDinheiro: 0 }) => {
-  if (!dados || dados.length === 0) {
-    console.warn('Nenhum dado para exportar');
-    return;
-  }
-
-  const mesesNomes = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-  ];
-
-  // Cabeçalho do CSV com colunas separadas para fiscal e dinheiro (apenas valores, sem percentuais repetidos)
-  const cabecalho = [
-    'Colaborador',
-    'Salário Base',
-    'Total NCs',
-    'Valor Desconto',
-    'Salário Final',
-    'Valor Fiscal',
-    'Valor Dinheiro'
-  ];
-
-  // Linhas de dados com separação fiscal/dinheiro
-  const linhas = dados.map(item => {
-    const salarioFinal = item.salario_final || 0;
-    const valorFiscal = salarioFinal * ((percentuais?.percentualFiscal || 100) / 100);
-    const valorDinheiro = salarioFinal * ((percentuais?.percentualDinheiro || 0) / 100);
-
-    return [
-      `"${item.nome_colaborador}"`,
-      (item.salario_base || 0).toFixed(2).replace('.', ','),
-      item.total_ncs || 0,
-      (item.valor_total_desconto || 0).toFixed(2).replace('.', ','),
-      salarioFinal.toFixed(2).replace('.', ','),
-      valorFiscal.toFixed(2).replace('.', ','),
-      valorDinheiro.toFixed(2).replace('.', ',')
-    ];
-  });
-
-  // Monta o conteúdo CSV
-  const conteudoCSV = [
-    cabecalho.join(';'),
-    ...linhas.map(linha => linha.join(';'))
-  ].join('\n');
-
-  // Adiciona BOM para UTF-8
-  const blob = new Blob(['\ufeff' + conteudoCSV], { 
-    type: 'text/csv;charset=utf-8;' 
-  });
-
-  // Cria link para download
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `relatorio_comissoes_${mesesNomes[mes - 1].toLowerCase()}_${ano}.csv`;
-  link.click();
-
-  // Limpa URL
-  URL.revokeObjectURL(url);
-
-  console.log('✅ CSV exportado com sucesso');
-};
-
-/**
- * Exporta os dados do relatório para PDF (usando window.print como fallback)
- * com separação fiscal/dinheiro POR COLABORADOR
- * Design otimizado para impressão econômica (baixo consumo de tinta)
+ * Exporta os dados do relatório para PDF via window.print
+ * Design editorial em preto e branco — profissional, limpo, otimizado para impressão.
+ *
  * @param {Array} dados - Array de objetos com os dados do relatório
  * @param {number} mes - Mês de referência (1-12)
  * @param {number} ano - Ano de referência
@@ -94,429 +24,543 @@ export const exportarParaPDF = (dados, mes, ano, formatarMoeda, percentuais = { 
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
 
-  // Calcula totais
   const totalGeral = dados.reduce((acc, item) => acc + (item.salario_final || 0), 0);
   const totalDescontos = dados.reduce((acc, item) => acc + (item.valor_total_desconto || 0), 0);
   const totalNCs = dados.reduce((acc, item) => acc + (item.total_ncs || 0), 0);
-  
-  // Calcula totais fiscal e dinheiro
   const totalFiscal = totalGeral * ((percentuais?.percentualFiscal || 100) / 100);
   const totalDinheiro = totalGeral * ((percentuais?.percentualDinheiro || 0) / 100);
 
-  // Gera HTML para impressão com design dashboard econômico
+  const dataEmissao = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+  const horaEmissao = new Date().toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit'
+  });
+
   const htmlConteudo = `
     <!DOCTYPE html>
-    <html>
+    <html lang="pt-BR">
     <head>
       <meta charset="utf-8">
-      <title>Relatório de Comissões - ${mesesNomes[mes - 1]} ${ano}</title>
+      <title>Relatório de Comissões — ${mesesNomes[mes - 1]} ${ano}</title>
       <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
+        /* ============================================================
+           RESET E BASE
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          padding: 30px;
-          color: #1a1a1a;
-          background: #fff;
-          line-height: 1.5;
-        }
-        
-        /* Cabeçalho */
-        .header {
-          border-bottom: 2px solid #1a1a1a;
-          padding-bottom: 20px;
-          margin-bottom: 30px;
-        }
-        
-        h1 {
-          color: #1a1a1a;
-          font-size: 26px;
-          font-weight: 700;
-          margin-bottom: 8px;
-          letter-spacing: -0.5px;
-        }
-        
-        .periodo {
-          color: #666;
-          font-size: 14px;
-          font-weight: 500;
-        }
-        
-        /* Cards de resumo - estilo dashboard compacto */
-        .resumo-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-        
-        .resumo-card {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          padding: 12px 16px;
-          text-align: center;
-        }
-        
-        .resumo-label {
-          font-size: 9px;
-          color: #666;
-          text-transform: uppercase;
-          font-weight: 600;
-          letter-spacing: 0.3px;
-          margin-bottom: 6px;
-        }
-        
-        .resumo-valor {
-          font-size: 18px;
-          font-weight: 700;
-          color: #1a1a1a;
-        }
-        
-        .resumo-destaque {
-          color: #059669;
-        }
-        
-        /* Seção de distribuição fiscal/dinheiro */
-        .distribuicao-section {
-          background: #fff;
-          border: 2px solid #1a1a1a;
-          border-radius: 6px;
-          padding: 16px;
-          margin-bottom: 20px;
-        }
-        
-        .distribuicao-titulo {
+          font-family: 'Helvetica Neue', Helvetica, Arial, 'Segoe UI', sans-serif;
+          background: #e8e8e8;
+          color: #000;
+          line-height: 1.45;
+          padding: 40px 20px;
           font-size: 12px;
-          font-weight: 700;
-          color: #1a1a1a;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 14px;
+          -webkit-font-smoothing: antialiased;
+        }
+
+        .page {
+          max-width: 900px;
+          margin: 0 auto;
+          background: #fff;
+          padding: 48px 56px;
+          box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        /* ============================================================
+           CABEÇALHO
+           ============================================================ */
+        .header {
+          padding-bottom: 24px;
+          border-bottom: 2px solid #000;
+          margin-bottom: 32px;
           display: flex;
-          align-items: center;
-          gap: 6px;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 24px;
         }
-        
-        .distribuicao-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
+
+        .brand {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 2.5px;
+          text-transform: uppercase;
+          color: #000;
+          margin-bottom: 14px;
         }
-        
-        .distribuicao-card {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          padding: 14px;
-          text-align: center;
+
+        .title {
+          font-size: 30px;
+          font-weight: 800;
+          letter-spacing: -0.8px;
+          line-height: 1.05;
+          color: #000;
         }
-        
-        .distribuicao-card.fiscal {
-          border-top: 3px solid #2563eb;
+
+        .subtitle {
+          font-size: 13px;
+          font-weight: 400;
+          color: #444;
+          margin-top: 8px;
+          letter-spacing: 0.3px;
         }
-        
-        .distribuicao-card.dinheiro {
-          border-top: 3px solid #059669;
-        }
-        
-        .distribuicao-label {
+
+        .meta {
+          text-align: right;
           font-size: 10px;
           color: #666;
+          line-height: 1.7;
+          letter-spacing: 0.5px;
           text-transform: uppercase;
-          font-weight: 600;
-          margin-bottom: 8px;
-          letter-spacing: 0.3px;
+          white-space: nowrap;
         }
-        
-        .distribuicao-valor {
-          font-size: 20px;
+
+        .meta strong {
+          color: #000;
           font-weight: 700;
-          color: #1a1a1a;
         }
-        
-        /* Tabela */
-        .tabela-container {
-          margin-bottom: 30px;
-          overflow-x: auto;
+
+        /* ============================================================
+           RESUMO EXECUTIVO (KPIs)
+           ============================================================ */
+        .section {
+          margin-bottom: 32px;
         }
-        
+
+        .section-label {
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #000;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #000;
+          margin-bottom: 18px;
+        }
+
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0;
+        }
+
+        .kpi {
+          padding: 14px 18px 14px 0;
+          border-right: 1px solid #d4d4d4;
+        }
+
+        .kpi:last-child {
+          border-right: none;
+          padding-right: 0;
+        }
+
+        .kpi:not(:first-child) {
+          padding-left: 18px;
+        }
+
+        .kpi-label {
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
+          color: #666;
+          margin-bottom: 8px;
+        }
+
+        .kpi-value {
+          font-size: 20px;
+          font-weight: 800;
+          color: #000;
+          letter-spacing: -0.4px;
+          line-height: 1.1;
+        }
+
+        /* ============================================================
+           DISTRIBUIÇÃO FISCAL / DINHEIRO
+           ============================================================ */
+        .split-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0;
+          border-top: 1px solid #000;
+          border-bottom: 1px solid #000;
+        }
+
+        .split-item {
+          padding: 18px 0;
+        }
+
+        .split-item:first-child {
+          padding-right: 24px;
+          border-right: 1px solid #000;
+        }
+
+        .split-item:last-child {
+          padding-left: 24px;
+        }
+
+        .split-label {
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          color: #000;
+          margin-bottom: 6px;
+        }
+
+        .split-percent {
+          font-size: 10px;
+          color: #888;
+          font-weight: 500;
+          letter-spacing: 0.3px;
+          margin-bottom: 10px;
+        }
+
+        .split-value {
+          font-size: 22px;
+          font-weight: 800;
+          color: #000;
+          letter-spacing: -0.5px;
+          line-height: 1;
+        }
+
+        /* ============================================================
+           TABELA
+           ============================================================ */
         table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 12px;
+          font-size: 11.5px;
         }
-        
+
         thead {
-          background: #f9fafb;
+          border-top: 2px solid #000;
+          border-bottom: 1px solid #000;
         }
-        
+
         th {
-          padding: 14px 16px;
+          padding: 11px 10px;
           text-align: left;
-          font-size: 10px;
-          font-weight: 700;
-          color: #666;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 1.2px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          border-bottom: 2px solid #1a1a1a;
+          color: #000;
+          white-space: nowrap;
         }
-        
+
+        th.right  { text-align: right; }
+        th.center { text-align: center; }
+
         td {
-          padding: 14px 16px;
-          border-bottom: 1px solid #e5e7eb;
+          padding: 11px 10px;
+          border-bottom: 1px solid #e5e5e5;
+          color: #222;
+          font-weight: 400;
+          font-size: 11.5px;
+          vertical-align: top;
+        }
+
+        td.nome {
+          font-weight: 700;
+          color: #000;
+          text-transform: uppercase;
+          letter-spacing: 0.2px;
+        }
+
+        td.right  { text-align: right; font-variant-numeric: tabular-nums; }
+        td.center { text-align: center; }
+
+        td.mono {
+          font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+          font-size: 11px;
+          color: #444;
+        }
+
+        td.desconto {
+          color: #000;
+          font-weight: 600;
+        }
+
+        td.zero {
+          color: #bbb;
+        }
+
+        td.final {
+          font-weight: 800;
+          color: #000;
           font-size: 12px;
-          color: #1a1a1a;
         }
-        
-        tbody tr:hover {
-          background: #f9fafb;
+
+        tbody tr:last-child td {
+          border-bottom: 1px solid #000;
         }
-        
-        .texto-direita {
-          text-align: right;
+
+        /* Linha de TOTAL */
+        tfoot td {
+          padding-top: 14px;
+          padding-bottom: 4px;
+          font-weight: 800;
+          color: #000;
+          border-bottom: none;
+          text-transform: uppercase;
+          font-size: 10px;
+          letter-spacing: 0.5px;
         }
-        
-        .texto-centro {
-          text-align: center;
+
+        tfoot td.valor {
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0;
+          text-transform: none;
         }
-        
-        /* Colunas fiscais/dinheiro na tabela */
-        .col-fiscal {
-          color: #1a1a1a;
-          font-weight: 600;
-        }
-        
-        .col-dinheiro {
-          color: #1a1a1a;
-          font-weight: 600;
-        }
-        
-        /* Rodapé de totais */
-        .totais-footer {
-          background: #fff;
-          border-top: 2px solid #1a1a1a;
-          border-radius: 0;
-          padding: 20px 0 0 0;
+
+        /* ============================================================
+           RODAPÉ / ASSINATURA
+           ============================================================ */
+        .footer {
+          margin-top: 40px;
+          padding-top: 20px;
+          border-top: 1px solid #000;
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 20px;
-        }
-        
-        .totais-info {
-          font-size: 12px;
+          align-items: flex-start;
+          gap: 24px;
+          font-size: 9px;
           color: #666;
-          font-weight: 500;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
         }
-        
-        .totais-valores {
-          display: flex;
-          gap: 32px;
-          flex-wrap: wrap;
+
+        .footer-info {
+          line-height: 1.8;
         }
-        
-        .total-item {
+
+        .footer-info strong {
+          color: #000;
+          font-weight: 700;
+        }
+
+        .footer-signature {
+          text-align: right;
+          line-height: 1.8;
+        }
+
+        .footer-signature .line {
+          display: inline-block;
+          width: 180px;
+          border-top: 1px solid #666;
+          padding-top: 4px;
+          margin-top: 32px;
+          text-align: center;
+        }
+
+        /* ============================================================
+           IMPRESSÃO
+           ============================================================ */
+        @media print {
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+
+          body {
+            background: #fff;
+            padding: 0;
+            font-size: 11px;
+          }
+
+          .page {
+            box-shadow: none;
+            padding: 0;
+            max-width: 100%;
+          }
+
+          .no-print { display: none !important; }
+
+          .title { font-size: 24px; }
+          .kpi-value { font-size: 16px; }
+          .split-value { font-size: 17px; }
+
+          th { padding: 7px 8px; font-size: 8.5px; }
+          td { padding: 7px 8px; font-size: 10.5px; }
+
+          /* Evita quebra de linha em branco */
+          tr, .kpi, .split-item { page-break-inside: avoid; }
+
+          /* Repete cabeçalho da tabela em cada página */
+          thead { display: table-header-group; }
+
+          /* Não imprime linhas "hover" */
+          tbody tr:hover { background: transparent; }
+        }
+
+        /* ============================================================
+           BOTÃO IMPRIMIR (visível só na tela)
+           ============================================================ */
+        .actions {
+          max-width: 900px;
+          margin: 24px auto 0;
           text-align: right;
         }
-        
-        .total-label {
-          font-size: 10px;
-          color: #999;
-          text-transform: uppercase;
-          font-weight: 600;
-          margin-bottom: 4px;
-        }
-        
-        .total-valor {
-          font-size: 18px;
-          font-weight: 700;
-          color: #1a1a1a;
-        }
-        
-        .total-geral-destaque {
-          font-size: 22px;
-          color: #059669;
-        }
-        
-        /* Botão de impressão - escondido na impressão */
+
         .btn-imprimir {
-          display: inline-block;
-          margin-top: 20px;
-          padding: 12px 24px;
-          background: #1a1a1a;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 11px 24px;
+          background: #000;
           color: #fff;
           border: none;
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 600;
+          border-radius: 2px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: opacity 0.2s;
         }
-        
-        .btn-imprimir:hover {
-          background: #333;
-        }
-        
-        /* Otimização para impressão econômica */
-        @media print {
-          body { 
-            padding: 15px;
-            background: #fff;
-          }
-          
-          .no-print { 
-            display: none !important;
-          }
-          
-          /* Remove fundos coloridos para economizar tinta */
-          .resumo-card,
-          .distribuicao-card,
-          .distribuicao-section,
-          thead {
-            background: #fff !important;
-          }
 
-          /* Bordas sutis em cinza */
-          .resumo-card,
-          .distribuicao-card,
-          .distribuicao-section {
-            border: 1px solid #ccc !important;
-          }
-
-          /* Mantém borda superior preta na seção de distribuição e footer */
-          .distribuicao-section,
-          .totais-footer {
-            border-top: 2px solid #000 !important;
-            border-bottom: none !important;
-          }
-
-          /* Texto sempre preto puro */
-          * {
-            color: #000 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-        }
+        .btn-imprimir:hover { opacity: 0.85; }
       </style>
     </head>
     <body>
-      <!-- Cabeçalho -->
-      <div class="header">
-        <h1>Relatório de Comissões</h1>
-        <p class="periodo">${mesesNomes[mes - 1]} de ${ano}</p>
-      </div>
-      
-      <!-- Resumo Dashboard -->
-      <div class="resumo-grid">
-        <div class="resumo-card">
-          <div class="resumo-label">Total a Pagar</div>
-          <div class="resumo-valor resumo-destaque">${formatarMoeda(totalGeral)}</div>
-        </div>
-        <div class="resumo-card">
-          <div class="resumo-label">Colaboradores</div>
-          <div class="resumo-valor">${dados.length}</div>
-        </div>
-        <div class="resumo-card">
-          <div class="resumo-label">Descontos</div>
-          <div class="resumo-valor">${formatarMoeda(totalDescontos)}</div>
-        </div>
-        <div class="resumo-card">
-          <div class="resumo-label">Total NCs</div>
-          <div class="resumo-valor">${totalNCs}</div>
-        </div>
-      </div>
+      <div class="page">
 
-      <!-- Distribuição Fiscal/Dinheiro -->
-      <div class="distribuicao-section">
-        <div class="distribuicao-titulo">
-          Distribuição da Comissão por Tipo (${percentuais?.percentualFiscal || 100}% fiscal / ${percentuais?.percentualDinheiro || 0}% dinheiro)
-        </div>
-        <div class="distribuicao-grid">
-          <div class="distribuicao-card fiscal">
-            <div class="distribuicao-label">Valor Fiscal</div>
-            <div class="distribuicao-valor">${formatarMoeda(totalFiscal)}</div>
+        <!-- CABEÇALHO -->
+        <header class="header">
+          <div>
+            <div class="brand">Sophon · Não Conformidades</div>
+            <h1 class="title">Relatório de Comissões</h1>
+            <p class="subtitle">${mesesNomes[mes - 1]} de ${ano}</p>
           </div>
-          <div class="distribuicao-card dinheiro">
-            <div class="distribuicao-label">Valor em Dinheiro</div>
-            <div class="distribuicao-valor">${formatarMoeda(totalDinheiro)}</div>
+          <div class="meta">
+            <div>Emitido em <strong>${dataEmissao}</strong></div>
+            <div>às <strong>${horaEmissao}</strong></div>
           </div>
-        </div>
-      </div>
+        </header>
 
-      <!-- Tabela Detalhada -->
-      <div class="tabela-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th class="texto-direita">Salário Base</th>
-              <th class="texto-centro">NCs</th>
-              <th class="texto-direita">Desconto</th>
-              <th class="texto-direita">Salário Final</th>
-              <th class="texto-direita col-fiscal">Valor Fiscal</th>
-              <th class="texto-direita col-dinheiro">Valor Dinheiro</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${dados.map(item => {
-              const salarioFinal = item.salario_final || 0;
-              const valorFiscal = salarioFinal * ((percentuais?.percentualFiscal || 100) / 100);
-              const valorDinheiro = salarioFinal * ((percentuais?.percentualDinheiro || 0) / 100);
-              
-              return `
+        <!-- RESUMO EXECUTIVO -->
+        <section class="section">
+          <div class="section-label">Resumo do Período</div>
+          <div class="kpi-grid">
+            <div class="kpi">
+              <div class="kpi-label">Total a Pagar</div>
+              <div class="kpi-value">${formatarMoeda(totalGeral)}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Colaboradores</div>
+              <div class="kpi-value">${dados.length}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Descontos</div>
+              <div class="kpi-value">${formatarMoeda(totalDescontos)}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">NCs</div>
+              <div class="kpi-value">${totalNCs}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DISTRIBUIÇÃO -->
+        <section class="section">
+          <div class="section-label">Distribuição por Tipo de Pagamento</div>
+          <div class="split-grid">
+            <div class="split-item">
+              <div class="split-label">Valor Fiscal</div>
+              <div class="split-percent">${percentuais?.percentualFiscal || 100}% do total</div>
+              <div class="split-value">${formatarMoeda(totalFiscal)}</div>
+            </div>
+            <div class="split-item">
+              <div class="split-label">Valor em Dinheiro</div>
+              <div class="split-percent">${percentuais?.percentualDinheiro || 0}% do total</div>
+              <div class="split-value">${formatarMoeda(totalDinheiro)}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TABELA -->
+        <section class="section">
+          <div class="section-label">Detalhamento por Colaborador</div>
+          <table>
+            <thead>
               <tr>
-                <td>${item.nome_colaborador}</td>
-                <td class="texto-direita">${formatarMoeda(item.salario_base)}</td>
-                <td class="texto-centro">${item.total_ncs || 0}</td>
-                <td class="texto-direita">${formatarMoeda(item.valor_total_desconto)}</td>
-                <td class="texto-direita"><strong>${formatarMoeda(item.salario_final)}</strong></td>
-                <td class="texto-direita col-fiscal">${formatarMoeda(valorFiscal)}</td>
-                <td class="texto-direita col-dinheiro">${formatarMoeda(valorDinheiro)}</td>
+                <th>Colaborador</th>
+                <th class="right">Salário Base</th>
+                <th class="center">NCs</th>
+                <th class="right">Desconto</th>
+                <th class="right">Salário Final</th>
+                <th class="right">Fiscal</th>
+                <th class="right">Dinheiro</th>
               </tr>
-            `}).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${dados.map(item => {
+                const salarioFinal = item.salario_final || 0;
+                const desconto = item.valor_total_desconto || 0;
+                const temDesconto = desconto > 0;
+                const valorFiscal = salarioFinal * ((percentuais?.percentualFiscal || 100) / 100);
+                const valorDinheiro = salarioFinal * ((percentuais?.percentualDinheiro || 0) / 100);
+                const ncsFormatado = (() => {
+                  const p = item.total_ncs_proprias || 0;
+                  const s = item.total_ncs_subordinados || 0;
+                  if (s === 0) return `${p}`;
+                  return `${p} + ${s} sub${s > 1 ? 's' : ''}`;
+                })();
+
+                return `
+                  <tr>
+                    <td class="nome">${item.nome_colaborador}</td>
+                    <td class="right">${formatarMoeda(item.salario_base)}</td>
+                    <td class="center mono">${ncsFormatado}</td>
+                    <td class="right ${temDesconto ? 'desconto' : 'zero'}">${formatarMoeda(desconto)}</td>
+                    <td class="right final">${formatarMoeda(salarioFinal)}</td>
+                    <td class="right">${formatarMoeda(valorFiscal)}</td>
+                    <td class="right">${formatarMoeda(valorDinheiro)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Total (${dados.length} colaboradores)</td>
+                <td class="right valor">${formatarMoeda(totalDescontos)}</td>
+                <td class="right valor">${formatarMoeda(totalGeral)}</td>
+                <td class="right valor">${formatarMoeda(totalFiscal)}</td>
+                <td class="right valor">${formatarMoeda(totalDinheiro)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+
+        <!-- RODAPÉ -->
+        <footer class="footer">
+          <div class="footer-info">
+            <div><strong>Sophon · Não Conformidades</strong></div>
+            <div>Relatório gerado automaticamente pelo sistema</div>
+            <div>${dataEmissao} · ${horaEmissao}</div>
+          </div>
+          <div class="footer-signature">
+            <div class="line">Responsável</div>
+          </div>
+        </footer>
+
       </div>
 
-      <!-- Totais Footer -->
-      <div class="totais-footer">
-        <div class="totais-info">
-          Total de colaboradores: <strong>${dados.length}</strong>
-        </div>
-        <div class="totais-valores">
-          <div class="total-item">
-            <div class="total-label">Total Geral</div>
-            <div class="total-valor total-geral-destaque">${formatarMoeda(totalGeral)}</div>
-          </div>
-          <div class="total-item">
-            <div class="total-label">Total Fiscal</div>
-            <div class="total-valor col-fiscal">${formatarMoeda(totalFiscal)}</div>
-          </div>
-          <div class="total-item">
-            <div class="total-label">Total Dinheiro</div>
-            <div class="total-valor col-dinheiro">${formatarMoeda(totalDinheiro)}</div>
-          </div>
-        </div>
+      <!-- BOTÃO IMPRIMIR -->
+      <div class="actions no-print">
+        <button class="btn-imprimir" onclick="window.print()">
+          Imprimir / Salvar como PDF
+        </button>
       </div>
-
-      <!-- Botão de Impressão -->
-      <button class="no-print btn-imprimir" onclick="window.print()">
-        🖨️ Imprimir / Salvar como PDF
-      </button>
     </body>
     </html>
   `;
 
-  // Abre janela de impressão
   const novaJanela = window.open('', '_blank');
   novaJanela.document.write(htmlConteudo);
   novaJanela.document.close();
 
-  console.log('✅ PDF pronto para impressão (design econômico)');
+  console.log('✅ Relatório pronto para impressão (P&B editorial)');
 };

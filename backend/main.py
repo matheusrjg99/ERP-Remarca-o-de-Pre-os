@@ -7,6 +7,8 @@ from typing import List, Optional
 import os
 import logging
 
+from dotenv import load_dotenv
+
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
@@ -19,6 +21,13 @@ from database import executar_query
 from sql_repo import Scripts
 from models.schemas import LoginData, Token
 from auth.seguranca import verificar_senha, criar_token_acesso, SECRET_KEY, ALGORITHM
+
+
+# ==========================================
+# 📁 CARREGAR VARIÁVEIS DE AMBIENTE (.env)
+# ==========================================
+# Carrega o .env ANTES de qualquer os.getenv()
+load_dotenv()
 
 
 # ==========================================

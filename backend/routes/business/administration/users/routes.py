@@ -63,7 +63,7 @@ async def cadastrar_usuario(
     service = UserService(current_user)
     
     # LOG: payload recebido
-    logging.warning(
+    logging.debug(
         f"[DEBUG POST /users] Payload: login={dados.login!r}, "
         f"nome={dados.nome!r}, cargo_id={dados.cargo_id!r}, "
         f"senha_len={len(dados.senha) if dados.senha else 0}"
@@ -81,7 +81,7 @@ async def cadastrar_usuario(
     # 2. Gera o hash da senha
     try:
         hash_senha = gerar_hash_senha(dados.senha)
-        logging.warning(f"[DEBUG POST /users] Hash gerado com sucesso")
+        logging.debug(f"[DEBUG POST /users] Hash gerado com sucesso")
     except Exception as e:
         logging.error(f"[DEBUG POST /users] Erro ao gerar hash: {e}")
         raise HTTPException(
@@ -117,7 +117,7 @@ async def cadastrar_usuario(
             detail="Erro ao salvar usuário. Verifique se o login já existe ou se o cargo é válido."
         )
     
-    logging.warning(f"[DEBUG POST /users] Usuário '{dados.login}' criado com sucesso!")
+    logging.debug(f"[DEBUG POST /users] Usuário '{dados.login}' criado com sucesso!")
     return {
         "status": "sucesso",
         "mensagem": f"Usuário {dados.login} criado!"

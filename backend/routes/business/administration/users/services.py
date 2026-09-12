@@ -91,7 +91,7 @@ class UserService:
         """
         params = (login_normalizado, senha_hash, nome_normalizado, cargo_id_int)
         
-        logging.warning(
+        logging.debug(
             f"[DEBUG criar_usuario] INSERT parametrizado: "
             f"login={login_normalizado!r}, nome={nome_normalizado!r}, "
             f"cargo_id={cargo_id_int!r}, hash_len={len(senha_hash) if senha_hash else 0}"
@@ -106,7 +106,7 @@ class UserService:
             endpoint="/api/usuarios/cadastro"
         )
         
-        logging.warning(f"[DEBUG criar_usuario] Retorno: {sucesso!r}")
+        logging.debug(f"[DEBUG criar_usuario] Retorno: {sucesso!r}")
         
         if isinstance(sucesso, dict) and "erro" in sucesso:
             raise Exception(sucesso["erro"])

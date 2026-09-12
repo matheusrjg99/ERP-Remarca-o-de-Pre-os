@@ -1,27 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, AlertCircle, ChevronDown, ChevronUp, TrendingDown } from 'lucide-react';
+import { Wallet, AlertCircle, ChevronDown, ChevronUp, UserMinus, Users } from 'lucide-react';
 import { commissionsService } from '@/services';
 import { error as logError } from '@/utils/logger';
 
 /**
- * Componente MinhaComissaoBar - Versão Minimalista
- * 
- * Estado inicial: Barra compacta com apenas o essencial
- * Ao clicar na seta: Expande para mostrar detalhes completos
+ * Componente MinhaComissaoBar - Versão Minimalista com breakdown hierárquico
  */
 export default function MinhaComissaoBar({ mes, ano }) {
   const [comissao, setComissao] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
-  const [expandido, setExpandido] = useState(false); // Inicia FECHADO
-  
+  const [expandido, setExpandido] = useState(false);
+
   const buscarComissao = async () => {
     setCarregando(true);
     setErro(null);
-    
     try {
       const response = await commissionsService.getMinhaComissao(mes, ano);
-      
       if (response?.erro) {
         setErro(response.erro);
         setComissao(null);
@@ -30,7 +25,6 @@ export default function MinhaComissaoBar({ mes, ano }) {
       }
     } catch (err) {
       logError('Erro ao buscar comissão:', err);
-      
       if (err?.response?.status === 404) {
         setErro('Nenhum colaborador vinculado ao seu usuário.');
       } else {
@@ -54,13 +48,10 @@ export default function MinhaComissaoBar({ mes, ano }) {
     return `${(valor || 0).toFixed(2)}%`;
   };
 
-  // Calcula percentuais para a barra
   const calcularPercentuais = () => {
     if (!comissao || comissao.salario_base <= 0) return { desconto: 0, liquido: 100 };
-    
     const percentualDesconto = (comissao.valor_total_desconto / comissao.salario_base) * 100;
     const percentualLiquido = (comissao.salario_final / comissao.salario_base) * 100;
-    
     return {
       desconto: Math.min(percentualDesconto, 100),
       liquido: Math.max(percentualLiquido, 0)
@@ -69,7 +60,9 @@ export default function MinhaComissaoBar({ mes, ano }) {
 
   const percentuais = calcularPercentuais();
 
-  // Se está carregando - Versão minimalista
+  // ============================================================
+  // LOADING
+  // ============================================================
   if (carregando) {
     return (
       <div className="bg-[#0f0f11] border border-zinc-800 rounded-xl px-4 py-3 mb-4 animate-pulse">
@@ -84,7 +77,9 @@ export default function MinhaComissaoBar({ mes, ano }) {
     );
   }
 
-  // Se há erro - Versão minimalista
+  // ============================================================
+  // ERRO
+  // ============================================================
   if (erro || !comissao) {
     return (
       <div className="bg-[#0f0f11] border border-zinc-800 rounded-xl px-4 py-3 mb-4">
@@ -96,45 +91,53 @@ export default function MinhaComissaoBar({ mes, ano }) {
     );
   }
 
-  // VERSÃO MINIMALISTA (FECHADA)
+  const temSubs = (comissao.detalhes_subordinados || []).length > 0;
+  const totalSubsNCs = comissao.total_ncs_subordinados || 0;
+
+  // ============================================================
+  // VERSÃO COMPACTA (FECHADA)
+  // ============================================================
   if (!expandido) {
     return (
-      <div 
+      <div
         className="bg-[#0f0f11] border border-zinc-800 rounded-xl px-4 py-3 mb-4 cursor-pointer hover:border-zinc-700 transition-all group"
         onClick={() => setExpandido(true)}
       >
         <div className="flex items-center gap-3">
-          {/* Ícone */}
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
             <Wallet size={16} className="text-emerald-500" />
           </div>
-          
-          {/* Barra de progresso + informação principal */}
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-black text-zinc-300 uppercase tracking-tight truncate">
-                Minha Comissão
-              </span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-black text-zinc-300 uppercase tracking-tight truncate">
+                  Minha Comissão
+                </span>
+                {temSubs && totalSubsNCs > 0 && (
+                  <span className="text-[9px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 shrink-0">
+                    +{totalSubsNCs} sub{totalSubsNCs > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
               <span className="text-[11px] font-black text-emerald-500 shrink-0 ml-2">
                 {formatarMoeda(comissao.salario_final)}
               </span>
             </div>
-            
-            {/* Barra compacta */}
+
             <div className="relative h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
                 style={{ width: `${percentuais.liquido}%` }}
               />
-              <div 
+              <div
                 className="absolute inset-y-0 right-0 bg-gradient-to-l from-red-600 to-red-400 transition-all duration-500"
                 style={{ width: `${percentuais.desconto}%` }}
               />
             </div>
           </div>
-          
-          {/* Seta para expandir */}
-          <button 
+
+          <button
             className="p-1.5 rounded-lg text-zinc-500 group-hover:text-white transition-colors shrink-0"
             title="Expandir detalhes"
           >
@@ -145,10 +148,12 @@ export default function MinhaComissaoBar({ mes, ano }) {
     );
   }
 
+  // ============================================================
   // VERSÃO EXPANDIDA (DETALHADA)
+  // ============================================================
   return (
     <div className="bg-[#0f0f11] border border-zinc-800 rounded-2xl p-5 mb-4 animate-in fade-in duration-200">
-      
+
       {/* CABEÇALHO */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -164,9 +169,8 @@ export default function MinhaComissaoBar({ mes, ano }) {
             </p>
           </div>
         </div>
-        
-        {/* BOTÃO RECOLHER */}
-        <button 
+
+        <button
           onClick={() => setExpandido(false)}
           className="text-zinc-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-zinc-800"
           title="Recolher"
@@ -175,18 +179,18 @@ export default function MinhaComissaoBar({ mes, ano }) {
         </button>
       </div>
 
-      {/* BARRA DE PROGRESSO HORIZONTAL */}
+      {/* BARRA DE PROGRESSO */}
       <div className="relative h-4 bg-zinc-800 rounded-full overflow-hidden mb-4">
-        <div 
+        <div
           className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
           style={{ width: `${percentuais.liquido}%` }}
         />
-        <div 
+        <div
           className="absolute inset-y-0 right-0 bg-gradient-to-l from-red-600 to-red-400 transition-all duration-500"
           style={{ width: `${percentuais.desconto}%` }}
         />
         {percentuais.desconto > 0 && (
-          <div 
+          <div
             className="absolute inset-y-0 w-[2px] bg-white/50"
             style={{ left: `${percentuais.liquido}%` }}
           />
@@ -215,7 +219,7 @@ export default function MinhaComissaoBar({ mes, ano }) {
             {formatarMoeda(comissao.salario_base)}
           </span>
         </div>
-        
+
         <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800">
           <span className="text-[9px] font-black text-zinc-500 uppercase tracking-wider block mb-1">
             NCs no Período
@@ -223,8 +227,13 @@ export default function MinhaComissaoBar({ mes, ano }) {
           <span className={`text-lg font-black ${comissao.total_ncs > 0 ? 'text-amber-500' : 'text-zinc-400'}`}>
             {comissao.total_ncs}
           </span>
+          {temSubs && (
+            <span className="text-[9px] text-zinc-500 block mt-0.5 italic">
+              {comissao.total_ncs_proprias} sua{comissao.total_ncs_proprias !== 1 ? 's' : ''} + {comissao.total_ncs_subordinados} sub
+            </span>
+          )}
         </div>
-        
+
         <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/20">
           <span className="text-[9px] font-black text-red-500/70 uppercase tracking-wider block mb-1">
             Total Descontos
@@ -233,7 +242,7 @@ export default function MinhaComissaoBar({ mes, ano }) {
             -{formatarMoeda(comissao.valor_total_desconto)}
           </span>
         </div>
-        
+
         <div className="bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/20">
           <span className="text-[9px] font-black text-emerald-500/70 uppercase tracking-wider block mb-1">
             Salário Final
@@ -243,6 +252,34 @@ export default function MinhaComissaoBar({ mes, ano }) {
           </span>
         </div>
       </div>
+
+      {/* BREAKDOWN — PRÓPRIO vs SUBORDINADOS */}
+      {temSubs && (
+        <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-sky-500/5 rounded-xl border border-sky-500/20">
+          <div className="flex flex-col">
+            <span className="text-[9px] font-black text-sky-400/70 uppercase tracking-wider mb-1">
+              Suas NCs
+            </span>
+            <span className="text-sm font-black text-white">
+              {formatarMoeda(comissao.valor_desconto_proprio)}
+            </span>
+            <span className="text-[9px] text-zinc-500 mt-0.5">
+              {comissao.total_ncs_proprias} NC{comissao.total_ncs_proprias !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="flex flex-col border-l border-sky-500/20 pl-3">
+            <span className="text-[9px] font-black text-sky-400/70 uppercase tracking-wider mb-1">
+              Subordinados
+            </span>
+            <span className="text-sm font-black text-white">
+              {formatarMoeda(comissao.valor_desconto_subordinados)}
+            </span>
+            <span className="text-[9px] text-zinc-500 mt-0.5">
+              {comissao.total_ncs_subordinados} NC{comissao.total_ncs_subordinados !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* INFORMAÇÕES ADICIONAIS */}
       <div className="border-t border-zinc-800 pt-4">
@@ -255,7 +292,7 @@ export default function MinhaComissaoBar({ mes, ano }) {
               {formatarPercentual(comissao.percentual_desconto)}
             </span>
           </div>
-          
+
           <div className="flex flex-col">
             <span className="text-[9px] font-black text-zinc-600 uppercase tracking-wider mb-1">
               Valor por NC
@@ -264,7 +301,7 @@ export default function MinhaComissaoBar({ mes, ano }) {
               -{formatarMoeda(comissao.valor_por_nc)}
             </span>
           </div>
-          
+
           <div className="flex flex-col">
             <span className="text-[9px] font-black text-zinc-600 uppercase tracking-wider mb-1">
               Percentual Líquido
@@ -275,48 +312,94 @@ export default function MinhaComissaoBar({ mes, ano }) {
           </div>
         </div>
 
-        {/* LISTA DE NCs */}
-        {comissao.ncs && comissao.ncs.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-[9px] font-black text-zinc-600 uppercase tracking-wider block">
-              NCs do Período ({comissao.ncs.length})
-            </span>
-            
-            {comissao.ncs.map((nc) => (
-              <div 
-                key={nc.id}
-                className="flex items-center justify-between bg-zinc-900/30 rounded-lg px-3 py-2 border border-zinc-800/50"
-              >
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="text-[10px] font-mono text-zinc-600">#{nc.id}</span>
-                  <p className="text-xs text-zinc-400 truncate max-w-[300px]">{nc.descricao}</p>
+        {/* SUB-SEÇÃO: SUBORDINADOS */}
+        {temSubs && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <UserMinus size={14} className="text-sky-400" />
+              <span className="text-[9px] font-black text-sky-400 uppercase tracking-widest">
+                Descontos por Subordinados ({comissao.detalhes_subordinados.length})
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {comissao.detalhes_subordinados.map(sub => (
+                <div
+                  key={sub.subordinado_id}
+                  className="flex items-center justify-between bg-zinc-900/40 rounded-lg px-3 py-2.5 border border-zinc-800/50"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-[10px] font-mono text-zinc-600 shrink-0">
+                      #{sub.subordinado_id}
+                    </span>
+                    <span className="text-xs font-bold text-zinc-300 uppercase tracking-tight truncate">
+                      {sub.nome_subordinado}
+                    </span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      sub.percentual_relacao === 0
+                        ? 'bg-zinc-800 text-zinc-500'
+                        : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                    }`}>
+                      {sub.percentual_relacao === 0 ? 'Treinamento' : `${sub.percentual_relacao.toFixed(2)}%`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 ml-2">
+                    <span className={`text-[10px] font-bold ${sub.total_ncs > 0 ? 'text-amber-500' : 'text-zinc-600'}`}>
+                      {sub.total_ncs} NC{sub.total_ncs !== 1 ? 's' : ''}
+                    </span>
+                    <span className={`text-xs font-black min-w-[80px] text-right ${
+                      sub.valor_desconto > 0 ? 'text-red-500' : 'text-zinc-600'
+                    }`}>
+                      -{formatarMoeda(sub.valor_desconto)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
-                    nc.status === 'Deferido' 
-                      ? 'bg-emerald-500/10 text-emerald-500' 
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SUB-SEÇÃO: NCs PRÓPRIAS */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={14} className="text-zinc-500" />
+            <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+              Suas NCs ({comissao.ncs.length})
+            </span>
+          </div>
+
+          {comissao.ncs && comissao.ncs.length > 0 ? (
+            <div className="space-y-2">
+              {comissao.ncs.map((nc) => (
+                <div
+                  key={nc.id}
+                  className="flex items-center justify-between bg-zinc-900/30 rounded-lg px-3 py-2 border border-zinc-800/50"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-[10px] font-mono text-zinc-600 shrink-0">#{nc.id}</span>
+                    <p className="text-xs text-zinc-400 truncate">{nc.descricao}</p>
+                  </div>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase shrink-0 ml-2 ${
+                    nc.status === 'Deferido'
+                      ? 'bg-emerald-500/10 text-emerald-500'
                       : 'bg-red-500/10 text-red-500'
                   }`}>
                     {nc.status}
                   </span>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        {/* Se não há NCs */}
-        {(!comissao.ncs || comissao.ncs.length === 0) && (
-          <div className="text-center py-4">
-            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
-              Nenhuma NC neste período
-            </p>
-          </div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-3">
+              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
+                Nenhuma NC própria neste período
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// Array com nomes dos meses (para exibição)
 const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];

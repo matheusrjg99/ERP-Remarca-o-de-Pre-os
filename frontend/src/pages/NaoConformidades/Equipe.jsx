@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/api/axios';
 import { Trash2, UserPlus, Users, Edit3, Save, UserCheck } from 'lucide-react';
 import Can from '../../components/Can';
 import { error as logError } from '@/utils/logger';
@@ -13,16 +13,12 @@ export default function Equipe({ colaboradores, buscarColabs }) {
   const [editandoId, setEditandoId] = useState(null);
   const [formEdicao, setFormEdicao] = useState({ nome: "", cargo: "", departamento: "", usuario_id: null });
   const [usuariosSistema, setUsuariosSistema] = useState([]);
-  
-  const token = localStorage.getItem('access_token');
-  const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  
+
   // Busca usuários do sistema ao montar o componente
   useEffect(() => {
     const buscarUsuarios = async () => {
       try {
-        const response = await axios.get(`${API_URL}/auth/usuarios`, config);
+        const response = await api.get('/auth/usuarios');
         if (Array.isArray(response.data)) {
           setUsuariosSistema(response.data);
         }
@@ -41,13 +37,13 @@ export default function Equipe({ colaboradores, buscarColabs }) {
   const adicionar = () => {
     if (!novoNome.trim()) return;
     setLoading(true);
-    
-    axios.post(`${API_URL}/colaboradores`, { 
-      nome: novoNome, 
-      cargo: novoCargo || null, 
+
+    api.post('/colaboradores', {
+      nome: novoNome,
+      cargo: novoCargo || null,
       departamento: novoDepartamento || null,
       usuario_id: novoUsuarioId ? parseInt(novoUsuarioId) : null
-    }, config)
+    })
       .then(() => {
         setNovoNome("");
         setNovoCargo("");
@@ -75,8 +71,8 @@ export default function Equipe({ colaboradores, buscarColabs }) {
   const salvarEdicao = () => {
     if (!formEdicao.nome.trim()) return;
     setLoading(true);
-    
-    axios.put(`${API_URL}/colaboradores/${editandoId}`, formEdicao, config)
+
+    api.put(`/colaboradores/${editandoId}`, formEdicao)
       .then(() => {
         setEditandoId(null);
         setFormEdicao({ nome: "", cargo: "", departamento: "", usuario_id: null });
@@ -97,7 +93,7 @@ export default function Equipe({ colaboradores, buscarColabs }) {
   const excluir = (id, nome) => {
     if (window.confirm(`Tem certeza que deseja excluir "${nome}"?`)) {
       setLoading(true);
-      axios.delete(`${API_URL}/colaboradores/${id}`, config)
+      api.delete(`/colaboradores/${id}`)
         .then(() => buscarColabs())
         .catch(err => {
           logError("Erro ao excluir:", err);

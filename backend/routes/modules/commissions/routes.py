@@ -11,7 +11,11 @@ from .schemas import (
     ComissaoConfig, 
     ComissaoConfigCreate, 
     ComissaoRelatorioItem,
-    MinhaComissaoResponse  # ADICIONADO
+    MinhaComissaoResponse,
+    # NOVOS
+    ColaboradorResponsavel,
+    ColaboradorResponsavelCreate,
+    ColaboradorResponsavelUpdate,
 )
 from .services import ComissaoService
 
@@ -37,18 +41,15 @@ async def listar_configuracoes_comissoes():
              dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
 async def criar_configuracao_comissao(config: ComissaoConfigCreate):
     """Cria ou atualiza a configuração de comissão para um colaborador"""
-    # Verifica se já existe configuração para este colaborador
     verifica = await ComissaoService.buscar_config_por_colaborador(colaborador_id=config.colaborador_id)
     
     if verifica:
-        # Atualiza existente
         sucesso = await ComissaoService.atualizar_configuracao_por_colaborador(
             colaborador_id=config.colaborador_id,
             salario_base=config.salario_base,
             percentual_desconto=config.percentual_desconto
         )
     else:
-        # Cria nova
         sucesso = await ComissaoService.criar_configuracao(
             colaborador_id=config.colaborador_id,
             salario_base=config.salario_base,
@@ -58,7 +59,6 @@ async def criar_configuracao_comissao(config: ComissaoConfigCreate):
     if sucesso is not True:
         raise HTTPException(status_code=500, detail="Erro ao salvar configuração de comissão")
     
-    # Retorna a configuração salva
     resultado = await ComissaoService.buscar_config_apos_salvar(colaborador_id=config.colaborador_id)
     
     if isinstance(resultado, dict) and "erro" in resultado:
@@ -80,7 +80,6 @@ async def atualizar_configuracao_comissao(config_id: int, config: ComissaoConfig
     if sucesso is not True:
         raise HTTPException(status_code=500, detail="Erro ao atualizar configuração")
     
-    # Retorna a configuração atualizada
     resultado = await ComissaoService.buscar_config_por_id(config_id=config_id)
     
     if isinstance(resultado, dict) and "erro" in resultado:
@@ -138,7 +137,6 @@ async def get_minha_comissao(
     
     Permissão: Qualquer usuário autenticado pode ver sua própria comissão.
     """
-    # Obtém o ID do usuário do token
     usuario_id = current_user.get("usuario_id")
     
     if not usuario_id:
@@ -147,14 +145,12 @@ async def get_minha_comissao(
             detail="Usuário não identificado"
         )
     
-    # Busca a comissão
     resultado = await ComissaoService.calcular_minha_comissao(
         usuario_id=usuario_id,
         mes=mes,
         ano=ano
     )
     
-    # Se houver erro de vínculo, retorna 404
     if "erro" in resultado and resultado.get("colaborador_id") is None:
         raise HTTPException(
             status_code=404,
@@ -162,3 +158,105 @@ async def get_minha_comissao(
         )
     
     return resultado
+
+
+# ========================================================================
+# ROTAS - RELAÇÕES RESPONSÁVEL ↔ SUBORDINADO
+# ========================================================================
+
+@router.get("/responsaveis", response_model=List[ColaboradorResponsavel],
+            dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
+async def listar_responsaveis():
+    """Lista todas as relações responsável ↔ subordinado"""
+    resultado = await ComissaoService.listar_responsaveis()
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    return resultado if resultado else []
+
+
+@router.post("/responsaveis", response_model=ColaboradorResponsavel,
+             dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
+async def criar_responsavel(relacao: ColaboradorResponsavelCreate):
+    """Cria uma nova relação responsável ↔ subordinado"""
+    if relacao.responsavel_id == relacao.subordinado_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Colaborador não pode ser responsável de si mesmo"
+        )
+    
+    if relacao.percentual_desconto < 0 or relacao.percentual_desconto > 100:
+        raise HTTPException(
+            status_code=400, 
+            detail="Percentual deve estar entre 0 e 100"
+        )
+    
+    sucesso = await ComissaoService.criar_relacao(
+        responsavel_id=relacao.responsavel_id,
+        subordinado_id=relacao.subordinado_id,
+        percentual_desconto=relacao.percentual_desconto
+    )
+    
+    if sucesso is not True:
+        if isinstance(sucesso, dict) and "erro" in sucesso:
+            erro_msg = str(sucesso["erro"])
+            if "UQ_RESP_Relacao" in erro_msg or "duplicate" in erro_msg.lower():
+                raise HTTPException(
+                    status_code=409, 
+                    detail="Esta relação já existe"
+                )
+            raise HTTPException(status_code=500, detail=erro_msg)
+        raise HTTPException(status_code=500, detail="Erro ao criar relação")
+    
+    todas = await ComissaoService.listar_responsaveis()
+    if isinstance(todas, list):
+        for r in todas:
+            if (r["responsavel_id"] == relacao.responsavel_id and 
+                r["subordinado_id"] == relacao.subordinado_id):
+                return r
+    
+    raise HTTPException(status_code=500, detail="Relação criada mas não encontrada")
+
+
+@router.put("/responsaveis/{relacao_id}", response_model=ColaboradorResponsavel,
+            dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
+async def atualizar_responsavel(relacao_id: int, relacao: ColaboradorResponsavelUpdate):
+    """Atualiza uma relação existente (percentual e/ou ativo)"""
+    if relacao.percentual_desconto is not None:
+        if relacao.percentual_desconto < 0 or relacao.percentual_desconto > 100:
+            raise HTTPException(
+                status_code=400, 
+                detail="Percentual deve estar entre 0 e 100"
+            )
+    
+    sucesso = await ComissaoService.atualizar_relacao(
+        relacao_id=relacao_id,
+        percentual_desconto=relacao.percentual_desconto,
+        ativo=relacao.ativo
+    )
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao atualizar relação")
+    
+    resultado = await ComissaoService.buscar_relacao(relacao_id)
+    
+    if isinstance(resultado, dict) and "erro" in resultado:
+        raise HTTPException(status_code=500, detail=resultado["erro"])
+    
+    if not resultado:
+        raise HTTPException(status_code=404, detail="Relação não encontrada")
+    
+    return resultado[0]
+
+
+@router.delete("/responsaveis/{relacao_id}",
+               dependencies=[Depends(requer_permissao("cadastros:comissoes"))])
+async def deletar_responsavel(relacao_id: int):
+    """Exclui uma relação responsável ↔ subordinado"""
+    sucesso = await ComissaoService.excluir_relacao(relacao_id)
+    
+    if sucesso is not True:
+        raise HTTPException(status_code=500, detail="Erro ao excluir relação")
+    
+    return {"message": "Relação excluída com sucesso"}

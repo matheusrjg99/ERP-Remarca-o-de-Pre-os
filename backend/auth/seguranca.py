@@ -128,23 +128,23 @@ def requer_permissao(*permissoes_necessarias: str):
         username = current_user.get("nome", "desconhecido")
         
         # LOG: Entrada da verificação
-        logging.warning(f"[DEBUG PERMISSAO] Usuário: {username} | Cargo: {cargo}")
-        logging.warning(f"[DEBUG PERMISSAO] Permissões requeridas: {permissoes_necessarias}")
-        logging.warning(f"[DEBUG PERMISSAO] Permissões do usuário: {permissoes_usuario}")
+        logging.debug(f"[DEBUG PERMISSAO] Usuário: {username} | Cargo: {cargo}")
+        logging.debug(f"[DEBUG PERMISSAO] Permissões requeridas: {permissoes_necessarias}")
+        logging.debug(f"[DEBUG PERMISSAO] Permissões do usuário: {permissoes_usuario}")
         
         # Admin total (cargos especiais) tem acesso a tudo
         if cargo in ["Administrador", "TI"] or "admin_total" in permissoes_usuario:
-            logging.warning(f"[DEBUG PERMISSAO] Acesso concedido (ADMIN/CARGO ESPECIAL)")
+            logging.debug(f"[DEBUG PERMISSAO] Acesso concedido (ADMIN/CARGO ESPECIAL)")
             return current_user
         
         # Verifica cada permissão necessária (OR lógico)
         for permissao_necessaria in permissoes_necessarias:
             tem_permissao = verificar_hierarquia_permissao(permissao_necessaria, permissoes_usuario)
             
-            logging.warning(f"[DEBUG PERMISSAO] Verificando '{permissao_necessaria}': {tem_permissao}")
+            logging.debug(f"[DEBUG PERMISSAO] Verificando '{permissao_necessaria}': {tem_permissao}")
             
             if tem_permissao:
-                logging.warning(f"[DEBUG PERMISSAO] Acesso concedido para {username} via '{permissao_necessaria}'")
+                logging.debug(f"[DEBUG PERMISSAO] Acesso concedido para {username} via '{permissao_necessaria}'")
                 return current_user
         
         # Se nenhuma permissão foi satisfeita
@@ -176,17 +176,17 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
         # LOG: Payload completo do token
-        logging.warning(f"[DEBUG TOKEN] Payload completo: {payload}")
+        logging.debug(f"[DEBUG TOKEN] Payload completo: {payload}")
         
         usuario_id = payload.get("sub")
         
         # LOG: Detalhes do payload
-        logging.warning(f"[DEBUG TOKEN] 'sub' (usuario_id): {usuario_id}")
-        logging.warning(f"[DEBUG TOKEN] Tipo de 'sub': {type(usuario_id)}")
-        logging.warning(f"[DEBUG TOKEN] 'nome': {payload.get('nome')}")
-        logging.warning(f"[DEBUG TOKEN] 'email': {payload.get('email')}")
-        logging.warning(f"[DEBUG TOKEN] 'cargo': {payload.get('cargo')}")
-        logging.warning(f"[DEBUG TOKEN] 'permissoes': {payload.get('permissoes', [])}")
+        logging.debug(f"[DEBUG TOKEN] 'sub' (usuario_id): {usuario_id}")
+        logging.debug(f"[DEBUG TOKEN] Tipo de 'sub': {type(usuario_id)}")
+        logging.debug(f"[DEBUG TOKEN] 'nome': {payload.get('nome')}")
+        logging.debug(f"[DEBUG TOKEN] 'email': {payload.get('email')}")
+        logging.debug(f"[DEBUG TOKEN] 'cargo': {payload.get('cargo')}")
+        logging.debug(f"[DEBUG TOKEN] 'permissoes': {payload.get('permissoes', [])}")
         
         if usuario_id is None:
             logging.error("[DEBUG TOKEN] 'sub' é None - token inválido")
@@ -204,7 +204,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         "permissoes": payload.get("permissoes", []),
     }
     
-    logging.warning(f"[DEBUG TOKEN] Retornando usuário: {user_data}")
+    logging.debug(f"[DEBUG TOKEN] Retornando usuário: {user_data}")
     
     return user_data
 
@@ -227,7 +227,7 @@ async def get_current_user_with_db(token: str = Depends(oauth2_scheme), db=None)
         usuario_id = payload.get("sub")
         login = payload.get("sub")  # Assume que 'sub' é o login
         
-        logging.warning(f"[DEBUG TOKEN DB] 'sub': {usuario_id} | login: {login}")
+        logging.debug(f"[DEBUG TOKEN DB] 'sub': {usuario_id} | login: {login}")
         
         if usuario_id is None and login is None:
             raise credentials_exception
